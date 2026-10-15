@@ -1,0 +1,15 @@
+{
+  "name": "design-and-fix",
+  "owner": {
+    "name": "Muhammad-Ahmad092",
+    "url": "https://github.com/Muhammad-Ahmad092"
+  },
+  "plugins": [
+    {
+      "name": "design-and-fix",
+      "source": "./",
+      "description": "Ranked, context-grounded system-design, architecture, and API-optimization guidance: design a new project or audit an existing one.",
+      "version": "1.0.0"
+    }
+  ]
+}

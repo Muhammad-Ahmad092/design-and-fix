@@ -1,0 +1,10 @@
+{
+  "name": "design-and-fix",
+  "version": "1.0.0",
+  "description": "Ranked, context-grounded system-design, architecture, and API-optimization guidance: design a new project or audit an existing one.",
+  "author": "Muhammad-Ahmad092",
+  "license": "MIT",
+  "skills": [
+    "./skills/design-and-fix"
+  ]
+}

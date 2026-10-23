@@ -1,0 +1,20 @@
+# Internal planning docs (design spec, plan, review) - kept locally, not shipped
+docs/superpowers/
+PUSH-GUIDE.md
+
+# Plugin output when the skill is run on this repo itself
+docs/
+docs/adr/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+
+# Editors and OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

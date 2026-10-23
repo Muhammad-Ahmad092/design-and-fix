@@ -1,10 +1,20 @@
 {
   "name": "design-and-fix",
-  "version": "1.0.0",
-  "description": "Ranked, context-grounded system-design, architecture, and API-optimization guidance: design a new project or audit an existing one.",
-  "author": "Muhammad-Ahmad092",
+  "version": "1.0.1",
+  "description": "Evidence-based system design and architecture audits: a static-analysis scanner, health scores, API reviews and improvement roadmaps.",
+  "author": {
+    "name": "Muhammad-Ahmad092",
+    "url": "https://github.com/Muhammad-Ahmad092"
+  },
+  "homepage": "https://github.com/Muhammad-Ahmad092/design-and-fix",
+  "repository": "https://github.com/Muhammad-Ahmad092/design-and-fix",
   "license": "MIT",
-  "skills": [
-    "./skills/design-and-fix"
+  "keywords": [
+    "architecture",
+    "system-design",
+    "api-design",
+    "code-audit",
+    "static-analysis",
+    "adr"
   ]
 }

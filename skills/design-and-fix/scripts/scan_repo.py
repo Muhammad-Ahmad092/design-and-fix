@@ -1,144 +1,98 @@
 #!/usr/bin/env python3
 """
-scan_repo.py — optional helper for Mode 2 (Existing Project) audits.
+scan_repo.py - helper for Mode 2 (Existing Project) audits.
 
-Scans a repo root and reports:
-  - detected languages / stack (by manifest and extension signals)
-  - candidate service/module folders to audit
-  - rough size per folder (file count, approx LOC)
-
-Does NOT read file contents for analysis — this is a scoping aid only.
-The skill still reads actual source files itself when auditing.
+Thin CLI over the stdlib-only `dfscan` package. Reports detected stack,
+frameworks, candidate folders (recursive sizing) and, as analyzers land,
+import graph, routes, risky-pattern signals and git hotspots.
 
 Usage:
-    python3 scan_repo.py <path> [--max-depth N] [--top N]
+    python3 scan_repo.py <path> [--scope DIR]... [--list-depth N] [--top N]
+                         [--no-git] [--since 12.months] [--format json|markdown]
+                         [--folders-only]
 
-Output: JSON to stdout.
+Output: JSON (default) to stdout. Errors: {"error": "..."} and exit code 1.
 """
+from __future__ import annotations
 
 import argparse
 import json
 import os
 import sys
+from typing import List, Optional
 
-IGNORE_DIRS = {
-    ".git", "node_modules", "vendor", "dist", "build", "target",
-    ".venv", "venv", "__pycache__", ".next", ".cache", "coverage",
-    ".idea", ".vscode", "out",
-}
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-MANIFEST_SIGNALS = {
-    "package.json": "Node.js / JavaScript",
-    "pnpm-lock.yaml": "Node.js (pnpm)",
-    "yarn.lock": "Node.js (yarn)",
-    "requirements.txt": "Python",
-    "pyproject.toml": "Python",
-    "Pipfile": "Python (pipenv)",
-    "go.mod": "Go",
-    "Cargo.toml": "Rust",
-    "pom.xml": "Java (Maven)",
-    "build.gradle": "Java/Kotlin (Gradle)",
-    "build.gradle.kts": "Kotlin (Gradle)",
-    "Gemfile": "Ruby",
-    "composer.json": "PHP",
-    "mix.exs": "Elixir",
-    "*.csproj": "C# / .NET",
-    "docker-compose.yml": "Docker Compose present",
-    "docker-compose.yaml": "Docker Compose present",
-    "Dockerfile": "Containerized",
-}
-
-EXT_SIGNALS = {
-    ".py": "Python", ".js": "JavaScript", ".ts": "TypeScript",
-    ".tsx": "TypeScript/React", ".jsx": "JavaScript/React",
-    ".go": "Go", ".rs": "Rust", ".java": "Java", ".kt": "Kotlin",
-    ".rb": "Ruby", ".php": "PHP", ".ex": "Elixir", ".cs": "C#",
-    ".sql": "SQL", ".proto": "Protocol Buffers (gRPC likely)",
-    ".graphql": "GraphQL",
-}
+from dfscan.report import render_markdown, scan  # noqa: E402
+from dfscan.walker import normalize_scope  # noqa: E402
 
 
-def should_ignore(dirname: str) -> bool:
-    return dirname in IGNORE_DIRS or dirname.startswith(".")
+def _error(msg: str) -> int:
+    print(json.dumps({"error": msg}))
+    return 1
 
 
-def scan(root: str, max_depth: int):
-    stack_signals = set()
-    ext_counts = {}
-    folders = []
-
-    root = os.path.abspath(root)
-
-    for dirpath, dirnames, filenames in os.walk(root):
-        rel = os.path.relpath(dirpath, root)
-        depth = 0 if rel == "." else rel.count(os.sep) + 1
-
-        dirnames[:] = [d for d in dirnames if not should_ignore(d)]
-
-        if depth > max_depth:
-            dirnames[:] = []
-            continue
-
-        for fname in filenames:
-            if fname in MANIFEST_SIGNALS:
-                stack_signals.add(MANIFEST_SIGNALS[fname])
-            ext = os.path.splitext(fname)[1]
-            if ext in EXT_SIGNALS:
-                ext_counts[ext] = ext_counts.get(ext, 0) + 1
-
-        # Treat depth==1 and depth==2 folders as audit candidates
-        # (typical: services/, apps/, packages/, src/<module>)
-        if 1 <= depth <= 2 and filenames:
-            code_files = [
-                f for f in filenames
-                if os.path.splitext(f)[1] in EXT_SIGNALS
-            ]
-            if code_files:
-                approx_loc = 0
-                for f in code_files:
-                    fpath = os.path.join(dirpath, f)
-                    try:
-                        with open(fpath, "r", encoding="utf-8", errors="ignore") as fh:
-                            approx_loc += sum(1 for _ in fh)
-                    except OSError:
-                        pass
-                folders.append({
-                    "path": os.path.relpath(dirpath, root),
-                    "file_count": len(code_files),
-                    "approx_loc": approx_loc,
-                })
-
-    for ext, count in ext_counts.items():
-        if count > 0:
-            stack_signals.add(EXT_SIGNALS[ext])
-
-    folders.sort(key=lambda f: f["approx_loc"], reverse=True)
-
-    return {
-        "root": root,
-        "detected_stack": sorted(stack_signals),
-        "candidate_folders": folders,
-    }
-
-
-def main():
-    parser = argparse.ArgumentParser(description=__doc__)
+def main(argv: Optional[List[str]] = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__,
+                                     formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("path", help="Repo root to scan")
-    parser.add_argument("--max-depth", type=int, default=3,
-                         help="Max directory depth to walk (default: 3)")
+    parser.add_argument("--scope", action="append", default=[],
+                        help="Limit scan to a subfolder (repeatable)")
+    parser.add_argument("--list-depth", type=int, default=2,
+                        help="Folder depth reported as candidates (default: 2)")
+    parser.add_argument("--max-depth", type=int, default=None,
+                        help="Deprecated alias for --list-depth")
     parser.add_argument("--top", type=int, default=15,
-                         help="Max candidate folders to return (default: 15)")
-    args = parser.parse_args()
+                        help="Max candidate folders to return (default: 15)")
+    parser.add_argument("--no-git", action="store_true", help="Do not run git log")
+    parser.add_argument("--since", default="12.months", help="Git history window")
+    parser.add_argument("--format", choices=("json", "markdown"), default="json")
+    parser.add_argument("--folders-only", action="store_true",
+                        help="Fast scope discovery: stack, frameworks and candidate folders only")
+    args = parser.parse_args(argv)
+    if hasattr(sys.stdout, "reconfigure"):  # non-ASCII paths on a cp1252 console
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
-    if not os.path.isdir(args.path):
-        print(json.dumps({"error": f"not a directory: {args.path}"}))
-        sys.exit(1)
+    root = os.path.abspath(args.path)
+    if not os.path.isdir(root):
+        return _error("not a directory: %s" % args.path)
 
-    result = scan(args.path, args.max_depth)
-    result["candidate_folders"] = result["candidate_folders"][:args.top]
+    scope = []
+    for entry in args.scope:
+        if os.path.isabs(entry):  # absolute path inside root -> root-relative
+            try:
+                rel = os.path.relpath(os.path.abspath(entry), root)
+            except ValueError:  # different drive on Windows
+                rel = ".."
+            if rel == ".." or rel.startswith(".." + os.sep):
+                return _error("scope outside root: %s" % entry)
+            entry = rel
+        s = normalize_scope(entry)
+        if s:
+            scope.append(s)
+    for s in scope:
+        if not os.path.isdir(os.path.join(root, *s.split("/"))):
+            return _error("scope not found: %s" % s)
 
-    print(json.dumps(result, indent=2))
+    list_depth = args.list_depth
+    notes = []
+    if args.max_depth is not None:
+        list_depth = args.max_depth
+        notes.append("--max-depth is deprecated; use --list-depth")
+
+    try:
+        result = scan(root, scope or None, list_depth, args.top,
+                      not args.no_git, args.since, args.folders_only)
+    except Exception as exc:  # never a traceback
+        return _error("scan failed: %s" % exc)
+    result["notes"].extend(notes)
+
+    if args.format == "markdown":
+        print(render_markdown(result), end="")
+    else:
+        print(json.dumps(result, indent=2))
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

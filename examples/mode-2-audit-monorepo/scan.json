@@ -1,0 +1,321 @@
+{
+  "schema_version": 2,
+  "root": "tests/fixtures/monorepo",
+  "scope": [],
+  "detected_stack": [
+    "C# / .NET",
+    "Go",
+    "Node.js / JavaScript",
+    "Python",
+    "TypeScript"
+  ],
+  "frameworks": [
+    "express",
+    "flask",
+    "gin"
+  ],
+  "candidate_folders": [
+    {
+      "path": "services",
+      "file_count": 8,
+      "approx_loc": 785
+    },
+    {
+      "path": "services/payments",
+      "file_count": 6,
+      "approx_loc": 704
+    },
+    {
+      "path": "services/orders",
+      "file_count": 1,
+      "approx_loc": 49
+    },
+    {
+      "path": "services/catalog",
+      "file_count": 1,
+      "approx_loc": 32
+    },
+    {
+      "path": "App",
+      "file_count": 1,
+      "approx_loc": 6
+    }
+  ],
+  "import_graph": {
+    "modules": 9,
+    "edges": 7,
+    "cycles": [
+      [
+        "services/payments/src/lib/db.ts",
+        "services/payments/src/lib/util.ts",
+        "services/payments/src/lib/db.ts"
+      ]
+    ],
+    "god_modules": []
+  },
+  "routes": [
+    {
+      "method": "POST",
+      "path": "/items",
+      "file": "services/catalog/app.py",
+      "line": 16,
+      "framework": "flask",
+      "auth_detected": false
+    },
+    {
+      "method": "GET",
+      "path": "/items/<int:item_id>",
+      "file": "services/catalog/app.py",
+      "line": 25,
+      "framework": "flask",
+      "auth_detected": false
+    },
+    {
+      "method": "POST",
+      "path": "/orders",
+      "file": "services/orders/src/orders.go",
+      "line": 44,
+      "framework": "gin",
+      "auth_detected": false
+    },
+    {
+      "method": "GET",
+      "path": "/healthz",
+      "file": "services/orders/src/orders.go",
+      "line": 45,
+      "framework": "gin",
+      "auth_detected": false
+    },
+    {
+      "method": "POST",
+      "path": "/payments/charge",
+      "file": "services/payments/src/handlers/charge.ts",
+      "line": 14,
+      "framework": "express",
+      "auth_detected": false
+    },
+    {
+      "method": "POST",
+      "path": "/payments/refund",
+      "file": "services/payments/src/handlers/refund.ts",
+      "line": 15,
+      "framework": "express",
+      "auth_detected": true
+    },
+    {
+      "method": "GET",
+      "path": "/payments/:id",
+      "file": "services/payments/src/handlers/webhook.ts",
+      "line": 6,
+      "framework": "express",
+      "auth_detected": false
+    }
+  ],
+  "hotspots": {
+    "available": false,
+    "since": "12.months",
+    "files": [],
+    "note": "git hotspots disabled (--no-git)"
+  },
+  "signals": [
+    {
+      "rule": "import-cycle",
+      "category": "System Design",
+      "severity_hint": "High",
+      "file": "services/payments/src/lib/db.ts",
+      "line": 1,
+      "snippet": "services/payments/src/lib/db.ts -> services/payments/src/lib/util.ts -> services/payments/src/lib/db.ts",
+      "confidence": "high"
+    },
+    {
+      "rule": "unauth-write-route",
+      "category": "Security",
+      "severity_hint": "Critical",
+      "file": "services/catalog/app.py",
+      "line": 16,
+      "snippet": "POST /items",
+      "confidence": "medium"
+    },
+    {
+      "rule": "unauth-write-route",
+      "category": "Security",
+      "severity_hint": "Critical",
+      "file": "services/orders/src/orders.go",
+      "line": 44,
+      "snippet": "POST /orders",
+      "confidence": "medium"
+    },
+    {
+      "rule": "unauth-write-route",
+      "category": "Security",
+      "severity_hint": "Critical",
+      "file": "services/payments/src/handlers/charge.ts",
+      "line": 14,
+      "snippet": "POST /payments/charge",
+      "confidence": "medium"
+    },
+    {
+      "rule": "no-health-endpoint",
+      "category": "Observability",
+      "severity_hint": "Medium",
+      "file": "services/catalog/app.py",
+      "line": 16,
+      "snippet": "no health endpoint in services/catalog",
+      "confidence": "medium"
+    },
+    {
+      "rule": "no-health-endpoint",
+      "category": "Observability",
+      "severity_hint": "Medium",
+      "file": "services/payments/src/handlers/charge.ts",
+      "line": 14,
+      "snippet": "no health endpoint in services/payments",
+      "confidence": "medium"
+    },
+    {
+      "rule": "http-no-timeout",
+      "category": "Reliability",
+      "severity_hint": "High",
+      "file": "services/catalog/app.py",
+      "line": 28,
+      "snippet": "resp = requests.get(\"https://pricing.example.test/items/%d\" % item_id)",
+      "confidence": "medium"
+    },
+    {
+      "rule": "unbounded-query",
+      "category": "Scalability",
+      "severity_hint": "Medium",
+      "file": "services/catalog/app.py",
+      "line": 21,
+      "snippet": "cursor.execute(\"SELECT * FROM items WHERE name = '\" + name + \"'\")",
+      "confidence": "low"
+    },
+    {
+      "rule": "sql-string-concat",
+      "category": "Security",
+      "severity_hint": "Critical",
+      "file": "services/catalog/app.py",
+      "line": 21,
+      "snippet": "cursor.execute(\"SELECT * FROM items WHERE name = '\" + name + \"'\")",
+      "confidence": "medium"
+    },
+    {
+      "rule": "swallowed-error",
+      "category": "Reliability",
+      "severity_hint": "Medium",
+      "file": "services/catalog/app.py",
+      "line": 30,
+      "snippet": "except Exception:",
+      "confidence": "high"
+    },
+    {
+      "rule": "hardcoded-secret",
+      "category": "Security",
+      "severity_hint": "Critical",
+      "file": "services/catalog/app.py",
+      "line": 9,
+      "snippet": "DB_PASSWORD = \"<redacted>\"",
+      "confidence": "high"
+    },
+    {
+      "rule": "http-no-timeout",
+      "category": "Reliability",
+      "severity_hint": "High",
+      "file": "services/orders/src/orders.go",
+      "line": 18,
+      "snippet": "return http.Get(url)",
+      "confidence": "medium"
+    },
+    {
+      "rule": "unbounded-query",
+      "category": "Scalability",
+      "severity_hint": "Medium",
+      "file": "services/orders/src/orders.go",
+      "line": 22,
+      "snippet": "rows, err := db.Query(\"SELECT id, total FROM orders WHERE user_id = $1\", uid)",
+      "confidence": "low"
+    },
+    {
+      "rule": "http-no-timeout",
+      "category": "Reliability",
+      "severity_hint": "High",
+      "file": "services/payments/src/handlers/charge.ts",
+      "line": 17,
+      "snippet": "const providerResponse = await fetch(PROVIDER_URL, { method: \"POST\", body });",
+      "confidence": "medium"
+    },
+    {
+      "rule": "query-in-loop",
+      "category": "Scalability",
+      "severity_hint": "High",
+      "file": "services/payments/src/handlers/charge.ts",
+      "line": 21,
+      "snippet": "await db.query(\"INSERT INTO charge_items (sku, qty, unit_cents) VALUES ($1, $2, $3)\", [",
+      "confidence": "medium"
+    },
+    {
+      "rule": "unbounded-query",
+      "category": "Scalability",
+      "severity_hint": "Medium",
+      "file": "services/payments/src/handlers/webhook.ts",
+      "line": 8,
+      "snippet": "const row = await db.query(\"SELECT id, amount_cents FROM charges WHERE id = $1\", [req.params.id]);",
+      "confidence": "low"
+    },
+    {
+      "rule": "swallowed-error",
+      "category": "Reliability",
+      "severity_hint": "Medium",
+      "file": "services/payments/src/handlers/webhook.ts",
+      "line": 11,
+      "snippet": "} catch (e) {}",
+      "confidence": "high"
+    },
+    {
+      "rule": "console-logging-only",
+      "category": "Observability",
+      "severity_hint": "Low",
+      "file": "services/payments",
+      "line": 0,
+      "snippet": "only console/print logging in services/payments",
+      "confidence": "low"
+    },
+    {
+      "rule": "no-tests",
+      "category": "Maintainability",
+      "severity_hint": "Medium",
+      "file": "services/catalog",
+      "line": 0,
+      "snippet": "no test files under services/catalog",
+      "confidence": "medium"
+    },
+    {
+      "rule": "no-tests",
+      "category": "Maintainability",
+      "severity_hint": "Medium",
+      "file": "services/orders",
+      "line": 0,
+      "snippet": "no test files under services/orders",
+      "confidence": "medium"
+    }
+  ],
+  "summary": {
+    "files_scanned": 13,
+    "code_files": 9,
+    "approx_loc": 791,
+    "test_files": 1,
+    "signals_by_category": {
+      "System Design": 1,
+      "Security": 5,
+      "Observability": 3,
+      "Reliability": 5,
+      "Scalability": 4,
+      "Maintainability": 2
+    },
+    "truncated": {},
+    "routes_total": 7
+  },
+  "notes": [
+    "git hotspots disabled (--no-git)"
+  ]
+}

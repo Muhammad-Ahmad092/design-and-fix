@@ -1,47 +1,10 @@
-# Codex-specific invocation policy for design-and-fix
-# Read by Codex alongside SKILL.md. Other tools ignore this file.
+interface:
+  display_name: "Design & Fix"
+  short_description: "Design systems, audit code"
+  icon_small: "./assets/icon.svg"
+  icon_large: "./assets/logo.svg"
+  brand_color: "#2563EB"
+  default_prompt: "Audit this codebase and score its architecture health, or design the architecture for a new project."
 
-name: design-and-fix
-
-trigger:
-  description: >
-    Invoke when the user asks to design a system, plan an architecture,
-    choose between monolith and microservices, design or review an API,
-    optimize API performance, audit a codebase for scalability, reliability,
-    or maintainability, score architecture health, or build an improvement
-    roadmap.
-  keywords:
-    - architecture
-    - system design
-    - api design
-    - microservices
-    - monolith
-    - scalability
-    - audit codebase
-    - tech stack
-    - improvement roadmap
-
-requires_before_output:
-  - context_collection: true   # must complete references/context-collection.md first
-
-file_access:
-  read:
-    - "**/*"                   # Mode 2 needs to read source files for evidence
-  write:
-    - "docs/architecture/**"   # output files only
-
-execution:
-  # Codex can run scripts/scan_repo.py directly as a shell step when scoping Mode 2.
-  allow_shell: true
-  shell_commands:
-    - "python3 skills/design-and-fix/scripts/scan_repo.py <path>"
-
-output:
-  max_files_per_run: 3         # 3, or 4 only if the optional file was explicitly requested
-  format: markdown
-
-notes: >
-  Codex should treat this file as metadata only. All workflow, mode logic,
-  templates, and formatting rules live in SKILL.md and references/. This
-  file exists solely to declare triggers and permissions in Codex's
-  expected schema.
+policy:
+  allow_implicit_invocation: true

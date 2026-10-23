@@ -4,12 +4,12 @@
     "name": "Muhammad-Ahmad092",
     "url": "https://github.com/Muhammad-Ahmad092"
   },
+  "description": "Evidence-based system design and architecture audits: a static-analysis scanner, health scores, API reviews and improvement roadmaps.",
   "plugins": [
     {
       "name": "design-and-fix",
       "source": "./",
-      "description": "Ranked, context-grounded system-design, architecture, and API-optimization guidance: design a new project or audit an existing one.",
-      "version": "1.0.0"
+      "description": "Evidence-based system design and architecture audits: a static-analysis scanner, health scores, API reviews and improvement roadmaps."
     }
   ]
 }

@@ -1,14 +1,42 @@
 {
   "name": "design-and-fix",
-  "version": "1.0.0",
-  "description": "Ranked, context-grounded system-design, architecture, and API-optimization guidance: design a new project or audit an existing one.",
-  "author": "Muhammad-Ahmad092",
+  "version": "1.0.1",
+  "description": "Evidence-based system design and architecture audits: a static-analysis scanner, health scores, API reviews and improvement roadmaps.",
+  "author": {
+    "name": "Muhammad-Ahmad092",
+    "url": "https://github.com/Muhammad-Ahmad092"
+  },
+  "homepage": "https://github.com/Muhammad-Ahmad092/design-and-fix",
+  "repository": "https://github.com/Muhammad-Ahmad092/design-and-fix",
   "license": "MIT",
-  "skills": [
-    {
-      "path": "./skills/design-and-fix",
-      "entry": "SKILL.md",
-      "agentConfig": "./skills/design-and-fix/agents/openai.yaml"
-    }
-  ]
+  "keywords": [
+    "architecture",
+    "system-design",
+    "api-design",
+    "code-audit",
+    "static-analysis",
+    "adr"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Design & Fix",
+    "shortDescription": "Design systems, audit code",
+    "longDescription": "Design new systems or audit existing codebases with evidence instead of guesses. A bundled static-analysis scanner feeds architecture health scores, API reviews and a prioritised improvement roadmap.",
+    "developerName": "Muhammad-Ahmad092",
+    "category": "Coding",
+    "capabilities": [
+      "Design new systems",
+      "Audit existing codebases",
+      "Score architecture health",
+      "Plan improvement roadmaps"
+    ],
+    "defaultPrompt": [
+      "Audit this codebase and score its architecture health",
+      "Design the system architecture for a new project",
+      "Review this API and propose an improvement roadmap"
+    ],
+    "brandColor": "#2563EB",
+    "composerIcon": "./assets/icon.svg",
+    "logo": "./assets/logo.svg"
+  }
 }

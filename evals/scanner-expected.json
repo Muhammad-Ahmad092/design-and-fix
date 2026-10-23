@@ -1,0 +1,30 @@
+{
+  "monorepo": {
+    "must_find": [
+      ["import-cycle", "services/payments/src/lib/db.ts"],
+      ["unauth-write-route", "services/payments/src/handlers/charge.ts"],
+      ["unauth-write-route", "services/orders/src/orders.go"],
+      ["unauth-write-route", "services/catalog/app.py"],
+      ["no-health-endpoint", "services/catalog/app.py"],
+      ["http-no-timeout", "services/payments/src/handlers/charge.ts"],
+      ["http-no-timeout", "services/orders/src/orders.go"],
+      ["http-no-timeout", "services/catalog/app.py"],
+      ["query-in-loop", "services/payments/src/handlers/charge.ts"],
+      ["unbounded-query", "services/orders/src/orders.go"],
+      ["hardcoded-secret", "services/catalog/app.py"],
+      ["sql-string-concat", "services/catalog/app.py"],
+      ["swallowed-error", "services/payments/src/handlers/webhook.ts"],
+      ["swallowed-error", "services/catalog/app.py"],
+      ["no-tests", "services/orders"],
+      ["console-logging-only", "services/payments"]
+    ],
+    "must_not_find": [
+      ["http-no-timeout", "services/payments/src/handlers/refund.ts"],
+      ["http-no-timeout", "services/payments/src/handlers/charge.test.ts"],
+      ["unauth-write-route", "services/payments/src/handlers/refund.ts"],
+      ["no-health-endpoint", "services/orders/src/orders.go"],
+      ["console-logging-only", "services/catalog"]
+    ]
+  },
+  "clean-service": {"max_signals": 0}
+}

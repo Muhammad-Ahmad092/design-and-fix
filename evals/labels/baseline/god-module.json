@@ -1,0 +1,182 @@
+[
+  {
+    "repo": "django",
+    "file": "django/contrib/admin/options.py",
+    "line": 1,
+    "snippet": "fan-in 14, fan-out 39, 2574 LOC",
+    "fingerprint": "528ebd8db08e1d95",
+    "label": "tp",
+    "note": "ModelAdmin/InlineModelAdmin in 2574 LOC with fan-out 39: forms, permissions, views, changelist, history and messaging in one module."
+  },
+  {
+    "repo": "django",
+    "file": "django/contrib/admin/utils.py",
+    "line": 1,
+    "snippet": "fan-in 15, fan-out 17, 614 LOC",
+    "fingerprint": "6e475a68ca68767f",
+    "label": "unsure",
+    "note": "Grab-bag admin helpers (614 LOC, fan-in 15, fan-out 17); mixed responsibilities but moderate size."
+  },
+  {
+    "repo": "django",
+    "file": "django/contrib/auth/models.py",
+    "line": 1,
+    "snippet": "fan-in 100, fan-out 15, 500 LOC",
+    "fingerprint": "f831654d9c3852e6",
+    "label": "fp",
+    "note": "Core auth models (User, Group, Permission); fan-in 100 is mostly tests importing the User model; cohesive."
+  },
+  {
+    "repo": "django",
+    "file": "django/contrib/contenttypes/fields.py",
+    "line": 1,
+    "snippet": "fan-in 30, fan-out 17, 828 LOC",
+    "fingerprint": "acddc54fb2a15b05",
+    "label": "fp",
+    "note": "GenericForeignKey/GenericRelation in 828 LOC; one cohesive feature."
+  },
+  {
+    "repo": "django",
+    "file": "django/contrib/gis/db/models/functions.py",
+    "line": 1,
+    "snippet": "fan-in 11, fan-out 8, 590 LOC",
+    "fingerprint": "9326fede43997dc0",
+    "label": "fp",
+    "note": "Collection of GIS database function classes; cohesive by design."
+  },
+  {
+    "repo": "django",
+    "file": "django/contrib/gis/geos/geometry.py",
+    "line": 1,
+    "snippet": "fan-in 12, fan-out 18, 780 LOC",
+    "fingerprint": "e400e873e64f6224",
+    "label": "fp",
+    "note": "GEOSGeometry class hierarchy (780 LOC); one cohesive abstraction."
+  },
+  {
+    "repo": "django",
+    "file": "django/core/management/base.py",
+    "line": 1,
+    "snippet": "fan-in 65, fan-out 10, 695 LOC",
+    "fingerprint": "d98107e55ce37f0a",
+    "label": "fp",
+    "note": "BaseCommand and its parser helpers; high fan-in because every command subclasses it; cohesive."
+  },
+  {
+    "repo": "django",
+    "file": "django/core/validators.py",
+    "line": 1,
+    "snippet": "fan-in 19, fan-out 6, 698 LOC",
+    "fingerprint": "7cfb9dec4c6f77a0",
+    "label": "fp",
+    "note": "Collection of validators; cohesive by design."
+  },
+  {
+    "repo": "django",
+    "file": "django/db/backends/base/base.py",
+    "line": 1,
+    "snippet": "fan-in 12, fan-out 11, 792 LOC",
+    "fingerprint": "ebd43c6de38dc965",
+    "label": "unsure",
+    "note": "BaseDatabaseWrapper (792 LOC): large central class, but a single responsibility (connection lifecycle)."
+  },
+  {
+    "repo": "django",
+    "file": "django/db/migrations/state.py",
+    "line": 1,
+    "snippet": "fan-in 15, fan-out 15, 989 LOC",
+    "fingerprint": "c6f2473780498c94",
+    "label": "unsure",
+    "note": "ProjectState/ModelState/StateApps (989 LOC); large but one concern (migration state)."
+  },
+  {
+    "repo": "django",
+    "file": "django/db/models/expressions.py",
+    "line": 1,
+    "snippet": "fan-in 46, fan-out 9, 2085 LOC",
+    "fingerprint": "7d3f74a3db4b5c13",
+    "label": "unsure",
+    "note": "All expression classes in 2085 LOC (fan-in 46); same-kind classes, but the file size alone is a maintainability cost."
+  },
+  {
+    "repo": "django",
+    "file": "django/db/models/fields/__init__.py",
+    "line": 1,
+    "snippet": "fan-in 16, fan-out 24, 2885 LOC",
+    "fingerprint": "7b306fec39b0b408",
+    "label": "unsure",
+    "note": "All model field classes in 2885 LOC; same-kind classes, file size is the concern rather than coupling."
+  },
+  {
+    "repo": "django",
+    "file": "django/db/models/lookups.py",
+    "line": 1,
+    "snippet": "fan-in 29, fan-out 11, 798 LOC",
+    "fingerprint": "d657adfa1f01604b",
+    "label": "fp",
+    "note": "Collection of lookup classes; cohesive."
+  },
+  {
+    "repo": "django",
+    "file": "django/db/models/sql/query.py",
+    "line": 1,
+    "snippet": "fan-in 10, fan-out 17, 2735 LOC",
+    "fingerprint": "ec081fda6640c049",
+    "label": "tp",
+    "note": "Query class in 2735 LOC with fan-out 17: a single god class (joins, filters, annotations, ordering, subqueries)."
+  },
+  {
+    "repo": "django",
+    "file": "django/forms/widgets.py",
+    "line": 1,
+    "snippet": "fan-in 16, fan-out 11, 1210 LOC",
+    "fingerprint": "e5099806824c9bf5",
+    "label": "fp",
+    "note": "Collection of widget classes; cohesive."
+  },
+  {
+    "repo": "django",
+    "file": "django/template/base.py",
+    "line": 1,
+    "snippet": "fan-in 19, fan-out 10, 1124 LOC",
+    "fingerprint": "30d9f264c043f1e9",
+    "label": "unsure",
+    "note": "Template engine core (lexer, parser, nodes, variables) in 1124 LOC; several concerns but tightly related."
+  },
+  {
+    "repo": "django",
+    "file": "django/template/defaultfilters.py",
+    "line": 1,
+    "snippet": "fan-in 56, fan-out 11, 991 LOC",
+    "fingerprint": "a331021d46fb57d3",
+    "label": "fp",
+    "note": "Collection of template filters; cohesive by design."
+  },
+  {
+    "repo": "django",
+    "file": "django/test/utils.py",
+    "line": 1,
+    "snippet": "fan-in 195, fan-out 16, 994 LOC",
+    "fingerprint": "94d2d4be61075581",
+    "label": "tp",
+    "note": "Grab-bag of unrelated test utilities (settings overrides, query capture, isolate_apps, tag helpers) in 994 LOC with fan-in 195."
+  },
+  {
+    "repo": "django",
+    "file": "django/utils/html.py",
+    "line": 1,
+    "snippet": "fan-in 33, fan-out 9, 510 LOC",
+    "fingerprint": "472ec47e0deec0bc",
+    "label": "fp",
+    "note": "HTML utility functions; cohesive."
+  },
+  {
+    "repo": "django",
+    "file": "tests/model_fields/models.py",
+    "line": 1,
+    "snippet": "fan-in 22, fan-out 11, 687 LOC",
+    "fingerprint": "3eab0c57cd3132fc",
+    "label": "fp",
+    "note": "Test fixture models for the model_fields test app; test data, not production design."
+  }
+]

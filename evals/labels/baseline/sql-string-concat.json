@@ -1,0 +1,11 @@
+[
+  {
+    "repo": "django",
+    "file": "django/db/backends/base/operations.py",
+    "line": 97,
+    "snippet": "return f\"SELECT {cache_key} FROM %s ORDER BY {cache_key} LIMIT 1 OFFSET %%s\"",
+    "fingerprint": "8665a54d66fff6cf",
+    "label": "fp",
+    "note": "f-string interpolates quote_name(\"cache_key\"), a constant identifier; the table is a %s placeholder filled with a quoted name; no user input."
+  }
+]

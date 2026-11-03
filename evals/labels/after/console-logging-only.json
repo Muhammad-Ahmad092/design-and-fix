@@ -1,0 +1,20 @@
+[
+  {
+    "repo": "create-t3-turbo",
+    "file": "packages/api",
+    "line": 0,
+    "snippet": "only console/print logging in packages/api",
+    "fingerprint": "506349f0e7ab91ac",
+    "label": "tp",
+    "note": "tRPC timing logged via console.log, no logger anywhere (same as baseline)"
+  },
+  {
+    "repo": "golang-gin-realworld",
+    "file": "common",
+    "line": 0,
+    "snippet": "only console/print logging in common",
+    "fingerprint": "17c44168f90a60e3",
+    "label": "tp",
+    "note": "db errors via fmt.Println(\"db err\"), no logging library (same as baseline)"
+  }
+]

@@ -1,0 +1,182 @@
+[
+  {
+    "repo": "django",
+    "file": "django/contrib/auth/backends.py",
+    "line": 78,
+    "snippet": "perms = Permission.objects.all()",
+    "fingerprint": "e336258adbddfe24",
+    "label": "fp",
+    "note": "Superuser permission set from the small auth_permission table, cached on the user object; bounded lookup table."
+  },
+  {
+    "repo": "django",
+    "file": "django/contrib/gis/db/backends/oracle/introspection.py",
+    "line": 22,
+    "snippet": "'SELECT \"DIMINFO\", \"SRID\" FROM \"USER_SDO_GEOM_METADATA\" '",
+    "fingerprint": "fa037a1ca3e28848",
+    "label": "fp",
+    "note": "Metadata lookup filtered by table and column name: returns one row (fetchone)."
+  },
+  {
+    "repo": "django",
+    "file": "django/contrib/postgres/signals.py",
+    "line": 11,
+    "snippet": "\"SELECT oid, typarray FROM pg_type WHERE typname = %s\", (type_name,)",
+    "fingerprint": "84fc2f2c9cd2b890",
+    "label": "fp",
+    "note": "pg_type lookup by typname: a handful of rows."
+  },
+  {
+    "repo": "django",
+    "file": "django/db/backends/mysql/base.py",
+    "line": 347,
+    "snippet": "SELECT REFERRING.`%s`, REFERRING.`%s` FROM `%s` as REFERRING",
+    "fingerprint": "bda22165014a4c61",
+    "label": "fp",
+    "note": "Integrity check that must scan for dangling FK rows (check_constraints); full scan is the point."
+  },
+  {
+    "repo": "django",
+    "file": "django/db/backends/oracle/base.py",
+    "line": 287,
+    "snippet": "\"SELECT 1 FROM DUAL WHERE DUMMY %s\"",
+    "fingerprint": "0299e2917be047d4",
+    "label": "fp",
+    "note": "SELECT 1 FROM DUAL feature probe; one row."
+  },
+  {
+    "repo": "django",
+    "file": "django/db/backends/oracle/introspection.py",
+    "line": 78,
+    "snippet": "SELECT view_name, 'v', NULL FROM user_views",
+    "fingerprint": "7bc7ed03cceac8a6",
+    "label": "fp",
+    "note": "Schema introspection listing the user's tables and views; metadata, bounded by schema size."
+  },
+  {
+    "repo": "django",
+    "file": "django/db/backends/oracle/operations.py",
+    "line": 46,
+    "snippet": "SELECT sequence_name INTO seq_name FROM user_tab_identity_cols",
+    "fingerprint": "c02457059c486386",
+    "label": "fp",
+    "note": "PL/SQL trigger template: SELECT INTO filtered by table and column, one row."
+  },
+  {
+    "repo": "django",
+    "file": "django/db/backends/oracle/schema.py",
+    "line": 241,
+    "snippet": "SELECT default_collation FROM user_tables WHERE table_name = %s",
+    "fingerprint": "c437c127c6f14d25",
+    "label": "fp",
+    "note": "Single-row lookup by table_name (fetchone()[0])."
+  },
+  {
+    "repo": "django",
+    "file": "django/db/backends/sqlite3/introspection.py",
+    "line": 340,
+    "snippet": "\"SELECT sql FROM sqlite_master \"",
+    "fingerprint": "6024ac310893d0bc",
+    "label": "fp",
+    "note": "sqlite_master lookup of one index by name (\"There's at most one row\")."
+  },
+  {
+    "repo": "django",
+    "file": "django/db/models/sql/compiler.py",
+    "line": 912,
+    "snippet": "result = [\"SELECT * FROM (\", *result, \")\", order_by_sql]",
+    "fingerprint": "87429215104d5ceb",
+    "label": "fp",
+    "note": "ORM compiler assembling a SQL fragment (subquery wrapper); limits are added by the same compiler."
+  },
+  {
+    "repo": "django",
+    "file": "django/db/models/sql/compiler.py",
+    "line": 1926,
+    "snippet": "innerq = RawSQL(\"SELECT * FROM (%s) subquery\" % sql, params)",
+    "fingerprint": "84da87a9d959c2a5",
+    "label": "fp",
+    "note": "ORM compiler wrapping an inner query as a subquery; not a standalone read."
+  },
+  {
+    "repo": "django-styleguide-example",
+    "file": "styleguide_example/tasks/management/commands/setup_periodic_tasks.py",
+    "line": 20,
+    "snippet": "IntervalSchedule.objects.all().delete()",
+    "fingerprint": "4548d7cdb32a2e07",
+    "label": "fp",
+    "note": "Management command that deliberately deletes every schedule (bulk DELETE, no rows loaded)."
+  },
+  {
+    "repo": "django-styleguide-example",
+    "file": "styleguide_example/tasks/management/commands/setup_periodic_tasks.py",
+    "line": 21,
+    "snippet": "CrontabSchedule.objects.all().delete()",
+    "fingerprint": "1e3260d139702085",
+    "label": "fp",
+    "note": "Deliberate bulk delete in a setup management command."
+  },
+  {
+    "repo": "django-styleguide-example",
+    "file": "styleguide_example/tasks/management/commands/setup_periodic_tasks.py",
+    "line": 22,
+    "snippet": "PeriodicTask.objects.all().delete()",
+    "fingerprint": "4fea166961d6b2eb",
+    "label": "fp",
+    "note": "Deliberate bulk delete in a setup management command."
+  },
+  {
+    "repo": "django-styleguide-example",
+    "file": "styleguide_example/users/selectors.py",
+    "line": 23,
+    "snippet": "qs = BaseUser.objects.all()",
+    "fingerprint": "c479ccf0d4c641ef",
+    "label": "fp",
+    "note": "Selector returns a lazy QuerySet; UserListApi paginates it (get_paginated_response) and other callers filter by email."
+  },
+  {
+    "repo": "full-stack-fastapi-template",
+    "file": "backend/app/alembic/versions/d98dd8ec85a3_edit_replace_id_integers_in_all_models_.py",
+    "line": 33,
+    "snippet": "op.execute('UPDATE item SET new_owner_id = (SELECT new_id FROM \"user\" WHERE \"user\".id = item.owner_id)')",
+    "fingerprint": "025668f1cd51131a",
+    "label": "fp",
+    "note": "Alembic data migration: updating every row is the intent; one-off."
+  },
+  {
+    "repo": "full-stack-fastapi-template",
+    "file": "backend/app/alembic/versions/d98dd8ec85a3_edit_replace_id_integers_in_all_models_.py",
+    "line": 68,
+    "snippet": "op.execute('SELECT setval(\\'user_id_seq\\', COALESCE((SELECT MAX(old_id) + 1 FROM \"user\"), 1), false)')",
+    "fingerprint": "2d75c9453b926618",
+    "label": "fp",
+    "note": "Migration resets a sequence from MAX(old_id); aggregate, one row."
+  },
+  {
+    "repo": "full-stack-fastapi-template",
+    "file": "backend/app/alembic/versions/d98dd8ec85a3_edit_replace_id_integers_in_all_models_.py",
+    "line": 69,
+    "snippet": "op.execute('SELECT setval(\\'item_id_seq\\', COALESCE((SELECT MAX(old_id) + 1 FROM item), 1), false)')",
+    "fingerprint": "d5e4336307b24311",
+    "label": "fp",
+    "note": "Migration resets a sequence from MAX(old_id); aggregate, one row."
+  },
+  {
+    "repo": "full-stack-fastapi-template",
+    "file": "backend/app/alembic/versions/d98dd8ec85a3_edit_replace_id_integers_in_all_models_.py",
+    "line": 72,
+    "snippet": "op.execute('UPDATE item SET old_id = nextval(\\'item_id_seq\\'), old_owner_id = (SELECT old_id FROM \"user\" WHERE \"user\".id = item.owner_id)')",
+    "fingerprint": "c1716c240cdc8392",
+    "label": "fp",
+    "note": "Alembic downgrade data migration; touching every row is the intent."
+  },
+  {
+    "repo": "nestjs-prisma-starter",
+    "file": "src/posts/posts.resolver.ts",
+    "line": 68,
+    "snippet": "this.prisma.post.findMany({",
+    "fingerprint": "68cd1883a49ca86a",
+    "label": "fp",
+    "note": "findMany spreads ...args from findManyCursorConnection (take/skip/cursor); paginated."
+  }
+]

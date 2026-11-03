@@ -1,0 +1,29 @@
+[
+  {
+    "repo": "chi",
+    "file": "_examples/rest",
+    "line": 0,
+    "snippet": "only console/print logging in _examples/rest",
+    "fingerprint": "cd5feb5201d57c29",
+    "label": "fp",
+    "note": "chi _examples/rest demo program; request logging via chi middleware.Logger, prints are demo output."
+  },
+  {
+    "repo": "create-t3-turbo",
+    "file": "packages/api",
+    "line": 0,
+    "snippet": "only console/print logging in packages/api",
+    "fingerprint": "506349f0e7ab91ac",
+    "label": "tp",
+    "note": "tRPC API package logs every procedure timing with console.log and has no logger anywhere in the repo."
+  },
+  {
+    "repo": "golang-gin-realworld",
+    "file": "common",
+    "line": 0,
+    "snippet": "only console/print logging in common",
+    "fingerprint": "17c44168f90a60e3",
+    "label": "tp",
+    "note": "DB errors reported with fmt.Println(\"db err\") and no logging library anywhere in the service."
+  }
+]

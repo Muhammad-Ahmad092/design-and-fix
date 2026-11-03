@@ -1,0 +1,182 @@
+[
+  {
+    "repo": "aspnetcore-realworld",
+    "file": "src/Conduit/Features/Users/UsersController.cs",
+    "line": 12,
+    "snippet": "POST /users",
+    "fingerprint": "e456745fae328f5b",
+    "label": "fp",
+    "note": "POST /users is the register endpoint (login/register are public by design)"
+  },
+  {
+    "repo": "full-stack-fastapi-template",
+    "file": "backend/app/api/routes/private.py",
+    "line": 23,
+    "snippet": "POST /users/",
+    "fingerprint": "cccce4ffc975d3a2",
+    "label": "unsure",
+    "note": "Unauthenticated user creation, but router only mounted when ENVIRONMENT == local (api/main.py); dev-only (baseline: unsure)"
+  },
+  {
+    "repo": "golang-gin-realworld",
+    "file": "articles/routers.go",
+    "line": 15,
+    "snippet": "DELETE /:slug (auth middleware applied in hello.go)",
+    "fingerprint": "7e4c5dd139064c2c",
+    "label": "fp",
+    "note": "Auth via v1.Use(users.AuthMiddleware(true)) in hello.go"
+  },
+  {
+    "repo": "golang-gin-realworld",
+    "file": "articles/routers.go",
+    "line": 16,
+    "snippet": "POST /:slug/favorite (auth middleware applied in hello.go)",
+    "fingerprint": "fe52632f74660b95",
+    "label": "fp",
+    "note": "Auth via v1.Use(AuthMiddleware(true)) in hello.go"
+  },
+  {
+    "repo": "golang-gin-realworld",
+    "file": "articles/routers.go",
+    "line": 18,
+    "snippet": "POST /:slug/comments (auth middleware applied in hello.go)",
+    "fingerprint": "bc9aca8305648ded",
+    "label": "fp",
+    "note": "Auth via v1.Use(AuthMiddleware(true)) in hello.go"
+  },
+  {
+    "repo": "golang-gin-realworld",
+    "file": "users/routers.go",
+    "line": 22,
+    "snippet": "POST /:username/follow (auth middleware applied in hello.go)",
+    "fingerprint": "9d703d5a5143a5db",
+    "label": "fp",
+    "note": "Mounted after v1.Use(AuthMiddleware(true)) in hello.go"
+  },
+  {
+    "repo": "golang-gin-realworld",
+    "file": "users/routers.go",
+    "line": 23,
+    "snippet": "DELETE /:username/follow (auth middleware applied in hello.go)",
+    "fingerprint": "65b646a9f566c6e2",
+    "label": "fp",
+    "note": "Mounted after v1.Use(AuthMiddleware(true)) in hello.go"
+  },
+  {
+    "repo": "homeland",
+    "file": "config/routes.rb",
+    "line": 127,
+    "snippet": "DELETE /plugins/:id",
+    "fingerprint": "1772c11bf96eb0b0",
+    "label": "fp",
+    "note": "Line is in the admin namespace; Admin::ApplicationController has authenticate_user! and require_admin"
+  },
+  {
+    "repo": "homeland",
+    "file": "config/routes.rb",
+    "line": 139,
+    "snippet": "POST /api/v3/nodes",
+    "fingerprint": "65df281f4f338f80",
+    "label": "fp",
+    "note": "api/v3 NodesController defines no create action (phantom resources route)"
+  },
+  {
+    "repo": "homeland",
+    "file": "config/routes.rb",
+    "line": 202,
+    "snippet": "POST /",
+    "fingerprint": "75ce7e8024a205b5",
+    "label": "fp",
+    "note": "UsersController defines no create action; sign-up is handled by Devise (phantom route)"
+  },
+  {
+    "repo": "homeland",
+    "file": "config/routes.rb",
+    "line": 221,
+    "snippet": "POST /:user_id/people/:id/accept",
+    "fingerprint": "ea0e5fe7fcbbc47c",
+    "label": "fp",
+    "note": "accept is protected by CanCan load_and_authorize_resource in TeamUsersController"
+  },
+  {
+    "repo": "laravel-realworld",
+    "file": "routes/api.php",
+    "line": 23,
+    "snippet": "POST /profiles/{user}/follow",
+    "fingerprint": "782f82ac770e3d23",
+    "label": "fp",
+    "note": "ProfileController constructor applies middleware('auth.api') except show"
+  },
+  {
+    "repo": "laravel-realworld",
+    "file": "routes/api.php",
+    "line": 24,
+    "snippet": "DELETE /profiles/{user}/follow",
+    "fingerprint": "91a3bc6c70571cfb",
+    "label": "fp",
+    "note": "ProfileController middleware auth.api except show"
+  },
+  {
+    "repo": "laravel-realworld",
+    "file": "routes/api.php",
+    "line": 27,
+    "snippet": "POST /articles/{article}/favorite",
+    "fingerprint": "9c96197ac6de42cc",
+    "label": "fp",
+    "note": "FavoriteController middleware auth.api on all actions"
+  },
+  {
+    "repo": "laravel-realworld",
+    "file": "routes/api.php",
+    "line": 30,
+    "snippet": "DELETE /articles/{id}",
+    "fingerprint": "2f9acf5423c23a66",
+    "label": "fp",
+    "note": "ArticleController constructor applies middleware('auth.api') except index/show"
+  },
+  {
+    "repo": "laravel-realworld",
+    "file": "routes/api.php",
+    "line": 36,
+    "snippet": "DELETE /articles/{article}/comments/{id}",
+    "fingerprint": "00455239ff9e7f65",
+    "label": "fp",
+    "note": "Route not registered (comments resource only index/store/destroy); CommentController also uses auth.api"
+  },
+  {
+    "repo": "spring-boot-realworld",
+    "file": "src/main/java/io/spring/api/ArticleFavoriteApi.java",
+    "line": 29,
+    "snippet": "POST /articles/{slug}/favorite (global auth policy in src/main/java/io/spring/api/security/WebSecurityConfig.java)",
+    "fingerprint": "2337daad2e737fc9",
+    "label": "fp",
+    "note": "WebSecurityConfig: anyRequest().authenticated(); only POST /users,/users/login are permitAll"
+  },
+  {
+    "repo": "spring-boot-realworld",
+    "file": "src/main/java/io/spring/api/CurrentUserApi.java",
+    "line": 40,
+    "snippet": "PUT /user (global auth policy in src/main/java/io/spring/api/security/WebSecurityConfig.java)",
+    "fingerprint": "0fe4d4f2ddd83bc8",
+    "label": "fp",
+    "note": "WebSecurityConfig: anyRequest().authenticated()"
+  },
+  {
+    "repo": "spring-boot-realworld",
+    "file": "src/main/java/io/spring/api/ProfileApi.java",
+    "line": 51,
+    "snippet": "DELETE /profiles/{username}/follow (global auth policy in src/main/java/io/spring/api/security/WebSecurityConfig.java)",
+    "fingerprint": "f29f130a119618a0",
+    "label": "fp",
+    "note": "WebSecurityConfig requires authentication for all non-public routes"
+  },
+  {
+    "repo": "spring-boot-realworld",
+    "file": "src/main/java/io/spring/api/UsersApi.java",
+    "line": 39,
+    "snippet": "POST /users (global auth policy in src/main/java/io/spring/api/security/WebSecurityConfig.java)",
+    "fingerprint": "4ceadf78b8e27a51",
+    "label": "fp",
+    "note": "POST /users is registration, public by design"
+  }
+]

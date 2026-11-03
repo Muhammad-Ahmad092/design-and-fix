@@ -1,0 +1,182 @@
+[
+  {
+    "repo": "create-t3-turbo",
+    "file": "apps/tanstack-start/src/routeTree.gen.ts",
+    "line": 1,
+    "snippet": "apps/tanstack-start/src/routeTree.gen.ts -> apps/tanstack-start/src/router.tsx -> apps/tanstack-start/src/routeTree.gen.ts",
+    "fingerprint": "3845db90869a5e12",
+    "label": "fp",
+    "note": "Back edge is `import type { getRouter }` in a generated file (routeTree.gen.ts); type-only imports are erased at runtime."
+  },
+  {
+    "repo": "django",
+    "file": "django/__init__.py",
+    "line": 1,
+    "snippet": "django/__init__.py -> django/conf/__init__.py -> django/__init__.py",
+    "fingerprint": "77c309313e77710e",
+    "label": "fp",
+    "note": "django/__init__.py imports django.conf only inside setup() (function-local); no module-level cycle."
+  },
+  {
+    "repo": "django",
+    "file": "django/contrib/admin/__init__.py",
+    "line": 1,
+    "snippet": "django/contrib/admin/__init__.py -> django/contrib/admin/decorators.py -> django/contrib/admin/__init__.py",
+    "fingerprint": "0773c7a9d4548558",
+    "label": "fp",
+    "note": "Back edge decorators.py -> admin is a function-local import in register(); deliberate deferred import, no load-time cycle."
+  },
+  {
+    "repo": "django",
+    "file": "django/contrib/auth/decorators.py",
+    "line": 1,
+    "snippet": "django/contrib/auth/decorators.py -> django/contrib/auth/views.py -> django/contrib/auth/decorators.py",
+    "fingerprint": "007bca5ce3cf6945",
+    "label": "fp",
+    "note": "Back edge decorators.py -> views is a function-local import (line 34); no load-time cycle."
+  },
+  {
+    "repo": "django",
+    "file": "django/contrib/flatpages/models.py",
+    "line": 1,
+    "snippet": "django/contrib/flatpages/models.py -> django/contrib/flatpages/views.py -> django/contrib/flatpages/models.py",
+    "fingerprint": "170d386ea6791bb1",
+    "label": "fp",
+    "note": "models.py imports .views inside get_absolute_url (line 41, function-local)."
+  },
+  {
+    "repo": "django",
+    "file": "django/contrib/gis/db/models/fields.py",
+    "line": 1,
+    "snippet": "django/contrib/gis/db/models/fields.py -> django/contrib/gis/db/models/lookups.py -> django/contrib/gis/db/models/fields.py",
+    "fingerprint": "21c636a4fd7eb503",
+    "label": "fp",
+    "note": "fields.py imports lookups inside a method (line 425, function-local)."
+  },
+  {
+    "repo": "django",
+    "file": "django/contrib/gis/gdal/__init__.py",
+    "line": 1,
+    "snippet": "django/contrib/gis/gdal/__init__.py -> django/contrib/gis/gdal/geometries.py -> django/contrib/gis/geos/__init__.py -> django/contrib/gis/geos/geometry.py -> dj",
+    "fingerprint": "5d7e849c936a9201",
+    "label": "fp",
+    "note": "gdal/geometries.py imports geos only inside methods (lines 356/363/580); chain is broken at load time."
+  },
+  {
+    "repo": "django",
+    "file": "django/contrib/gis/geos/libgeos.py",
+    "line": 1,
+    "snippet": "django/contrib/gis/geos/libgeos.py -> django/contrib/gis/geos/prototypes/threadsafe.py -> django/contrib/gis/geos/libgeos.py",
+    "fingerprint": "cec9f241b7dd02f6",
+    "label": "fp",
+    "note": "libgeos.py imports threadsafe inside a function (line 158)."
+  },
+  {
+    "repo": "django",
+    "file": "django/contrib/messages/__init__.py",
+    "line": 1,
+    "snippet": "django/contrib/messages/__init__.py -> django/contrib/messages/api.py -> django/contrib/messages/__init__.py",
+    "fingerprint": "b646b7e94ec3d875",
+    "label": "fp",
+    "note": "Package __init__ star-re-exports api.py; api.py imports sibling submodules through the package name; re-export pattern, not a runtime cycle."
+  },
+  {
+    "repo": "django",
+    "file": "django/contrib/postgres/expressions.py",
+    "line": 1,
+    "snippet": "django/contrib/postgres/expressions.py -> django/contrib/postgres/fields/__init__.py -> django/contrib/postgres/fields/array.py -> django/contrib/postgres/looku",
+    "fingerprint": "9016bb743056d963",
+    "label": "fp",
+    "note": "lookups.py imports .expressions inside a function (line 23); no load-time cycle."
+  },
+  {
+    "repo": "django",
+    "file": "django/contrib/sessions/backends/db.py",
+    "line": 1,
+    "snippet": "django/contrib/sessions/backends/db.py -> django/contrib/sessions/models.py -> django/contrib/sessions/backends/db.py",
+    "fingerprint": "77f1a12c9fb05118",
+    "label": "fp",
+    "note": "Both edges are function-local imports (db.py:24 and models.py:30)."
+  },
+  {
+    "repo": "django",
+    "file": "django/db/backends/oracle/base.py",
+    "line": 1,
+    "snippet": "django/db/backends/oracle/base.py -> django/db/backends/oracle/operations.py -> django/db/backends/oracle/base.py",
+    "fingerprint": "25981bd4be6e150e",
+    "label": "tp",
+    "note": "Real module-level cycle: base.py imports .operations (line 61) and operations.py does `from .base import Database` (line 17); works only by import order."
+  },
+  {
+    "repo": "django",
+    "file": "django/db/backends/sqlite3/base.py",
+    "line": 1,
+    "snippet": "django/db/backends/sqlite3/base.py -> django/db/backends/sqlite3/features.py -> django/db/backends/sqlite3/base.py",
+    "fingerprint": "4baabd584197d1c5",
+    "label": "tp",
+    "note": "Real module-level cycle: base.py imports .features (line 22) and features.py does `from .base import Database` (line 8)."
+  },
+  {
+    "repo": "django",
+    "file": "django/db/migrations/operations/fields.py",
+    "line": 1,
+    "snippet": "django/db/migrations/operations/fields.py -> django/db/migrations/operations/models.py -> django/db/migrations/operations/fields.py",
+    "fingerprint": "7e2980a67ad0fe79",
+    "label": "fp",
+    "note": "fields.py imports .models inside a method (line 192, function-local)."
+  },
+  {
+    "repo": "django",
+    "file": "django/db/migrations/serializer.py",
+    "line": 1,
+    "snippet": "django/db/migrations/serializer.py -> django/db/migrations/writer.py -> django/db/migrations/serializer.py",
+    "fingerprint": "cd056ce7e8e7d2df",
+    "label": "fp",
+    "note": "serializer.py imports writer inside a method (line 255, function-local)."
+  },
+  {
+    "repo": "django",
+    "file": "django/test/__init__.py",
+    "line": 1,
+    "snippet": "django/test/__init__.py -> django/test/client.py -> django/test/__init__.py",
+    "fingerprint": "be390e160d0ff2f0",
+    "label": "fp",
+    "note": "Package __init__ re-exports client.py; client.py imports sibling submodules (signals, utils) through the package; not a runtime cycle."
+  },
+  {
+    "repo": "django",
+    "file": "tests/file_uploads/tests.py",
+    "line": 1,
+    "snippet": "tests/file_uploads/tests.py -> tests/file_uploads/uploadhandler.py -> tests/file_uploads/tests.py",
+    "fingerprint": "54a873a3139eb406",
+    "label": "fp",
+    "note": "Test helper imports .tests inside a function (line 59); test code, deferred."
+  },
+  {
+    "repo": "django-styleguide-example",
+    "file": "styleguide_example/emails/services.py",
+    "line": 1,
+    "snippet": "styleguide_example/emails/services.py -> styleguide_example/emails/tasks.py -> styleguide_example/emails/services.py",
+    "fingerprint": "530636f83ef3843e",
+    "label": "fp",
+    "note": "tasks.py imports services inside the task functions (lines 13/22); the documented Celery deferred-import pattern."
+  },
+  {
+    "repo": "flask",
+    "file": "src/flask/__init__.py",
+    "line": 1,
+    "snippet": "src/flask/__init__.py -> src/flask/app.py -> src/flask/__init__.py",
+    "fingerprint": "dff9912396cd5c06",
+    "label": "fp",
+    "note": "The review2 case: flask/__init__ re-exports app.py, app.py imports sibling submodules (cli, typing, ctx) via the package; not a runtime cycle."
+  },
+  {
+    "repo": "nestjs-prisma-starter",
+    "file": "src/posts/models/post.model.ts",
+    "line": 1,
+    "snippet": "src/posts/models/post.model.ts -> src/users/models/user.model.ts -> src/posts/models/post.model.ts",
+    "fingerprint": "782464aeb7649019",
+    "label": "tp",
+    "note": "post.model.ts and user.model.ts import each other at module level (GraphQL object types referencing each other); real cycle, commonly benign but real."
+  }
+]

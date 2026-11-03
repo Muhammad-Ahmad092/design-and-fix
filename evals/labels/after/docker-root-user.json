@@ -1,0 +1,74 @@
+[
+  {
+    "repo": "django-styleguide-example",
+    "file": "docker/local.Dockerfile",
+    "line": 3,
+    "snippet": "final stage has no USER: FROM python:3.12.4",
+    "fingerprint": "0d0824d16271bdf1",
+    "label": "fp",
+    "note": "local dev-only Dockerfile (per its header comment)"
+  },
+  {
+    "repo": "django-styleguide-example",
+    "file": "docker/production.Dockerfile",
+    "line": 3,
+    "snippet": "final stage has no USER: FROM python:3.12.4",
+    "fingerprint": "52431800d5f734c8",
+    "label": "tp",
+    "note": "production Dockerfile runs as root"
+  },
+  {
+    "repo": "full-stack-fastapi-template",
+    "file": "backend/Dockerfile",
+    "line": 1,
+    "snippet": "final stage has no USER: FROM python:3.10",
+    "fingerprint": "cddcb6831415a359",
+    "label": "tp",
+    "note": "backend runtime image runs as root"
+  },
+  {
+    "repo": "full-stack-fastapi-template",
+    "file": "frontend/Dockerfile",
+    "line": 21,
+    "snippet": "final stage has no USER: FROM nginx:1",
+    "fingerprint": "3b63509927c85828",
+    "label": "fp",
+    "note": "nginx image: master root, workers drop privileges; static frontend"
+  },
+  {
+    "repo": "full-stack-fastapi-template",
+    "file": "frontend/Dockerfile.playwright",
+    "line": 1,
+    "snippet": "final stage has no USER: FROM mcr.microsoft.com/playwright:v1.57.0-noble",
+    "fingerprint": "4b121b6861dc5243",
+    "label": "fp",
+    "note": "playwright test-runner image, test-only"
+  },
+  {
+    "repo": "homeland",
+    "file": "Dockerfile",
+    "line": 2,
+    "snippet": "final stage has no USER: FROM homeland/base:3.4-alpine",
+    "fingerprint": "35156ce3306a561f",
+    "label": "tp",
+    "note": "production image with no USER"
+  },
+  {
+    "repo": "nestjs-prisma-starter",
+    "file": "Dockerfile",
+    "line": 17,
+    "snippet": "final stage has no USER: FROM node:16",
+    "fingerprint": "32996a2dd2e68f18",
+    "label": "tp",
+    "note": "production image runs as root"
+  },
+  {
+    "repo": "nestjs-prisma-starter",
+    "file": "Dockerfile.alpine",
+    "line": 17,
+    "snippet": "final stage has no USER: FROM node:16-alpine",
+    "fingerprint": "8ed748a1f03a7978",
+    "label": "tp",
+    "note": "alpine production image runs as root"
+  }
+]

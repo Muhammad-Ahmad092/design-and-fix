@@ -1,0 +1,182 @@
+[
+  {
+    "repo": "chi",
+    "file": "_examples/custom-method/main.go",
+    "line": 20,
+    "snippet": "no health endpoint in _examples/custom-method",
+    "fingerprint": "059f601e92ea2819",
+    "label": "fp",
+    "note": "chi _examples demo program; not a deployed service."
+  },
+  {
+    "repo": "chi",
+    "file": "_examples/fileserver/main.go",
+    "line": 33,
+    "snippet": "no health endpoint in _examples/fileserver",
+    "fingerprint": "77497607ee3f7bec",
+    "label": "fp",
+    "note": "chi _examples demo program (fileserver); not a deployed service."
+  },
+  {
+    "repo": "chi",
+    "file": "_examples/hello-world/main.go",
+    "line": 16,
+    "snippet": "no health endpoint in _examples/hello-world",
+    "fingerprint": "0ef6c3f1b5163af6",
+    "label": "fp",
+    "note": "chi _examples hello-world demo; not a deployed service."
+  },
+  {
+    "repo": "chi",
+    "file": "_examples/pathvalue/main.go",
+    "line": 14,
+    "snippet": "no health endpoint in _examples/pathvalue",
+    "fingerprint": "d0ad1e967b1ad81f",
+    "label": "fp",
+    "note": "chi _examples demo; not a deployed service."
+  },
+  {
+    "repo": "chi",
+    "file": "middleware/profiler.go",
+    "line": 26,
+    "snippet": "no health endpoint in middleware",
+    "fingerprint": "2809ba3eeee060aa",
+    "label": "fp",
+    "note": "Library middleware (pprof profiler sub-router) inside the chi package; not a service."
+  },
+  {
+    "repo": "django",
+    "file": "django/conf/urls/i18n.py",
+    "line": 38,
+    "snippet": "no health endpoint in django/conf",
+    "fingerprint": "c23f98f7ce3fdb54",
+    "label": "fp",
+    "note": "Framework internals: Django's i18n URLconf helper; library code, not a service."
+  },
+  {
+    "repo": "django",
+    "file": "django/contrib/admin/options.py",
+    "line": 726,
+    "snippet": "no health endpoint in django/contrib",
+    "fingerprint": "d86f38a103442a07",
+    "label": "fp",
+    "note": "Framework internals: ModelAdmin.get_urls(); library code."
+  },
+  {
+    "repo": "django",
+    "file": "django/template/defaulttags.py",
+    "line": 1396,
+    "snippet": "no health endpoint in django/template",
+    "fingerprint": "3a41b7acaf69af94",
+    "label": "fp",
+    "note": "Route matched inside a docstring example (defaulttags.py url tag docs); framework library."
+  },
+  {
+    "repo": "django",
+    "file": "django/views/static.py",
+    "line": 36,
+    "snippet": "no health endpoint in django/views",
+    "fingerprint": "befaf2f18d97e87c",
+    "label": "fp",
+    "note": "Route matched inside a docstring example (static.serve docs); framework library."
+  },
+  {
+    "repo": "django-styleguide-example",
+    "file": "styleguide_example/api/urls.py",
+    "line": 4,
+    "snippet": "no health endpoint in styleguide_example/api",
+    "fingerprint": "fca9412de636a983",
+    "label": "tp",
+    "note": "Project API URLconf; the whole Django project has no health/readiness endpoint (only compose healthchecks for postgres/redis)."
+  },
+  {
+    "repo": "django-styleguide-example",
+    "file": "styleguide_example/blog_examples/google_login_server_flow/raw/urls.py",
+    "line": 9,
+    "snippet": "no health endpoint in styleguide_example/blog_examples",
+    "fingerprint": "6fac3e220161fa35",
+    "label": "fp",
+    "note": "Duplicate of the same project-level gap, reported again for a per-app folder (blog_examples); not a separate service."
+  },
+  {
+    "repo": "django-styleguide-example",
+    "file": "styleguide_example/custom_admin/sites.py",
+    "line": 17,
+    "snippet": "no health endpoint in styleguide_example/custom_admin",
+    "fingerprint": "2a624b793aecfe26",
+    "label": "fp",
+    "note": "Duplicate per-app report (custom_admin) of the same project; not a separate service."
+  },
+  {
+    "repo": "django-styleguide-example",
+    "file": "styleguide_example/errors/urls.py",
+    "line": 10,
+    "snippet": "no health endpoint in styleguide_example/errors",
+    "fingerprint": "68ea532c29f32184",
+    "label": "fp",
+    "note": "Duplicate per-app report (errors) of the same project."
+  },
+  {
+    "repo": "django-styleguide-example",
+    "file": "styleguide_example/users/urls.py",
+    "line": 6,
+    "snippet": "no health endpoint in styleguide_example/users",
+    "fingerprint": "ee81a3de9f5213e1",
+    "label": "fp",
+    "note": "Duplicate per-app report (users) of the same project."
+  },
+  {
+    "repo": "flask",
+    "file": "src/flask/ctx.py",
+    "line": 126,
+    "snippet": "no health endpoint in src/flask",
+    "fingerprint": "095001b0f3abbeef",
+    "label": "fp",
+    "note": "Route matched inside a docstring of flask/ctx.py; library code (the review2 case)."
+  },
+  {
+    "repo": "full-stack-fastapi-template",
+    "file": "backend/app/api/routes/items.py",
+    "line": 13,
+    "snippet": "no health endpoint in backend/app",
+    "fingerprint": "1b7b945308a28359",
+    "label": "fp",
+    "note": "Service has GET /api/v1/utils/health-check/ (routes/utils.py:29); the name \"health-check\" is not recognised."
+  },
+  {
+    "repo": "golang-gin-realworld",
+    "file": "articles/routers.go",
+    "line": 13,
+    "snippet": "no health endpoint in articles",
+    "fingerprint": "0457e42a913d68c5",
+    "label": "fp",
+    "note": "Service has GET /api/ping/ registered in hello.go; also the folder split (articles/) is not the service unit."
+  },
+  {
+    "repo": "golang-gin-realworld",
+    "file": "users/routers.go",
+    "line": 11,
+    "snippet": "no health endpoint in users",
+    "fingerprint": "cb12b8d189cdc1ea",
+    "label": "fp",
+    "note": "Service has GET /api/ping/ in hello.go; users/ is a package of the same service."
+  },
+  {
+    "repo": "nestjs-prisma-starter",
+    "file": "src/app.controller.ts",
+    "line": 8,
+    "snippet": "no health endpoint in src",
+    "fingerprint": "756c21e9f4dc802a",
+    "label": "tp",
+    "note": "NestJS service with REST/GraphQL routes and no health endpoint anywhere (no @nestjs/terminus, no /health route)."
+  },
+  {
+    "repo": "node-express-boilerplate",
+    "file": "src/routes/v1/auth.route.js",
+    "line": 9,
+    "snippet": "no health endpoint in src/routes",
+    "fingerprint": "d0c956437ca00ee0",
+    "label": "tp",
+    "note": "Express API with no health endpoint anywhere in src/."
+  }
+]

@@ -1,0 +1,38 @@
+[
+  {
+    "repo": "aspnetcore-realworld",
+    "file": "src/Conduit/Features/Articles/ArticlesController.cs",
+    "line": 14,
+    "snippet": "no health endpoint in service .",
+    "fingerprint": "31af712f842861b2",
+    "label": "tp",
+    "note": "ASP.NET service with 19 routes and no health/readiness route or health checks anywhere"
+  },
+  {
+    "repo": "django-styleguide-example",
+    "file": "config/urls.py",
+    "line": 22,
+    "snippet": "no health endpoint in service .",
+    "fingerprint": "5803685372e6742e",
+    "label": "tp",
+    "note": "Django project has no app health/readiness endpoint (only compose healthcheck for DB); same as baseline"
+  },
+  {
+    "repo": "nestjs-prisma-starter",
+    "file": "src/main.ts",
+    "line": 14,
+    "snippet": "no health endpoint in service src",
+    "fingerprint": "a4fd6246b81486b0",
+    "label": "tp",
+    "note": "NestJS service with no health endpoint or terminus anywhere (baseline tp)"
+  },
+  {
+    "repo": "node-express-boilerplate",
+    "file": "src/app.js",
+    "line": 17,
+    "snippet": "no health endpoint in service src",
+    "fingerprint": "0768a64080bde77a",
+    "label": "tp",
+    "note": "Express API with no health endpoint anywhere in src (baseline tp)"
+  }
+]

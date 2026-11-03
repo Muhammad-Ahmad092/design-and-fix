@@ -1,0 +1,204 @@
+{
+  "scanner_version": "1.0.2",
+  "seed": 1002,
+  "per_rule": 20,
+  "rule_versions": {
+    "ci-no-test-step": "1",
+    "console-logging-only": "3",
+    "docker-latest-tag": "1",
+    "docker-no-healthcheck": "2",
+    "docker-root-user": "2",
+    "god-module": "4",
+    "hardcoded-secret": "7",
+    "http-no-timeout": "2",
+    "import-cycle": "3",
+    "k8s-no-limits": "2",
+    "k8s-no-probes": "2",
+    "list-route-no-pagination": "1",
+    "missing-lockfile": "2",
+    "mixed-error-shapes": "1",
+    "no-health-endpoint": "5",
+    "no-tests": "4",
+    "no-version-prefix": "2",
+    "openapi-drift": "2",
+    "query-in-loop": "4",
+    "retry-no-backoff": "1",
+    "sql-string-concat": "4",
+    "swallowed-error": "5",
+    "unauth-write-route": "6",
+    "unbounded-query": "3",
+    "unpinned-dependency": "3",
+    "unvalidated-body": "1"
+  },
+  "repos": {
+    "flask": {
+      "url": "https://codeload.github.com/pallets/flask/tar.gz/refs/tags/3.1.3",
+      "sha256": "36a6183d453925f09bc37b2a8bffdb1eb1b5f18eae384c037c179b07aac88477",
+      "subdir": "src",
+      "files_scanned": 24,
+      "signals": {
+        "import-cycle": 1,
+        "swallowed-error": 2
+      }
+    },
+    "itsdangerous": {
+      "url": "https://codeload.github.com/pallets/itsdangerous/tar.gz/refs/tags/2.2.0",
+      "sha256": "7b0c6d4186e963b88489b69603b7ab2bf7c8e9eb4135a7b13b5f21bd4b937f2b",
+      "subdir": "src",
+      "files_scanned": 8,
+      "signals": {
+        "swallowed-error": 1
+      }
+    },
+    "full-stack-fastapi-template": {
+      "url": "https://codeload.github.com/fastapi/full-stack-fastapi-template/tar.gz/refs/tags/0.10.0",
+      "sha256": "43e90664c8444863aff7ed7f805d0a6cf5cfc4ef43beda4de5977c20299fd9e9",
+      "subdir": "",
+      "files_scanned": 172,
+      "signals": {
+        "docker-root-user": 3,
+        "unauth-write-route": 1
+      }
+    },
+    "django-styleguide-example": {
+      "url": "https://codeload.github.com/HackSoftware/Django-Styleguide-Example/tar.gz/a70ef43d7df03706c1211d4fcfd70b4b0120ba1e",
+      "sha256": "ff18920e617aa6987704425ef1f3354c07884f7f54288f0c782d64948c6faf35",
+      "subdir": "",
+      "files_scanned": 199,
+      "signals": {
+        "docker-root-user": 2,
+        "hardcoded-secret": 4,
+        "http-no-timeout": 3,
+        "no-health-endpoint": 1,
+        "no-tests": 6,
+        "no-version-prefix": 1,
+        "query-in-loop": 1,
+        "unbounded-query": 1
+      }
+    },
+    "node-express-boilerplate": {
+      "url": "https://codeload.github.com/hagopj13/node-express-boilerplate/tar.gz/refs/tags/v1.7.0",
+      "sha256": "8068d4fd809e06e9fbf63cd3b02147a02cc359706afbab7b7f6c8a4d82be6823",
+      "subdir": "",
+      "files_scanned": 63,
+      "signals": {
+        "docker-no-healthcheck": 1,
+        "hardcoded-secret": 2,
+        "no-health-endpoint": 1,
+        "no-tests": 3
+      }
+    },
+    "nestjs-prisma-starter": {
+      "url": "https://codeload.github.com/notiz-dev/nestjs-prisma-starter/tar.gz/225e5a906865df237a681c1ad228a3ecf2909326",
+      "sha256": "e759cddf8c000e30e8767743df0dee7d27ab1fbb7cd2c460e320f9ecd031d082",
+      "subdir": "",
+      "files_scanned": 67,
+      "signals": {
+        "docker-no-healthcheck": 2,
+        "docker-root-user": 2,
+        "import-cycle": 1,
+        "no-health-endpoint": 1,
+        "no-tests": 2
+      }
+    },
+    "golang-gin-realworld": {
+      "url": "https://codeload.github.com/gothinkster/golang-gin-realworld-example-app/tar.gz/refs/tags/0.0.6",
+      "sha256": "900318d76028c18e136a8843442014f70e293e46d492b464ab1945004a254173",
+      "subdir": "",
+      "files_scanned": 18,
+      "signals": {
+        "console-logging-only": 1,
+        "no-tests": 1,
+        "no-version-prefix": 1,
+        "unauth-write-route": 11
+      }
+    },
+    "create-t3-turbo": {
+      "url": "https://codeload.github.com/t3-oss/create-t3-turbo/tar.gz/8f945b7bb3bfb3ca8358d48b1ff0214079bc11ee",
+      "sha256": "8f604cc387db633ebb20c8a858569e9144b8e6c15811276fde2deb80bf4149d6",
+      "subdir": "",
+      "files_scanned": 113,
+      "signals": {
+        "console-logging-only": 1,
+        "http-no-timeout": 1,
+        "no-tests": 10,
+        "swallowed-error": 1
+      }
+    },
+    "chi": {
+      "url": "https://codeload.github.com/go-chi/chi/tar.gz/refs/tags/v5.5.0",
+      "sha256": "169b74d78e1481a26243b6e84857c02ad5ac29368467326153dba03b121b8102",
+      "subdir": "",
+      "files_scanned": 95,
+      "signals": {
+        "hardcoded-secret": 1
+      }
+    },
+    "django": {
+      "url": "https://codeload.github.com/django/django/tar.gz/refs/tags/5.1.4",
+      "sha256": "adbb3c6702033d417401ce1925f7307b70ee2d8bfca636c82c66a38c55b97dda",
+      "subdir": "",
+      "files_scanned": 2904,
+      "signals": {
+        "god-module": 27,
+        "hardcoded-secret": 8,
+        "import-cycle": 10,
+        "missing-lockfile": 1,
+        "query-in-loop": 12,
+        "sql-string-concat": 1,
+        "swallowed-error": 117,
+        "unbounded-query": 8,
+        "unpinned-dependency": 4
+      }
+    },
+    "spring-boot-realworld": {
+      "url": "https://codeload.github.com/gothinkster/spring-boot-realworld-example-app/tar.gz/ee17e31aafe733d98c4853c8b9a74d7f2f6c924a",
+      "sha256": "ec256db0c1c9b6ca4d5c6e23870326227ee665a8ddd5ba818a20c046a7fea0aa",
+      "subdir": "",
+      "files_scanned": 122,
+      "signals": {
+        "hardcoded-secret": 1,
+        "unauth-write-route": 11
+      }
+    },
+    "aspnetcore-realworld": {
+      "url": "https://codeload.github.com/realworld-apps/aspnetcore-realworld-example-app/tar.gz/fa572f08aebd1d44119d47e1fd4de8b973998ba3",
+      "sha256": "e6c4b54425990eb0479508b6f8ea837a78078254ac0f02a1c8083d46dc3c70d2",
+      "subdir": "",
+      "files_scanned": 115,
+      "signals": {
+        "docker-no-healthcheck": 1,
+        "no-health-endpoint": 1,
+        "no-tests": 1,
+        "unauth-write-route": 1
+      }
+    },
+    "homeland": {
+      "url": "https://codeload.github.com/ruby-china/homeland/tar.gz/0bad08a46d205544af189fa53d1b70a2b32a1e20",
+      "sha256": "5d06412682b6a88c9ae92d98f3dfcec1d792a4b369c74483e13afa735c6069f5",
+      "subdir": "",
+      "files_scanned": 430,
+      "signals": {
+        "docker-root-user": 1,
+        "hardcoded-secret": 4,
+        "no-tests": 8,
+        "sql-string-concat": 1,
+        "swallowed-error": 2,
+        "unauth-write-route": 52
+      }
+    },
+    "laravel-realworld": {
+      "url": "https://codeload.github.com/gothinkster/laravel-realworld-example-app/tar.gz/refs/tags/v0.4.0",
+      "sha256": "67c60b7694fe1518b85ee34c2f2760c518eabbed8e3e3071a5b0d924a1096ca1",
+      "subdir": "",
+      "files_scanned": 111,
+      "signals": {
+        "hardcoded-secret": 5,
+        "missing-lockfile": 1,
+        "no-tests": 14,
+        "swallowed-error": 1,
+        "unauth-write-route": 12
+      }
+    }
+  }
+}

@@ -1,0 +1,39 @@
+{
+  "id": "01-audit-monorepo",
+  "prompt": "Do a full audit of services/payments, services/orders and services/catalog. Checkout (charge) is slow and sometimes double-charges, we must keep PostgreSQL, and peak traffic is about 50 req/s.",
+  "setup": {
+    "fixture": "tests/fixtures/monorepo",
+    "preexisting": {}
+  },
+  "must_exist": [
+    "docs/architecture/01-architecture-issues.md",
+    "docs/architecture/02-api-optimization.md",
+    "docs/architecture/03-improvement-roadmap.md"
+  ],
+  "must_not_exist": [
+    "docs/architecture/04-tech-stack-comparison.md",
+    "docs/adr"
+  ],
+  "must_contain": {
+    "docs/architecture/01-architecture-issues.md": [
+      "## Architecture Health Score:",
+      "Evidence:",
+      "services/catalog/app.py:21",
+      "services/catalog/app.py:9",
+      "charge.ts:14",
+      "refund.ts:8"
+    ],
+    "docs/architecture/02-api-optimization.md": [
+      "charge.ts"
+    ]
+  },
+  "must_not_contain": {
+    "docs/architecture/*.md": [
+      "replace PostgreSQL",
+      "migrate away from PostgreSQL",
+      "switch to MongoDB"
+    ]
+  },
+  "lint": true,
+  "lint_repo": true
+}

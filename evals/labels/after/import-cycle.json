@@ -1,0 +1,110 @@
+[
+  {
+    "repo": "django",
+    "file": "django/contrib/admin/__init__.py",
+    "line": 1,
+    "snippet": "django/contrib/admin/__init__.py -> django/contrib/admin/options.py -> django/contrib/adm... [through package __init__ (often a re-export, not a runtime cycle)]",
+    "fingerprint": "c55c0d21b93429fe",
+    "label": "fp",
+    "note": "Back edge decorators.py -> admin is a function-local import in register(); deliberate deferred import, no load-time cycle."
+  },
+  {
+    "repo": "django",
+    "file": "django/contrib/gis/geos/__init__.py",
+    "line": 1,
+    "snippet": "django/contrib/gis/geos/__init__.py -> django/contrib/gis/geos/collections.py -> django/c... [through package __init__ (often a re-export, not a runtime cycle)]",
+    "fingerprint": "478ad15105344236",
+    "label": "fp",
+    "note": "Package __init__ re-exports submodules; submodules import siblings via the package; re-export pattern, not a runtime cycle."
+  },
+  {
+    "repo": "django",
+    "file": "django/contrib/messages/__init__.py",
+    "line": 1,
+    "snippet": "django/contrib/messages/__init__.py -> django/contrib/messages/api.py -> django/contrib/m... [through package __init__ (often a re-export, not a runtime cycle)]",
+    "fingerprint": "887190e4d29a5565",
+    "label": "fp",
+    "note": "Package __init__ star-re-exports api.py; api.py imports sibling submodules through the package name; re-export pattern, not a runtime cycle."
+  },
+  {
+    "repo": "django",
+    "file": "django/contrib/postgres/fields/array.py",
+    "line": 1,
+    "snippet": "django/contrib/postgres/fields/array.py -> django/contrib/postgres/lookups.py -> django/contrib/postgres/search.py -> django/contrib/postgres/fields/array.py",
+    "fingerprint": "c37228c0365213b2",
+    "label": "fp",
+    "note": "search.py imports ArrayField inside a method (line 255, function-local); lookups.py also defers imports; no load-time cycle."
+  },
+  {
+    "repo": "django",
+    "file": "django/core/checks/__init__.py",
+    "line": 1,
+    "snippet": "django/core/checks/__init__.py -> django/core/checks/model_checks.py -> django/core/check... [through package __init__ (often a re-export, not a runtime cycle)]",
+    "fingerprint": "2ec020ec54163a19",
+    "label": "fp",
+    "note": "__init__ imports check modules after defining names they need (isort:skip ordering); registration pattern, not a runtime cycle."
+  },
+  {
+    "repo": "django",
+    "file": "django/db/backends/base/operations.py",
+    "line": 1,
+    "snippet": "django/db/backends/base/operations.py -> django/db/models/expressions.py -> django/db/mod... [through package __init__ (often a re-export, not a runtime cycle)]",
+    "fingerprint": "1a4f8267db559f89",
+    "label": "fp",
+    "note": "Chain runs through package __init__ re-exports (django.db / django.db.models); no real module-level cycle."
+  },
+  {
+    "repo": "django",
+    "file": "django/db/backends/oracle/base.py",
+    "line": 1,
+    "snippet": "django/db/backends/oracle/base.py -> django/db/backends/oracle/operations.py -> django/db/backends/oracle/base.py",
+    "fingerprint": "25981bd4be6e150e",
+    "label": "tp",
+    "note": "Real module-level cycle: base.py imports .operations (line 61) and operations.py does `from .base import Database` (line 17); works only by import order."
+  },
+  {
+    "repo": "django",
+    "file": "django/db/backends/sqlite3/base.py",
+    "line": 1,
+    "snippet": "django/db/backends/sqlite3/base.py -> django/db/backends/sqlite3/features.py -> django/db/backends/sqlite3/base.py",
+    "fingerprint": "4baabd584197d1c5",
+    "label": "tp",
+    "note": "Real module-level cycle: base.py imports .features (line 22) and features.py does `from .base import Database` (line 8)."
+  },
+  {
+    "repo": "django",
+    "file": "django/template/__init__.py",
+    "line": 1,
+    "snippet": "django/template/__init__.py -> django/template/autoreload.py -> django/template/__init__.py [through package __init__ (often a re-export, not a runtime cycle)]",
+    "fingerprint": "16d34aed08cb886f",
+    "label": "fp",
+    "note": "Package __init__ imports autoreload last, after engines is defined; re-export pattern, not a runtime cycle."
+  },
+  {
+    "repo": "django",
+    "file": "django/test/__init__.py",
+    "line": 1,
+    "snippet": "django/test/__init__.py -> django/test/client.py -> django/test/__init__.py [through package __init__ (often a re-export, not a runtime cycle)]",
+    "fingerprint": "e5042710c67d450b",
+    "label": "fp",
+    "note": "Package __init__ re-exports client.py; client.py imports sibling submodules (signals, utils) through the package; not a runtime cycle."
+  },
+  {
+    "repo": "flask",
+    "file": "src/flask/blueprints.py",
+    "line": 1,
+    "snippet": "src/flask/blueprints.py -> src/flask/sansio/scaffold.py -> src/flask/templating.py -> src/flask/debughelpers.py -> src/flask/blueprints.py",
+    "fingerprint": "21311d9dbc4ec1b7",
+    "label": "fp",
+    "note": "templating.py imports debughelpers only inside a function (line 84); no load-time cycle."
+  },
+  {
+    "repo": "nestjs-prisma-starter",
+    "file": "src/posts/models/post.model.ts",
+    "line": 1,
+    "snippet": "src/posts/models/post.model.ts -> src/users/models/user.model.ts -> src/posts/models/post.model.ts",
+    "fingerprint": "782464aeb7649019",
+    "label": "tp",
+    "note": "post.model.ts and user.model.ts import each other at module level (GraphQL object types referencing each other); real cycle, commonly benign but real."
+  }
+]

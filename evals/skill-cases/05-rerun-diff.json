@@ -1,0 +1,38 @@
+{
+  "id": "05-rerun-diff",
+  "prompt": "Re-run the full audit of services/payments, services/orders and services/catalog. Same context as before: checkout (charge) is slow and sometimes double-charges, we must keep PostgreSQL, peak is about 50 req/s.",
+  "setup": {
+    "fixture": "tests/fixtures/monorepo",
+    "preexisting": {},
+    "copy_files": {
+      "docs/architecture/01-architecture-issues.md": "examples/mode-2-audit-monorepo/01-architecture-issues.md",
+      "docs/architecture/02-api-optimization.md": "examples/mode-2-audit-monorepo/02-api-optimization.md",
+      "docs/architecture/03-improvement-roadmap.md": "examples/mode-2-audit-monorepo/03-improvement-roadmap.md"
+    },
+    "line_replace": {
+      "services/catalog/app.py": {
+        "line": 21,
+        "text": "    cursor.execute(\"SELECT * FROM items WHERE name = %s\", (name,))"
+      }
+    }
+  },
+  "must_exist": [
+    "docs/architecture/01-architecture-issues.md",
+    "docs/architecture/02-api-optimization.md",
+    "docs/architecture/03-improvement-roadmap.md",
+    "docs/architecture/history/*/01-architecture-issues.md",
+    "docs/architecture/history/*/02-api-optimization.md",
+    "docs/architecture/history/*/03-improvement-roadmap.md"
+  ],
+  "must_not_exist": [],
+  "must_contain": {
+    "docs/architecture/01-architecture-issues.md": [
+      "## Change Since Last Audit",
+      "SEC-002",
+      "Fixed"
+    ]
+  },
+  "must_not_contain": {},
+  "lint": true,
+  "lint_repo": true
+}

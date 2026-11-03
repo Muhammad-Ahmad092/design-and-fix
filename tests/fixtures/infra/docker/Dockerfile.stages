@@ -1,0 +1,7 @@
+# Final stage built FROM an earlier stage that already set a non-root USER: not root.
+FROM node:20.11-slim AS base
+RUN useradd -m app
+USER app
+FROM base
+COPY . /app
+CMD ["node", "/app/server.js"]

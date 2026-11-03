@@ -1,0 +1,12 @@
+apiVersion: apps/v1
+kind: Deployment # web tier
+metadata:
+  name: edge
+spec:
+  template:
+    spec:
+      containers:
+        - name: edge
+          image: registry.example.test/edge:2.0.1
+          ports:
+            - containerPort: 80

@@ -96,5 +96,72 @@ class ReportTests(unittest.TestCase):
                                     "core.quotePath=false", "log"])
 
 
+# ---------------------------------------------------------------- release review 1.0.2 (area A)
+def _put(root, rel, text):
+    path = os.path.join(root, *rel.split("/"))
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w", encoding="utf-8", newline="\n") as fh:
+        fh.write(text)
+
+
+class StampingReviewTests(unittest.TestCase):  # review I3, M11, rule-runner guard
+    def setUp(self):
+        self.d = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.d, ignore_errors=True)
+
+    def test_many_signals_in_one_file_stamp_in_linear_time(self):
+        import time
+        _put(self.d, "big.py", "import requests\n" + "requests.get(url)\n" * 5000)
+        t0 = time.perf_counter()
+        r = scan(self.d, use_git=False, verbose=True)
+        self.assertLess(time.perf_counter() - t0, 10.0)
+        self.assertEqual(r["summary"]["truncated"], {"http-no-timeout": 5000})
+        self.assertTrue(any(n.startswith("timing stamp: ") for n in r["notes"]), r["notes"])
+        self.assertEqual(len({s["fingerprint"] for s in r["signals"]}), len(r["signals"]))
+
+    def test_line_fingerprint_matches_signal_fingerprint(self):
+        from dfscan.fingerprint import enclosing_names, line_fingerprint, signal_fingerprint
+        text = ("import x\nclass A:\n    def run(self):\n        get('a', 1)\n\n"
+                "async function go() {\n  fetch(u)\n}\nz = 2\r\n")
+        lines = text.split("\n")
+        names = enclosing_names(lines)
+        for line in range(1, len(lines) + 3):
+            for occ in (0, 2):
+                self.assertEqual(line_fingerprint("r", "f.py", lines, names, line, occ),
+                                 signal_fingerprint("r", "f.py", text, line, "Python",
+                                                    occurrence=occ), line)
+
+    def test_invalid_signals_get_a_note(self):
+        from dfscan.model import Signal
+        bad = Signal("http-no-timeout", "Nope", "High", "a.py", 1, "x", "high")
+        _put(self.d, "a.py", "x = 1\n")
+        with mock.patch("dfscan.report.run_infra_rules", return_value=[bad]):
+            r = scan(self.d, use_git=False)
+        self.assertEqual(r["summary"]["invalid_signals"], 1)
+        self.assertIn("1 invalid signal(s) dropped", r["notes"])
+
+    def test_crashing_rule_family_adds_note_and_scan_continues(self):
+        _put(self.d, "a.py", "import requests\nrequests.get(u)\n")
+        with mock.patch("dfscan.report.run_deps_rules", side_effect=KeyError("boom")):
+            r = scan(self.d, use_git=False)
+        self.assertIn("deps_rules failed (KeyError): its signals are missing", r["notes"])
+        self.assertTrue([s for s in r["signals"] if s["rule"] == "http-no-timeout"])
+
+    def test_rule_runner_notes_reach_output(self):
+        def fake(files, notes=None):
+            notes.append("skipped package.json: malformed JSON")
+            return []
+        _put(self.d, "a.py", "x = 1\n")
+        with mock.patch("dfscan.report.run_deps_rules", side_effect=fake):
+            r = scan(self.d, use_git=False)
+        self.assertIn("skipped package.json: malformed JSON", r["notes"])
+
+    def test_k8s_kind_line_with_trailing_comment(self):
+        from dfscan.walker import is_k8s_workload
+        self.assertTrue(is_k8s_workload("apiVersion: apps/v1\nkind: Deployment  # web\n"))
+        self.assertTrue(is_k8s_workload("kind: 'StatefulSet' #db\n"))
+        self.assertFalse(is_k8s_workload("kind: Service  # Deployment\n"))
+
+
 if __name__ == "__main__":
     unittest.main()

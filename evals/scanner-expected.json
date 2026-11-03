@@ -26,5 +26,112 @@
       ["console-logging-only", "services/catalog"]
     ]
   },
-  "clean-service": {"max_signals": 0}
+  "clean-service": {"max_signals": 0},
+  "api-service": {
+    "must_find": [
+      ["list-route-no-pagination", "src/server.js"],
+      ["unvalidated-body", "src/server.js"],
+      ["mixed-error-shapes", "src/server.js"],
+      ["no-version-prefix", "src/server.js"],
+      ["openapi-drift", "src/server.js"],
+      ["openapi-drift", "openapi.json"],
+      ["docker-no-healthcheck", "Dockerfile"]
+    ],
+    "must_not_find": [
+      ["missing-lockfile", "package.json"],
+      ["unpinned-dependency", "package.json"],
+      ["docker-root-user", "Dockerfile"],
+      ["docker-latest-tag", "Dockerfile"],
+      ["no-health-endpoint", "src/server.js"]
+    ]
+  },
+  "infra": {
+    "must_find": [
+      ["docker-root-user", "Dockerfile"],
+      ["docker-latest-tag", "Dockerfile"],
+      ["k8s-no-probes", "k8s/deployment.yaml"],
+      ["k8s-no-limits", "k8s/deployment.yaml"],
+      ["ci-no-test-step", ".github/workflows/deploy.yml"],
+      ["ci-no-test-step", ".gitlab-ci.yml"],
+      ["docker-root-user", "docker/Dockerfile.admin"],
+      ["k8s-no-probes", "k8s/statefulset.yaml"],
+      ["k8s-no-probes", "k8s/commented.yaml"],
+      ["k8s-no-limits", "k8s/commented.yaml"]
+    ],
+    "must_not_find": [
+      ["docker-root-user", "docker/Dockerfile.worker"],
+      ["docker-latest-tag", "docker/Dockerfile.worker"],
+      ["docker-no-healthcheck", "Dockerfile"],
+      ["k8s-no-probes", "k8s/api-good.yaml"],
+      ["k8s-no-limits", "k8s/api-good.yaml"],
+      ["k8s-no-limits", "k8s/statefulset.yaml"],
+      ["docker-root-user", "docker/Dockerfile.stages"],
+      ["docker-latest-tag", "docker/Dockerfile.stages"],
+      ["docker-latest-tag", "docker/Dockerfile.admin"],
+      ["ci-no-test-step", ".circleci/config.yml"]
+    ]
+  },
+  "deps": {
+    "must_find": [
+      ["missing-lockfile", "web/package.json"],
+      ["unpinned-dependency", "web/package.json"],
+      ["unpinned-dependency", "api/requirements.txt"],
+      ["missing-lockfile", "pipenv/Pipfile"],
+      ["missing-lockfile", "gems/Gemfile"],
+      ["missing-lockfile", "gosvc/go.mod"],
+      ["unpinned-dependency", "pyapp/pyproject.toml"]
+    ],
+    "must_not_find": [
+      ["missing-lockfile", "lib/package.json"],
+      ["unpinned-dependency", "lib/package.json"],
+      ["missing-lockfile", "api/requirements.txt"],
+      ["missing-lockfile", "pyapp/pyproject.toml"]
+    ]
+  },
+  "spring": {
+    "must_find": [
+      ["unauth-write-route", "src/main/java/com/example/shop/OrderController.java"],
+      ["http-no-timeout", "src/main/java/com/example/shop/OrderController.java"],
+      ["sql-string-concat", "src/main/java/com/example/shop/OrderController.java"]
+    ],
+    "must_not_find": [
+      ["unauth-write-route", "src/main/java/com/example/shop/HealthController.java"],
+      ["no-health-endpoint", "src/main/java/com/example/shop/OrderController.java"]
+    ]
+  },
+  "aspnet": {
+    "must_find": [
+      ["unauth-write-route", "Controllers/OrdersController.cs"],
+      ["http-no-timeout", "Controllers/OrdersController.cs"],
+      ["sql-string-concat", "Controllers/OrdersController.cs"]
+    ],
+    "must_not_find": [
+      ["unauth-write-route", "Program.cs"],
+      ["no-health-endpoint", "Program.cs"]
+    ]
+  },
+  "rails": {
+    "must_find": [
+      ["unauth-write-route", "config/routes.rb"],
+      ["http-no-timeout", "app/controllers/orders_controller.rb"],
+      ["sql-string-concat", "app/controllers/orders_controller.rb"],
+      ["missing-lockfile", "Gemfile"]
+    ],
+    "must_not_find": [
+      ["no-health-endpoint", "config/routes.rb"],
+      ["http-no-timeout", "app/controllers/payments_controller.rb"]
+    ]
+  },
+  "laravel": {
+    "must_find": [
+      ["unauth-write-route", "routes/api.php"],
+      ["http-no-timeout", "app/Http/Controllers/OrderController.php"],
+      ["sql-string-concat", "app/Http/Controllers/OrderController.php"],
+      ["missing-lockfile", "composer.json"]
+    ],
+    "must_not_find": [
+      ["no-health-endpoint", "routes/api.php"],
+      ["sql-string-concat", "routes/api.php"]
+    ]
+  }
 }

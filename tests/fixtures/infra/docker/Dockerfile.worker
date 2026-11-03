@@ -1,0 +1,10 @@
+FROM python:3.12-slim AS build
+WORKDIR /src
+COPY requirements.txt .
+RUN pip wheel -r requirements.txt -w /wheels
+
+FROM python:3.12-slim
+COPY --from=build /wheels /wheels
+RUN pip install /wheels/* && useradd --create-home worker
+USER worker
+CMD ["python", "-m", "worker"]

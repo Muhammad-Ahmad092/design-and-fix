@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import fnmatch
 import os
-from typing import List, Tuple
+from typing import Iterable, List, Set, Tuple
 
 from .model import FileInfo
 
@@ -41,6 +41,12 @@ FRAMEWORK_SIGNALS = {
     "requirements.txt": [("flask", "flask"), ("fastapi", "fastapi"), ("django", "django")],
     "pyproject.toml": [("flask", "flask"), ("fastapi", "fastapi"), ("django", "django")],
     "go.mod": [("gin-gonic/gin", "gin"), ("go-chi/chi", "chi"), ("labstack/echo", "echo")],
+    "pom.xml": [("spring-boot", "spring-boot")],
+    "build.gradle": [("org.springframework.boot", "spring-boot"), ("spring-boot", "spring-boot")],
+    "build.gradle.kts": [("org.springframework.boot", "spring-boot"), ("spring-boot", "spring-boot")],
+    "*.csproj": [("microsoft.aspnetcore", "aspnetcore"), ('sdk="microsoft.net.sdk.web"', "aspnetcore")],
+    "Gemfile": [("gem 'rails'", "rails"), ('gem "rails"', "rails")],
+    "composer.json": [('"laravel/framework"', "laravel")],
 }
 
 
@@ -52,19 +58,44 @@ def _read(path: str) -> str:
         return ""
 
 
-def detect_stack(files: List[FileInfo]) -> Tuple[List[str], List[str]]:
+def _manifests_in(dirs: Iterable[str], known: Set[str]) -> List[Tuple[str, str]]:
+    """(basename, absolute path) of manifest files directly inside each dir, skipping known paths."""
+    out: List[Tuple[str, str]] = []
+    for d in dirs:
+        try:
+            names = sorted(os.listdir(d))
+        except OSError:
+            continue
+        for name in names:
+            path = os.path.join(d, name)
+            key = os.path.normcase(os.path.abspath(path))
+            if key in known or not os.path.isfile(path):
+                continue
+            if any(fnmatch.fnmatch(name, p) for p in MANIFEST_SIGNALS):
+                known.add(key)
+                out.append((name, path))
+    return out
+
+
+def detect_stack(files: List[FileInfo],
+                 extra_manifest_dirs: Iterable[str] = ()) -> Tuple[List[str], List[str]]:
+    """Languages/ecosystems and frameworks from the listed files plus the manifests found
+    directly inside `extra_manifest_dirs` (absolute paths; read-only, manifests only)."""
     stack = set()
     frameworks = set()
-    for f in files:
-        name = os.path.basename(f.rel)
+    entries = [(os.path.basename(f.rel), f.abs, f.lang) for f in files]
+    known = {os.path.normcase(os.path.abspath(f.abs)) for f in files}
+    entries += [(name, path, None) for name, path in _manifests_in(extra_manifest_dirs, known)]
+    for name, path, lang in entries:
         for pattern, label in MANIFEST_SIGNALS.items():
             if fnmatch.fnmatch(name, pattern):
                 stack.add(label)
-        if f.lang is not None:
-            stack.add(_LANG_LABELS.get(f.lang, f.lang))
-        needles = FRAMEWORK_SIGNALS.get(name)
+        if lang is not None:
+            stack.add(_LANG_LABELS.get(lang, lang))
+        needles = [n for pattern, ns in FRAMEWORK_SIGNALS.items()
+                   if fnmatch.fnmatch(name, pattern) for n in ns]
         if needles:
-            text = _read(f.abs)
+            text = _read(path)
             for needle, fw in needles:
                 if needle.lower() in text:
                     frameworks.add(fw)

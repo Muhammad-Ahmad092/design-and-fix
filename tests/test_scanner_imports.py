@@ -119,5 +119,136 @@ class ImportGraphTests(unittest.TestCase):
         self.assertGreater(r["import_graph"]["modules"], 0)
 
 
+
+def _graph(files):
+    with tempfile.TemporaryDirectory() as d:
+        for rel, text in files.items():
+            _write(d, rel, text)
+        return build_graph(walk(d))
+
+
+class R2ImportFalsePositiveTests(unittest.TestCase):
+    def test_cycle_through_init_downgraded(self):  # R2-fp5
+        g = _graph({"pkg/__init__.py": "from .app import App\n",
+                    "pkg/app.py": "from pkg import helpers\nclass App: pass\n",
+                    "pkg/helpers.py": "x = 1\n"})
+        self.assertEqual(g["cycles"], [["pkg/__init__.py", "pkg/app.py", "pkg/__init__.py"]])
+        self.assertEqual(g["cycles_meta"], [{"via_init": True}])
+        sig = graph_signals(g)[0]
+        self.assertEqual((sig.severity_hint, sig.confidence), ("Medium", "low"))
+        self.assertIn("through package __init__ (often a re-export, not a runtime cycle)", sig.snippet)
+        # JS index barrel is treated the same way.
+        g = _graph({"src/index.ts": "export * from './a';\n",
+                    "src/a.ts": "import { b } from './index';\nexport const a = b;\n"})
+        self.assertEqual(g["cycles_meta"], [{"via_init": True}])
+        # A plain module cycle keeps High / high and via_init false.
+        g = _graph({"m/a.py": "from . import b\n", "m/b.py": "from . import a\n"})
+        self.assertEqual(g["cycles_meta"], [{"via_init": False}])
+        sig = graph_signals(g)[0]
+        self.assertEqual((sig.severity_hint, sig.confidence), ("High", "high"))
+
+    def test_real_cycle_inside_init_component_stays_high(self):  # R2-fp5 guard
+        g = _graph({"pkg/__init__.py": "from .a import x\n",
+                    "pkg/a.py": "from pkg import b\nimport pkg\n",
+                    "pkg/b.py": "from pkg import a\n"})
+        self.assertEqual(g["cycles_meta"], [{"via_init": False}])
+        self.assertNotIn("__init__", " ".join(g["cycles"][0]))
+
+
+class BaselineImportFalsePositiveTests(unittest.TestCase):
+    def test_function_local_import_not_a_cycle(self):  # import-cycle 1
+        g = _graph({"app/models.py": "from app import utils\nx = 1\n",
+                    "app/utils.py": "def f():\n    from app import models\n    return models.x\n"})
+        self.assertEqual(g["cycles"], [])
+        self.assertEqual(g["edges"], 2)  # deferred import still counts as a dependency
+        # Module-level conditional imports are still edges.
+        g = _graph({"app/models.py": "from app import utils\n",
+                    "app/utils.py": "try:\n    from app import models\nexcept ImportError:\n    models = None\n"})
+        self.assertEqual(len(g["cycles"]), 1)
+
+    def test_type_checking_import_not_a_cycle(self):  # import-cycle 1 (type-only)
+        g = _graph({"app/a.py": "from app import b\n",
+                    "app/b.py": "from typing import TYPE_CHECKING\nif TYPE_CHECKING:\n    from app import a\n"})
+        self.assertEqual(g["cycles"], [])
+        g = _graph({"app/a.py": "from app import b\n",
+                    "app/b.py": "import typing as t\n\nif t.TYPE_CHECKING:  # pragma: no cover\n"
+                                "    from .a import A\n"})
+        self.assertEqual(g["cycles"], [])
+
+    def test_init_reexport_cycle_downgraded(self):  # import-cycle 2
+        g = _graph({"flask/__init__.py": "from .app import Flask as Flask\n",
+                    "flask/app.py": "from . import json\nfrom flask import cli\n",
+                    "flask/cli.py": "x = 1\n", "flask/json/__init__.py": "x = 1\n"})
+        self.assertEqual(g["cycles"], [["flask/__init__.py", "flask/app.py", "flask/__init__.py"]])
+        self.assertEqual(g["cycles_meta"], [{"via_init": True}])
+        self.assertEqual(graph_signals(g)[0].confidence, "low")
+        g = _graph({"msgs/__init__.py": "from msgs.api import *\n",
+                    "msgs/api.py": "from msgs import constants\nimport msgs\n",
+                    "msgs/constants.py": "x = 1\n"})
+        self.assertEqual(g["cycles_meta"], [{"via_init": True}])
+
+    def test_ts_type_only_and_dynamic_imports_not_cycles(self):  # import-cycle 3
+        g = _graph({"src/a.ts": "import type { B } from './b';\nexport const a = 1;\n",
+                    "src/b.ts": "import { a } from './a';\nexport type B = number;\n"})
+        self.assertEqual(g["cycles"], [])
+        g = _graph({"src/a.ts": "import { type B } from './b';\nexport const a = 1;\n",
+                    "src/b.ts": "import { a } from './a';\nexport type B = number;\n"})
+        self.assertEqual(g["cycles"], [])
+        g = _graph({"src/a.ts": "export const load = () => import('./b');\n",
+                    "src/b.ts": "import { load } from './a';\n"})
+        self.assertEqual(g["cycles"], [])
+
+    def test_god_module_ignores_test_fan_in_and_test_candidates(self):  # god-module 2, 3
+        files = {"pkg/hub.py": "x = 1\n" * 520}
+        for i in range(10):
+            files["tests/test_u%d.py" % i] = "from pkg import hub\n"
+        for i in range(3):
+            files["pkg/u%d.py" % i] = "from pkg import hub\n"
+        # Total fan-in >= 10 still triggers; fewer than 10 non-test importers -> low confidence.
+        g = _graph(files)
+        self.assertEqual([(x["file"], x["fan_in"], x["fan_in_non_test"]) for x in g["god_modules"]],
+                         [("pkg/hub.py", 13, 3)])
+        self.assertEqual(graph_signals(g)[0].confidence, "low")
+        # Test files (by file name) are never candidates.
+        files = {"pkg/test_hub.py": "x = 1\n" * 520}
+        for i in range(12):
+            files["pkg/u%d.py" % i] = "from pkg import test_hub\n"
+        self.assertEqual(_graph(files)["god_modules"], [])
+
+    def test_god_module_in_library_test_folder_counts(self):  # fix round 1 (django/test/utils.py)
+        files = {"django/test/utils.py": "x = 1\n" * 520}
+        for i in range(12):
+            files["django/m%d.py" % i] = "from django.test import utils\n"
+        self.assertEqual([x["file"] for x in _graph(files)["god_modules"]], ["django/test/utils.py"])
+
+    def test_god_module_cohesive_collection_low(self):  # god-module 1 (not fixable: lower confidence)
+        files = {"pkg/validators.py": "x = 1\n" * 520}
+        for i in range(10):
+            files["pkg/u%d.py" % i] = "from pkg import validators\n"
+        sig = graph_signals(_graph(files))[0]
+        self.assertEqual((sig.rule, sig.confidence), ("god-module", "low"))
+
+
+# ---------------------------------------------------------------- release review 1.0.2 (area A)
+class DeferredImportLinearTests(unittest.TestCase):  # review M8
+    def test_deferred_lines_semantics(self):
+        from dfscan.imports import _py_deferred_lines
+        text = ("import os\n"
+                "try:\n    import json\nexcept ImportError:\n    json = None\n"
+                "def f():\n    import re\n    if x:\n        from a import b\n"
+                "if TYPE_CHECKING:\n    from c import d\n"
+                "class K:\n    import e\n    def m(self):\n\n        import g\n")
+        self.assertEqual(_py_deferred_lines(text), {7, 9, 11, 16})
+
+    def test_many_indented_imports_are_fast(self):
+        import time
+        from dfscan.imports import _py_deferred_lines
+        text = "def f():\n" + "    import os\n" * 4000
+        t0 = time.perf_counter()
+        got = _py_deferred_lines(text)
+        self.assertLess(time.perf_counter() - t0, 1.0)
+        self.assertEqual(len(got), 4000)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -1,0 +1,20 @@
+[
+  {
+    "repo": "django-styleguide-example",
+    "file": "config/urls.py",
+    "line": 22,
+    "snippet": "30 routes in service ., none versioned",
+    "fingerprint": "ba4a776acc6580eb",
+    "label": "tp",
+    "note": "All routes under /api/ with no version segment"
+  },
+  {
+    "repo": "golang-gin-realworld",
+    "file": "hello.go",
+    "line": 29,
+    "snippet": "18 routes in service ., none versioned",
+    "fingerprint": "b0fe84b667b9a0e5",
+    "label": "tp",
+    "note": "Routes under /api with no version segment (v1 is only a variable name)"
+  }
+]

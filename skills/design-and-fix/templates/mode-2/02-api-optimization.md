@@ -2,6 +2,8 @@
 
 > Scope: <folders / services audited>
 > Context: <scale>, <key constraint>
+> Format: 1.0.2
+> Audit: plugin 1.0.2 · scanner schema 3 · rev <sha|unknown> · config <config_hash> · <timestamp>
 
 ## API Health Snapshot
 
@@ -21,10 +23,12 @@ Routes from the scanner in the audited scope, max 20 rows. <+N more not shown, o
 
 ## Issues Found
 
-| ID | Severity | Issue | Evidence | Root cause | Consequence | Fix | Why |
-|---|---|---|---|---|---|---|---|
-| <API-001> | <High> | <issue> | <path:line> | <root cause> | <consequence> | <fix> | <reason> |
-| <API-002> | <Medium> | <issue> | <path:line> | <root cause> | <consequence> | <fix> | <reason> |
+| ID | Severity | Status | Source | Issue | Evidence | Root cause | Consequence | Fix | Verify | Why |
+|---|---|---|---|---|---|---|---|---|---|---|
+| <API-001> | <High> | <confirmed> | <scanner:list-route-no-pagination> | <issue> | <path:line> | <root cause> | <consequence> | <fix> | <test or check> | <reason> |
+| <API-002> | <Medium> | <likely> | <agent> | <issue> | <path:line> | <root cause> | <consequence> | <fix> | <check or —> | <reason> |
+
+- <API-001>: Observed: <what the code shows>. Inference: <what you conclude>. Limitations: <counter-evidence, or none>. (High/Critical only)
 
 Only `API-*` issues are defined here; other categories are referenced by ID from `01-architecture-issues.md`.
 
@@ -36,8 +40,9 @@ Only `API-*` issues are defined here; other categories are referenced by ID from
 
 ## Quick Wins vs Structural Fixes
 
-**Quick Wins**
-- <IDs>: <cheap, fast change>. Why: <reason>
+| Recommendation (IDs) | Category | Impact | Effort | Risk | Verification | Why |
+|---|---|---|---|---|---|---|
+| <API-001>: <cheap, fast change> | <correctness/security/maintainability/performance/cost> | <Low/Medium/High> | <S> | <Low/Medium/High> | <test or check> | <reason> |
+| <API-002>: <change that needs redesign> | <performance> | <Low/Medium/High> | <L> | <Low/Medium/High> | <Hypothesis: time GET /orders p95 with k6 at 50 req/s before/after> | <reason> |
 
-**Structural Fixes**
-- <IDs>: <change that needs redesign>. Why: <reason>
+Small fixes (S/M effort) first, structural fixes (L/XL) after; the roadmap still places S in Quick Wins and M in Medium-term. Performance claims from code patterns are a Hypothesis until measured.

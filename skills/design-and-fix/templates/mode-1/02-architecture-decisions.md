@@ -2,6 +2,8 @@
 
 > Scope: <project name>
 > Context: <scale> users, team of <size>, <key constraint>
+> Format: 1.0.2
+> Audit: plugin 1.0.2 · scanner not run · rev <sha|unknown> · <timestamp>
 
 ## Pattern Choice
 
@@ -54,13 +56,20 @@ erDiagram
 | <e.g. DB primary goes down> | <consequence> | <mitigation> | <reason> |
 | <e.g. downstream provider timeout> | <consequence> | <mitigation> | <reason> |
 
-## Security
+## Security & Threat Model
 
-| Threat (STRIDE) | Asset | Mitigation | Why |
-|---|---|---|---|
-| <e.g. Spoofing: stolen session token> | <user accounts> | <short-lived JWT + refresh rotation> | <reason> |
-| <e.g. Tampering: SQL injection> | <primary DB> | <parameterized queries only> | <reason> |
-| <e.g. Information disclosure: secrets in repo> | <provider keys> | <secret manager, env injection> | <reason> |
+Trust boundaries: <e.g. internet → API (TLS, auth), API → database (private network), API → payment provider (outbound HTTPS, signed webhooks back)>
+
+| Threat (STRIDE) | Boundary | Asset | Mitigation | Why |
+|---|---|---|---|---|
+| <Spoofing: stolen session token> | <internet → API> | <user accounts> | <short-lived JWT + refresh rotation> | <reason> |
+| <Tampering: SQL injection> | <API → database> | <primary DB> | <parameterized queries only> | <reason> |
+| <Repudiation: disputed order> | <internet → API> | <orders> | <append-only audit log with user ID> | <reason> |
+| <Information disclosure: secrets in repo> | <CI → runtime> | <provider keys> | <secret manager, env injection> | <reason> |
+| <Denial of service: request flood> | <internet → API> | <API capacity> | <rate limit per user and IP> | <reason> |
+| <Elevation of privilege: admin route reachable by users> | <API> | <admin actions> | <role check in middleware, deny by default> | <reason> |
+
+Keep only the threats that apply; data sensitivity from Assumptions & Constraints decides how deep this goes.
 
 ## Observability
 

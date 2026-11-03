@@ -1,0 +1,182 @@
+[
+  {
+    "repo": "create-t3-turbo",
+    "file": "packages/ui/src/theme.tsx",
+    "line": 36,
+    "snippet": "} catch {",
+    "fingerprint": "9f4e2b407c807b9c",
+    "label": "fp",
+    "note": "Empty catch with a comment: localStorage write is best-effort by design (comment says so)."
+  },
+  {
+    "repo": "django",
+    "file": "django/contrib/auth/management/commands/createsuperuser.py",
+    "line": 308,
+    "snippet": "except self.UserModel.DoesNotExist:",
+    "fingerprint": "41d8beb5c3d90da4",
+    "label": "fp",
+    "note": "EAFP idiom: DoesNotExist means the username is free; try/except/else control flow, nothing lost."
+  },
+  {
+    "repo": "django",
+    "file": "django/contrib/auth/middleware.py",
+    "line": 159,
+    "snippet": "except AttributeError:",
+    "fingerprint": "4bb65320250a8d5a",
+    "label": "fp",
+    "note": "Specific AttributeError for an optional backend method, documented inline; deliberate fallback."
+  },
+  {
+    "repo": "django",
+    "file": "django/contrib/postgres/forms/array.py",
+    "line": 108,
+    "snippet": "except ValidationError:",
+    "fingerprint": "e6027952c64987c5",
+    "label": "fp",
+    "note": "ValidationError ignored inside has_changed(); try/except/else control flow, not an error path."
+  },
+  {
+    "repo": "django",
+    "file": "django/contrib/sessions/backends/file.py",
+    "line": 202,
+    "snippet": "except OSError:",
+    "fingerprint": "2417d3a2d473acf1",
+    "label": "fp",
+    "note": "Best-effort unlink of a session file that may already be gone (OSError); intentional cleanup."
+  },
+  {
+    "repo": "django",
+    "file": "django/contrib/syndication/views.py",
+    "line": 170,
+    "snippet": "except TemplateDoesNotExist:",
+    "fingerprint": "e7d9f480306bd7e0",
+    "label": "fp",
+    "note": "Optional template: TemplateDoesNotExist leaves title_tmp None by design."
+  },
+  {
+    "repo": "django",
+    "file": "django/core/files/storage/filesystem.py",
+    "line": 177,
+    "snippet": "except PermissionError:",
+    "fingerprint": "5a8c04b844181f98",
+    "label": "fp",
+    "note": "Best-effort chown; PermissionError is expected on many hosts and deliberately ignored."
+  },
+  {
+    "repo": "django",
+    "file": "django/core/validators.py",
+    "line": 274,
+    "snippet": "except UnicodeError:",
+    "fingerprint": "2580db1d30dc8f1b",
+    "label": "fp",
+    "note": "IDN fallback: UnicodeError means punycode failed; try/except/else, validation continues and fails later."
+  },
+  {
+    "repo": "django",
+    "file": "django/db/backends/mysql/compiler.py",
+    "line": 76,
+    "snippet": "except FieldError:",
+    "fingerprint": "b2a19a1e24da823a",
+    "label": "fp",
+    "note": "FieldError deliberately ignored with an explanatory comment (ordering with annotations)."
+  },
+  {
+    "repo": "django",
+    "file": "django/db/migrations/questioner.py",
+    "line": 118,
+    "snippet": "except ValueError:",
+    "fingerprint": "6a382a85e6f1d670",
+    "label": "fp",
+    "note": "Input loop: non-integer input just re-prompts; try/except/else control flow."
+  },
+  {
+    "repo": "django",
+    "file": "django/db/models/expressions.py",
+    "line": 33,
+    "snippet": "except FieldError:",
+    "fingerprint": "1151d8ee32ac9241",
+    "label": "fp",
+    "note": "FieldError when output_field is unresolvable: skip the CAST; deliberate."
+  },
+  {
+    "repo": "django",
+    "file": "django/db/models/options.py",
+    "line": 899,
+    "snippet": "except KeyError:",
+    "fingerprint": "dffdb92cb9743e1c",
+    "label": "fp",
+    "note": "Cache-miss idiom (KeyError) before computing the value."
+  },
+  {
+    "repo": "django",
+    "file": "django/http/response.py",
+    "line": 330,
+    "snippet": "except Exception:",
+    "fingerprint": "9510090c0dc3a18f",
+    "label": "unsure",
+    "note": "Broad except Exception: pass around resource closers in close(); deliberate best-effort, but failures vanish without a trace."
+  },
+  {
+    "repo": "django",
+    "file": "django/urls/base.py",
+    "line": 64,
+    "snippet": "except KeyError:",
+    "fingerprint": "d134a0a8791c4d06",
+    "label": "fp",
+    "note": "KeyError on namespace lookup handled by falling through; deliberate."
+  },
+  {
+    "repo": "django",
+    "file": "django/utils/formats.py",
+    "line": 117,
+    "snippet": "except KeyError:",
+    "fingerprint": "80c2793865f2898d",
+    "label": "fp",
+    "note": "Cache-miss idiom (KeyError) before computing the value."
+  },
+  {
+    "repo": "django",
+    "file": "django/utils/translation/trans_real.py",
+    "line": 333,
+    "snippet": "except AttributeError:",
+    "fingerprint": "3d0f7f6a66b0da92",
+    "label": "fp",
+    "note": "AttributeError fallback to settings.LANGUAGE_CODE right below; deliberate."
+  },
+  {
+    "repo": "django",
+    "file": "django/views/debug.py",
+    "line": 103,
+    "snippet": "except Http404:",
+    "fingerprint": "2154c38e3d8725a4",
+    "label": "fp",
+    "note": "Http404 leaves resolver_match None, handled on the next line."
+  },
+  {
+    "repo": "flask",
+    "file": "src/flask/cli.py",
+    "line": 1106,
+    "snippet": "except ValueError:",
+    "fingerprint": "0364dffb563965ac",
+    "label": "fp",
+    "note": "ValueError from an unknown sort key keeps default order; deliberate in a CLI listing."
+  },
+  {
+    "repo": "flask",
+    "file": "src/flask/config.py",
+    "line": 163,
+    "snippet": "except Exception:",
+    "fingerprint": "60b128cef0ddaa47",
+    "label": "fp",
+    "note": "Commented intentional fallback (keep value as string) - the review2 flask/config.py:163 case."
+  },
+  {
+    "repo": "itsdangerous",
+    "file": "src/itsdangerous/timed.py",
+    "line": 114,
+    "snippet": "except Exception:",
+    "fingerprint": "0e17856340202f58",
+    "label": "fp",
+    "note": "Decode failure leaves ts_int None; a proper BadTimeSignature is raised just below."
+  }
+]

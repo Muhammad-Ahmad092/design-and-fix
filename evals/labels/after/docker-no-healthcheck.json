@@ -1,0 +1,38 @@
+[
+  {
+    "repo": "aspnetcore-realworld",
+    "file": "Dockerfile",
+    "line": 18,
+    "snippet": "EXPOSE without HEALTHCHECK",
+    "fingerprint": "31c49933381caa20",
+    "label": "tp",
+    "note": "service image exposing 3000, no healthcheck anywhere"
+  },
+  {
+    "repo": "nestjs-prisma-starter",
+    "file": "Dockerfile",
+    "line": 25,
+    "snippet": "EXPOSE without HEALTHCHECK",
+    "fingerprint": "31c49933381caa20",
+    "label": "tp",
+    "note": "service image exposing 3000, no healthcheck anywhere"
+  },
+  {
+    "repo": "nestjs-prisma-starter",
+    "file": "Dockerfile.alpine",
+    "line": 23,
+    "snippet": "EXPOSE without HEALTHCHECK",
+    "fingerprint": "f02b2fc4f4913aee",
+    "label": "tp",
+    "note": "alpine variant of same service, no healthcheck"
+  },
+  {
+    "repo": "node-express-boilerplate",
+    "file": "Dockerfile",
+    "line": 15,
+    "snippet": "EXPOSE without HEALTHCHECK",
+    "fingerprint": "31c49933381caa20",
+    "label": "tp",
+    "note": "service image exposing 3000, no healthcheck anywhere"
+  }
+]

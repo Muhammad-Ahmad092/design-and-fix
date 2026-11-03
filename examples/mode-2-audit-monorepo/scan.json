@@ -1,7 +1,11 @@
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "root": "tests/fixtures/monorepo",
-  "scope": [],
+  "scope": [
+    "services/payments",
+    "services/orders",
+    "services/catalog"
+  ],
   "detected_stack": [
     "C# / .NET",
     "Go",
@@ -10,6 +14,7 @@
     "TypeScript"
   ],
   "frameworks": [
+    "aspnetcore",
     "express",
     "flask",
     "gin"
@@ -42,7 +47,7 @@
     }
   ],
   "import_graph": {
-    "modules": 9,
+    "modules": 8,
     "edges": 7,
     "cycles": [
       [
@@ -50,6 +55,11 @@
         "services/payments/src/lib/util.ts",
         "services/payments/src/lib/db.ts"
       ]
+    ],
+    "cycles_meta": [
+      {
+        "via_init": false
+      }
     ],
     "god_modules": []
   },
@@ -125,7 +135,9 @@
       "file": "services/payments/src/lib/db.ts",
       "line": 1,
       "snippet": "services/payments/src/lib/db.ts -> services/payments/src/lib/util.ts -> services/payments/src/lib/db.ts",
-      "confidence": "high"
+      "confidence": "low",
+      "fingerprint": "40120ca3c96a84c4",
+      "rule_version": "3"
     },
     {
       "rule": "unauth-write-route",
@@ -134,7 +146,9 @@
       "file": "services/catalog/app.py",
       "line": 16,
       "snippet": "POST /items",
-      "confidence": "medium"
+      "confidence": "low",
+      "fingerprint": "4b9bb06e079417b4",
+      "rule_version": "5"
     },
     {
       "rule": "unauth-write-route",
@@ -143,7 +157,9 @@
       "file": "services/orders/src/orders.go",
       "line": 44,
       "snippet": "POST /orders",
-      "confidence": "medium"
+      "confidence": "low",
+      "fingerprint": "244886a50793a8a2",
+      "rule_version": "5"
     },
     {
       "rule": "unauth-write-route",
@@ -152,25 +168,20 @@
       "file": "services/payments/src/handlers/charge.ts",
       "line": 14,
       "snippet": "POST /payments/charge",
-      "confidence": "medium"
+      "confidence": "low",
+      "fingerprint": "11aa898a41ac8572",
+      "rule_version": "5"
     },
     {
       "rule": "no-health-endpoint",
       "category": "Observability",
       "severity_hint": "Medium",
       "file": "services/catalog/app.py",
-      "line": 16,
-      "snippet": "no health endpoint in services/catalog",
-      "confidence": "medium"
-    },
-    {
-      "rule": "no-health-endpoint",
-      "category": "Observability",
-      "severity_hint": "Medium",
-      "file": "services/payments/src/handlers/charge.ts",
-      "line": 14,
-      "snippet": "no health endpoint in services/payments",
-      "confidence": "medium"
+      "line": 6,
+      "snippet": "no health endpoint in service services/catalog",
+      "confidence": "medium",
+      "fingerprint": "4ea214b61ea7eb47",
+      "rule_version": "4"
     },
     {
       "rule": "http-no-timeout",
@@ -179,7 +190,9 @@
       "file": "services/catalog/app.py",
       "line": 28,
       "snippet": "resp = requests.get(\"https://pricing.example.test/items/%d\" % item_id)",
-      "confidence": "medium"
+      "confidence": "medium",
+      "fingerprint": "503ea1b75eb6a000",
+      "rule_version": "2"
     },
     {
       "rule": "unbounded-query",
@@ -188,7 +201,9 @@
       "file": "services/catalog/app.py",
       "line": 21,
       "snippet": "cursor.execute(\"SELECT * FROM items WHERE name = '\" + name + \"'\")",
-      "confidence": "low"
+      "confidence": "low",
+      "fingerprint": "b6ee12824a28e589",
+      "rule_version": "3"
     },
     {
       "rule": "sql-string-concat",
@@ -197,7 +212,9 @@
       "file": "services/catalog/app.py",
       "line": 21,
       "snippet": "cursor.execute(\"SELECT * FROM items WHERE name = '\" + name + \"'\")",
-      "confidence": "medium"
+      "confidence": "low",
+      "fingerprint": "e062b28e1826a128",
+      "rule_version": "4"
     },
     {
       "rule": "swallowed-error",
@@ -206,7 +223,9 @@
       "file": "services/catalog/app.py",
       "line": 30,
       "snippet": "except Exception:",
-      "confidence": "high"
+      "confidence": "low",
+      "fingerprint": "b1b2596afc0137c5",
+      "rule_version": "5"
     },
     {
       "rule": "hardcoded-secret",
@@ -215,7 +234,9 @@
       "file": "services/catalog/app.py",
       "line": 9,
       "snippet": "DB_PASSWORD = \"<redacted>\"",
-      "confidence": "high"
+      "confidence": "low",
+      "fingerprint": "e14050564c2674fc",
+      "rule_version": "6"
     },
     {
       "rule": "http-no-timeout",
@@ -224,7 +245,9 @@
       "file": "services/orders/src/orders.go",
       "line": 18,
       "snippet": "return http.Get(url)",
-      "confidence": "medium"
+      "confidence": "medium",
+      "fingerprint": "da5146059cbfc5ed",
+      "rule_version": "2"
     },
     {
       "rule": "unbounded-query",
@@ -233,7 +256,9 @@
       "file": "services/orders/src/orders.go",
       "line": 22,
       "snippet": "rows, err := db.Query(\"SELECT id, total FROM orders WHERE user_id = $1\", uid)",
-      "confidence": "low"
+      "confidence": "low",
+      "fingerprint": "9f1e897b84b95940",
+      "rule_version": "3"
     },
     {
       "rule": "http-no-timeout",
@@ -242,7 +267,9 @@
       "file": "services/payments/src/handlers/charge.ts",
       "line": 17,
       "snippet": "const providerResponse = await fetch(PROVIDER_URL, { method: \"POST\", body });",
-      "confidence": "medium"
+      "confidence": "medium",
+      "fingerprint": "1da16fa5dae5bad6",
+      "rule_version": "2"
     },
     {
       "rule": "query-in-loop",
@@ -251,16 +278,9 @@
       "file": "services/payments/src/handlers/charge.ts",
       "line": 21,
       "snippet": "await db.query(\"INSERT INTO charge_items (sku, qty, unit_cents) VALUES ($1, $2, $3)\", [",
-      "confidence": "medium"
-    },
-    {
-      "rule": "unbounded-query",
-      "category": "Scalability",
-      "severity_hint": "Medium",
-      "file": "services/payments/src/handlers/webhook.ts",
-      "line": 8,
-      "snippet": "const row = await db.query(\"SELECT id, amount_cents FROM charges WHERE id = $1\", [req.params.id]);",
-      "confidence": "low"
+      "confidence": "low",
+      "fingerprint": "ed1d7e07b480f686",
+      "rule_version": "4"
     },
     {
       "rule": "swallowed-error",
@@ -269,7 +289,9 @@
       "file": "services/payments/src/handlers/webhook.ts",
       "line": 11,
       "snippet": "} catch (e) {}",
-      "confidence": "high"
+      "confidence": "low",
+      "fingerprint": "84379308b4a5383f",
+      "rule_version": "5"
     },
     {
       "rule": "console-logging-only",
@@ -278,7 +300,9 @@
       "file": "services/payments",
       "line": 0,
       "snippet": "only console/print logging in services/payments",
-      "confidence": "low"
+      "confidence": "low",
+      "fingerprint": "25414819bc3e0968",
+      "rule_version": "3"
     },
     {
       "rule": "no-tests",
@@ -287,7 +311,9 @@
       "file": "services/catalog",
       "line": 0,
       "snippet": "no test files under services/catalog",
-      "confidence": "medium"
+      "confidence": "low",
+      "fingerprint": "dac4f866ba914cc5",
+      "rule_version": "4"
     },
     {
       "rule": "no-tests",
@@ -296,26 +322,129 @@
       "file": "services/orders",
       "line": 0,
       "snippet": "no test files under services/orders",
-      "confidence": "medium"
+      "confidence": "low",
+      "fingerprint": "304fc3de6253df75",
+      "rule_version": "4"
+    },
+    {
+      "rule": "unvalidated-body",
+      "category": "API Design",
+      "severity_hint": "High",
+      "file": "services/catalog/app.py",
+      "line": 16,
+      "snippet": "POST /items: body used without validation",
+      "confidence": "medium",
+      "fingerprint": "0697c4c1b0dfe829",
+      "rule_version": "1"
+    },
+    {
+      "rule": "unvalidated-body",
+      "category": "API Design",
+      "severity_hint": "High",
+      "file": "services/payments/src/handlers/charge.ts",
+      "line": 14,
+      "snippet": "POST /payments/charge: body used without validation",
+      "confidence": "medium",
+      "fingerprint": "8c73c1a7c6fa8dc5",
+      "rule_version": "1"
+    },
+    {
+      "rule": "unvalidated-body",
+      "category": "API Design",
+      "severity_hint": "High",
+      "file": "services/payments/src/handlers/refund.ts",
+      "line": 15,
+      "snippet": "POST /payments/refund: body used without validation",
+      "confidence": "medium",
+      "fingerprint": "bdd188953bfe112a",
+      "rule_version": "1"
+    },
+    {
+      "rule": "missing-lockfile",
+      "category": "Maintainability",
+      "severity_hint": "Medium",
+      "file": "services/orders/go.mod",
+      "line": 1,
+      "snippet": "go.mod without go.sum",
+      "confidence": "medium",
+      "fingerprint": "94edbcceaeb35619",
+      "rule_version": "1"
+    },
+    {
+      "rule": "missing-lockfile",
+      "category": "Maintainability",
+      "severity_hint": "Medium",
+      "file": "services/payments/package.json",
+      "line": 1,
+      "snippet": "package.json without package-lock.json / npm-shrinkwrap.json / yarn.lock",
+      "confidence": "medium",
+      "fingerprint": "1f34b86d2187077e",
+      "rule_version": "1"
     }
   ],
   "summary": {
-    "files_scanned": 13,
-    "code_files": 9,
-    "approx_loc": 791,
+    "files_scanned": 11,
+    "code_files": 8,
+    "approx_loc": 785,
     "test_files": 1,
     "signals_by_category": {
       "System Design": 1,
       "Security": 5,
-      "Observability": 3,
+      "Observability": 2,
       "Reliability": 5,
-      "Scalability": 4,
-      "Maintainability": 2
+      "Scalability": 3,
+      "Maintainability": 4,
+      "API Design": 3
     },
     "truncated": {},
-    "routes_total": 7
+    "routes_total": 7,
+    "invalid_signals": 0,
+    "suppressed": 0,
+    "partial": false,
+    "skipped_total": 0
   },
   "notes": [
     "git hotspots disabled (--no-git)"
-  ]
+  ],
+  "skipped_files": [],
+  "meta": {
+    "plugin_version": "1.0.2",
+    "schema_version": 3,
+    "rule_versions": {
+      "ci-no-test-step": "1",
+      "console-logging-only": "3",
+      "docker-latest-tag": "1",
+      "docker-no-healthcheck": "1",
+      "docker-root-user": "1",
+      "god-module": "4",
+      "hardcoded-secret": "6",
+      "http-no-timeout": "2",
+      "import-cycle": "3",
+      "k8s-no-limits": "1",
+      "k8s-no-probes": "1",
+      "list-route-no-pagination": "1",
+      "missing-lockfile": "1",
+      "mixed-error-shapes": "1",
+      "no-health-endpoint": "4",
+      "no-tests": "4",
+      "no-version-prefix": "1",
+      "openapi-drift": "1",
+      "query-in-loop": "4",
+      "retry-no-backoff": "1",
+      "sql-string-concat": "4",
+      "swallowed-error": "5",
+      "unauth-write-route": "5",
+      "unbounded-query": "3",
+      "unpinned-dependency": "2",
+      "unvalidated-body": "1"
+    },
+    "config_hash": "3d96e5d5ea6d",
+    "timestamp": "2026-11-03T11:54:08Z",
+    "repo_revision": "unknown",
+    "scope": [
+      "services/payments",
+      "services/orders",
+      "services/catalog"
+    ]
+  }
 }

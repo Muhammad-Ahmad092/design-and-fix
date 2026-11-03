@@ -1,0 +1,38 @@
+[
+  {
+    "repo": "django",
+    "file": "docs/requirements.txt",
+    "line": 1,
+    "snippet": "pyenchant",
+    "fingerprint": "c3df2da94d09c412",
+    "label": "fp",
+    "note": "docs-build tooling in Django library, not deployed"
+  },
+  {
+    "repo": "django",
+    "file": "docs/requirements.txt",
+    "line": 2,
+    "snippet": "Sphinx>=4.5.0",
+    "fingerprint": "d8175d76b7a21be7",
+    "label": "fp",
+    "note": "docs-build tooling in Django library, not deployed"
+  },
+  {
+    "repo": "django",
+    "file": "docs/requirements.txt",
+    "line": 3,
+    "snippet": "sphinxcontrib-spelling",
+    "fingerprint": "c85017cff55d468d",
+    "label": "fp",
+    "note": "docs-build tooling in Django library, not deployed"
+  },
+  {
+    "repo": "django",
+    "file": "docs/requirements.txt",
+    "line": 4,
+    "snippet": "blacken-docs",
+    "fingerprint": "3d59aadeb1be3632",
+    "label": "fp",
+    "note": "docs-build tooling in Django library, not deployed"
+  }
+]

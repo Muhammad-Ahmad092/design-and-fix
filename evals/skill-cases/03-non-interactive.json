@@ -1,0 +1,28 @@
+{
+  "id": "03-non-interactive",
+  "prompt": "Audit this repo. Don't ask me anything.",
+  "setup": {
+    "fixture": "tests/fixtures/monorepo",
+    "preexisting": {}
+  },
+  "must_exist": [
+    "docs/architecture/quick-audit.md"
+  ],
+  "must_not_exist": [
+    "docs/architecture/01-architecture-issues.md",
+    "docs/architecture/02-api-optimization.md",
+    "docs/architecture/03-improvement-roadmap.md"
+  ],
+  "must_contain": {
+    "docs/architecture/quick-audit.md": [
+      "Assumed (non-interactive)",
+      "Evidence:",
+      "services/payments",
+      "services/orders",
+      "services/catalog"
+    ]
+  },
+  "must_not_contain": {},
+  "lint": true,
+  "lint_repo": true
+}

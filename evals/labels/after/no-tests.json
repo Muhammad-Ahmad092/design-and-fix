@@ -1,0 +1,182 @@
+[
+  {
+    "repo": "aspnetcore-realworld",
+    "file": "src/Conduit",
+    "line": 0,
+    "snippet": "no test files under src/Conduit",
+    "fingerprint": "1e053b48b1171e22",
+    "label": "fp",
+    "note": "src/Conduit covered by tests/Conduit.IntegrationTests at repo root"
+  },
+  {
+    "repo": "create-t3-turbo",
+    "file": "apps/expo",
+    "line": 0,
+    "snippet": "no test files under apps/expo",
+    "fingerprint": "a74229fae7ce8f4f",
+    "label": "tp",
+    "note": "Expo app, no tests anywhere in monorepo"
+  },
+  {
+    "repo": "create-t3-turbo",
+    "file": "packages/auth",
+    "line": 0,
+    "snippet": "no test files under packages/auth",
+    "fingerprint": "ad7cb201d3975a1e",
+    "label": "tp",
+    "note": "auth package logic with no tests in monorepo"
+  },
+  {
+    "repo": "create-t3-turbo",
+    "file": "packages/ui",
+    "line": 0,
+    "snippet": "no test files under packages/ui",
+    "fingerprint": "31a108a14340da8d",
+    "label": "fp",
+    "note": "presentational UI component wrappers; low value"
+  },
+  {
+    "repo": "django-styleguide-example",
+    "file": "styleguide_example/core",
+    "line": 0,
+    "snippet": "no test files under styleguide_example/core",
+    "fingerprint": "dc688d3bcc624208",
+    "label": "fp",
+    "note": "exceptions/apps/migrations boilerplate only"
+  },
+  {
+    "repo": "django-styleguide-example",
+    "file": "styleguide_example/custom_admin",
+    "line": 0,
+    "snippet": "no test files under styleguide_example/custom_admin",
+    "fingerprint": "abdd18f1f7702533",
+    "label": "fp",
+    "note": "custom admin site wiring/config only"
+  },
+  {
+    "repo": "django-styleguide-example",
+    "file": "styleguide_example/emails",
+    "line": 0,
+    "snippet": "no test files under styleguide_example/emails",
+    "fingerprint": "2a85605b8810a110",
+    "label": "tp",
+    "note": "emails app has no tests anywhere (matches baseline)"
+  },
+  {
+    "repo": "golang-gin-realworld",
+    "file": "articles",
+    "line": 0,
+    "snippet": "no test files under articles",
+    "fingerprint": "731a34e61962aab6",
+    "label": "tp",
+    "note": "articles package has no unit_test.go unlike sibling packages (matches baseline)"
+  },
+  {
+    "repo": "homeland",
+    "file": "app/javascript",
+    "line": 0,
+    "snippet": "no test files under app/javascript",
+    "fingerprint": "409df1839dc60982",
+    "label": "fp",
+    "note": "frontend assets/vendor JS, not unit-test material"
+  },
+  {
+    "repo": "homeland",
+    "file": "db/migrate",
+    "line": 0,
+    "snippet": "no test files under db/migrate",
+    "fingerprint": "5ad915b67ff2f393",
+    "label": "fp",
+    "note": "DB migrations; no tests by design"
+  },
+  {
+    "repo": "homeland",
+    "file": "lib/templates",
+    "line": 0,
+    "snippet": "no test files under lib/templates",
+    "fingerprint": "372ef61e6c8e046d",
+    "label": "fp",
+    "note": "scaffold generator templates; tooling"
+  },
+  {
+    "repo": "laravel-realworld",
+    "file": "app/Helpers",
+    "line": 0,
+    "snippet": "no test files under app/Helpers",
+    "fingerprint": "8c3e0884dbe5623f",
+    "label": "fp",
+    "note": "single trivial helper function"
+  },
+  {
+    "repo": "laravel-realworld",
+    "file": "app/Providers",
+    "line": 0,
+    "snippet": "no test files under app/Providers",
+    "fingerprint": "822c91bec7df54c3",
+    "label": "fp",
+    "note": "framework service providers, boilerplate wiring"
+  },
+  {
+    "repo": "laravel-realworld",
+    "file": "resources/lang",
+    "line": 0,
+    "snippet": "no test files under resources/lang",
+    "fingerprint": "acc22e4d1c6529f3",
+    "label": "fp",
+    "note": "translation strings"
+  },
+  {
+    "repo": "laravel-realworld",
+    "file": "resources/views",
+    "line": 0,
+    "snippet": "no test files under resources/views",
+    "fingerprint": "12f07dfd027805af",
+    "label": "fp",
+    "note": "blade welcome view template"
+  },
+  {
+    "repo": "nestjs-prisma-starter",
+    "file": "src/posts",
+    "line": 0,
+    "snippet": "no test files under src/posts",
+    "fingerprint": "d23dd19417c7df2a",
+    "label": "tp",
+    "note": "posts resolver has no tests; only app-level specs exist"
+  },
+  {
+    "repo": "nestjs-prisma-starter",
+    "file": "src/users",
+    "line": 0,
+    "snippet": "no test files under src/users",
+    "fingerprint": "f19768d3eebd829d",
+    "label": "tp",
+    "note": "users service/resolver has no tests"
+  },
+  {
+    "repo": "node-express-boilerplate",
+    "file": "src/controllers",
+    "line": 0,
+    "snippet": "no test files under src/controllers",
+    "fingerprint": "c50ce5e0f2f23921",
+    "label": "fp",
+    "note": "covered by tests/integration auth+user tests"
+  },
+  {
+    "repo": "node-express-boilerplate",
+    "file": "src/routes",
+    "line": 0,
+    "snippet": "no test files under src/routes",
+    "fingerprint": "c5d12c2d94da3632",
+    "label": "fp",
+    "note": "route wiring covered by integration tests"
+  },
+  {
+    "repo": "node-express-boilerplate",
+    "file": "src/validations",
+    "line": 0,
+    "snippet": "no test files under src/validations",
+    "fingerprint": "e49ddf0edb07fdf3",
+    "label": "fp",
+    "note": "Joi validation schemas exercised via integration tests"
+  }
+]

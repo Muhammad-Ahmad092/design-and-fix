@@ -7,7 +7,7 @@ import re
 import sys
 from typing import Any, List, Optional
 
-VERSION = "1.0.1"
+EXPECTED_VERSION = "1.0.2"
 OPENAI_KEYS = {"interface", "policy", "dependencies"}
 INTERFACE_REQUIRED = [
     "displayName", "shortDescription", "longDescription", "developerName",
@@ -38,8 +38,8 @@ def _check_asset(base: str, rel: Any, where: str, errors: List[str]) -> None:
 
 
 def _check_version(data: dict, rel: str, errors: List[str]) -> None:
-    if data.get("version") != VERSION:
-        errors.append("%s: version is %r, expected %r" % (rel, data.get("version"), VERSION))
+    if data.get("version") != EXPECTED_VERSION:
+        errors.append("%s: version is %r, expected %r" % (rel, data.get("version"), EXPECTED_VERSION))
 
 
 def _check_codex(root: str, errors: List[str]) -> None:

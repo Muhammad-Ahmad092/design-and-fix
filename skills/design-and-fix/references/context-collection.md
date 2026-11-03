@@ -19,13 +19,15 @@ If the agent cannot ask questions (headless, exec or CI run, or the user said "d
 
 | Mode | Item | Default |
 |---|---|---|
-| Mode 1 | Scale | 10k MAU at launch / 100k in 12 months, peak 20 req/s |
-| Mode 1 | Team | team of 3 mid-level |
+| Mode 1 | Workload (scale) | 10k MAU at launch / 100k in 12 months, peak 20 req/s |
+| Mode 1 | Team size | team of 3 mid-level |
 | Mode 1 | Stack | Whatever the request names, else TypeScript + PostgreSQL |
+| Mode 1 | Deployment environment | One cloud region, managed containers + managed PostgreSQL |
 | Mode 1 | Latency | p95 < 300 ms |
 | Mode 1 | Availability | 99.9% |
-| Mode 1 | Compliance | No special compliance |
-| Mode 1 | Cost | Cost-sensitive |
+| Mode 1 | Data sensitivity | Basic personal data (name, email); no payments or health data; no special compliance |
+| Mode 1 | Budget | Cost-sensitive |
+| Mode 1 | Operational constraints | No dedicated ops person: managed services, no self-run clusters |
 | Mode 2 | Scope | top 3 non-overlapping candidate folders by LOC (prefer depth-2 folders over their parent; `candidate_folders[].approx_loc` from the scanner) |
 | Mode 2 | Pain points | None stated |
 | Mode 2 | Constraints | None |
@@ -35,13 +37,16 @@ Example line in the output: `- Scale: 10k MAU at launch, 100k in 12 months, peak
 
 ## Mode 1: New Project Questions
 
+Requirements capture: the answers (or defaults) form a requirements list of Workload, Deployment environment, Budget, Team size, Data sensitivity, Latency, Availability and Operational constraints. Each item becomes a row of Requirements → Decisions in `01-system-design.md`.
+
 | # | Topic | Example ask | Why it matters |
 |---|---|---|---|
-| 1 | Scale | Users, requests/sec, data volume at launch and in 12 months | Drives pattern, storage, caching and Capacity Estimates |
-| 2 | Stack | Preferred or forbidden languages, frameworks, cloud | Avoids recommending unusable tech |
-| 3 | Team | Size, seniority, existing skills | Sets the operational complexity the team can carry |
-| 4 | Non-functional | Latency, availability, compliance, cost sensitivity | Drives failure-mode, security and scaling decisions |
-| 5 | Timeline / budget | Launch date, infra budget | Decides build-vs-buy and Deployment & Cost |
+| 1 | Workload | Users, requests/sec, data volume at launch and in 12 months | Drives pattern, storage, caching and Capacity Estimates |
+| 2 | Stack + deployment environment | Preferred or forbidden languages; cloud, on-prem or edge; managed services allowed? | Avoids recommending unusable tech or hosting |
+| 3 | Team size | Size, seniority, who is on call | Sets the operational complexity the team can carry |
+| 4 | Latency + availability | p95 target, uptime target, peak events | Drives failure-mode and scaling decisions |
+| 5 | Data sensitivity | PII, payments, health data, compliance (GDPR, PCI, HIPAA) | Sets the depth of Security & Threat Model |
+| 6 | Budget + operational constraints | Infra budget, launch date, ops limits (no Kubernetes, one region) | Decides build-vs-buy, Deployment & Cost and proportionality |
 
 ## Mode 2: Scan First, Then Ask
 
@@ -54,6 +59,8 @@ Run the scanner before asking anything (commands in `SKILL.md`, Step 2): `--fold
 | 3 | Constraints | Cannot change X, must stay on Y, frozen contracts | Prevents unusable recommendations |
 | 4 | Scale | Current traffic and growth expectation | Calibrates Scalability scoring |
 
+Write data sensitivity and latency facts on the `> Context:` line with the rubric's keywords when they apply (`payments`, `PII`, `real-time`): they set category weights (`references/health-score-rubric.md`, Context Weights). Stating an absence is safe: `no PII` or `not real-time` raises nothing.
+
 If the user already named the folders, skip question 1: run the `--scope` scan first (its output still carries whole-root `detected_stack` and `candidate_folders`) and decide Quick mode before asking anything, so Quick's 3-question limit holds. Non-interactive with no named scope: the default scope above, recorded on the `> Scope:` line, e.g. `> Scope: services/payments, services/orders, App (Assumed (non-interactive))`.
 
 ## Batched Message Template
@@ -61,11 +68,12 @@ If the user already named the folders, skip question 1: run the `--scope` scan f
 ```
 Before I start, a few details (answer what you can, say "you decide" for the rest):
 
-1. Scale: expected users / traffic / data volume?
-2. Stack: any preferred or forbidden technologies?
-3. Team: size and experience level?
-4. Non-functional: latency, availability, compliance, cost limits?
-5. Timeline / budget pressure?
+1. Workload: expected users / traffic / data volume, now and in 12 months?
+2. Stack and hosting: preferred or forbidden technologies, cloud or on-prem?
+3. Team: size, experience, who runs it in production?
+4. Latency and availability targets?
+5. Data sensitivity: personal, payment or health data? Any compliance?
+6. Budget, launch date and operational limits?
 ```
 
 For Mode 2, use the four Mode 2 questions, with the focus question listing the scanned candidates.

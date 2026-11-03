@@ -1,0 +1,182 @@
+[
+  {
+    "repo": "chi",
+    "file": "_examples/hello-world",
+    "line": 0,
+    "snippet": "no test files under _examples/hello-world",
+    "fingerprint": "423d9ced20f80238",
+    "label": "fp",
+    "note": "chi _examples demo program; examples are not expected to have tests."
+  },
+  {
+    "repo": "chi",
+    "file": "_examples/logging",
+    "line": 0,
+    "snippet": "no test files under _examples/logging",
+    "fingerprint": "099610d9fa077739",
+    "label": "fp",
+    "note": "chi _examples demo program (logging); examples are not expected to have tests."
+  },
+  {
+    "repo": "create-t3-turbo",
+    "file": "apps/tanstack-start",
+    "line": 0,
+    "snippet": "no test files under apps/tanstack-start",
+    "fingerprint": "6205180521cc17f9",
+    "label": "tp",
+    "note": "TanStack Start app with no tests; the whole monorepo has no test files."
+  },
+  {
+    "repo": "create-t3-turbo",
+    "file": "tooling/tailwind",
+    "line": 0,
+    "snippet": "no test files under tooling/tailwind",
+    "fingerprint": "4cc40a3e8b872b97",
+    "label": "fp",
+    "note": "Tailwind theme/config package (tooling/tailwind); configuration by design."
+  },
+  {
+    "repo": "django",
+    "file": "django/core",
+    "line": 0,
+    "snippet": "no test files under django/core",
+    "fingerprint": "1e603b1289fae330",
+    "label": "fp",
+    "note": "django/core is tested in the repo-root tests/ tree (e.g. tests/cache, tests/mail, tests/management...)."
+  },
+  {
+    "repo": "django",
+    "file": "django/forms",
+    "line": 0,
+    "snippet": "no test files under django/forms",
+    "fingerprint": "1a38ca0fd1d671a6",
+    "label": "fp",
+    "note": "django/forms is tested in tests/forms_tests/ at the repo root."
+  },
+  {
+    "repo": "django",
+    "file": "django/views",
+    "line": 0,
+    "snippet": "no test files under django/views",
+    "fingerprint": "8aef427ba3e1c8bd",
+    "label": "fp",
+    "note": "django/views is tested in tests/view_tests/ and tests/generic_views/ at the repo root."
+  },
+  {
+    "repo": "django-styleguide-example",
+    "file": "config/settings",
+    "line": 0,
+    "snippet": "no test files under config/settings",
+    "fingerprint": "07f444c01c36a182",
+    "label": "fp",
+    "note": "Django settings modules (config/settings); configuration by design."
+  },
+  {
+    "repo": "django-styleguide-example",
+    "file": "styleguide_example/emails",
+    "line": 0,
+    "snippet": "no test files under styleguide_example/emails",
+    "fingerprint": "2a85605b8810a110",
+    "label": "tp",
+    "note": "emails app (services.py email_send/email_failed, tasks) has no tests anywhere in the project."
+  },
+  {
+    "repo": "django-styleguide-example",
+    "file": "styleguide_example/tasks",
+    "line": 0,
+    "snippet": "no test files under styleguide_example/tasks",
+    "fingerprint": "bf0c2e0f09341979",
+    "label": "unsure",
+    "note": "Celery app config and a setup_periodic_tasks command; mostly wiring, little testable logic."
+  },
+  {
+    "repo": "flask",
+    "file": "src/flask",
+    "line": 0,
+    "snippet": "no test files under src/flask",
+    "fingerprint": "df3e645ab37a0829",
+    "label": "fp",
+    "note": "Flask's tests live in the repo-root tests/ folder (review2 case)."
+  },
+  {
+    "repo": "full-stack-fastapi-template",
+    "file": "backend/app",
+    "line": 0,
+    "snippet": "no test files under backend/app",
+    "fingerprint": "0dfd0887196886b2",
+    "label": "fp",
+    "note": "Backend tests live in the sibling backend/tests/ folder (api, crud, utils)."
+  },
+  {
+    "repo": "full-stack-fastapi-template",
+    "file": "frontend/src",
+    "line": 0,
+    "snippet": "no test files under frontend/src",
+    "fingerprint": "1f53e525af60a5fb",
+    "label": "fp",
+    "note": "Frontend tests live in the sibling frontend/tests/ folder (Playwright specs)."
+  },
+  {
+    "repo": "golang-gin-realworld",
+    "file": "articles",
+    "line": 0,
+    "snippet": "no test files under articles",
+    "fingerprint": "731a34e61962aab6",
+    "label": "tp",
+    "note": "articles package (models, serializers, validators, routers) has no unit_test.go, unlike common/ and users/."
+  },
+  {
+    "repo": "itsdangerous",
+    "file": "src/itsdangerous",
+    "line": 0,
+    "snippet": "no test files under src/itsdangerous",
+    "fingerprint": "554cf927cacf8aa0",
+    "label": "fp",
+    "note": "itsdangerous tests live in the repo-root tests/ folder."
+  },
+  {
+    "repo": "nestjs-prisma-starter",
+    "file": "prisma/migrations",
+    "line": 0,
+    "snippet": "no test files under prisma/migrations",
+    "fingerprint": "f990e9aec92f0ae9",
+    "label": "fp",
+    "note": "Prisma SQL migrations; no tests by design."
+  },
+  {
+    "repo": "nestjs-prisma-starter",
+    "file": "src/common",
+    "line": 0,
+    "snippet": "no test files under src/common",
+    "fingerprint": "a704fa39732abccf",
+    "label": "unsure",
+    "note": "Shared DTOs, config, decorators and pagination types; mostly declarative, little logic to test."
+  },
+  {
+    "repo": "node-express-boilerplate",
+    "file": "src/config",
+    "line": 0,
+    "snippet": "no test files under src/config",
+    "fingerprint": "bea314837d696313",
+    "label": "fp",
+    "note": "Config modules (env config, logger, passport, roles); configuration by design."
+  },
+  {
+    "repo": "node-express-boilerplate",
+    "file": "src/docs",
+    "line": 0,
+    "snippet": "no test files under src/docs",
+    "fingerprint": "ac658ac84d96f73a",
+    "label": "fp",
+    "note": "Swagger/OpenAPI definition files; documentation, not logic."
+  },
+  {
+    "repo": "node-express-boilerplate",
+    "file": "src/middlewares",
+    "line": 0,
+    "snippet": "no test files under src/middlewares",
+    "fingerprint": "8b15ae06cbf58011",
+    "label": "fp",
+    "note": "Middlewares are tested in the repo-root tests/unit/middlewares/ (error.test.js) and via integration tests."
+  }
+]

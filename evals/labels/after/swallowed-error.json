@@ -1,0 +1,182 @@
+[
+  {
+    "repo": "create-t3-turbo",
+    "file": "packages/ui/src/theme.tsx",
+    "line": 36,
+    "snippet": "} catch {",
+    "fingerprint": "9f4e2b407c807b9c",
+    "label": "fp",
+    "note": "best-effort localStorage write, commented"
+  },
+  {
+    "repo": "django",
+    "file": "django/contrib/contenttypes/fields.py",
+    "line": 619,
+    "snippet": "except (AttributeError, KeyError):",
+    "fingerprint": "e5adcf8217594362",
+    "label": "fp",
+    "note": "cache-clear idiom, commented, nothing to clear"
+  },
+  {
+    "repo": "django",
+    "file": "django/contrib/gis/utils/__init__.py",
+    "line": 24,
+    "snippet": "except ImproperlyConfigured:",
+    "fingerprint": "d3da289bd568f91f",
+    "label": "fp",
+    "note": "optional GIS import guarded by ImproperlyConfigured, deliberate"
+  },
+  {
+    "repo": "django",
+    "file": "django/contrib/postgres/forms/array.py",
+    "line": 108,
+    "snippet": "except ValidationError:",
+    "fingerprint": "e6027952c64987c5",
+    "label": "fp",
+    "note": "has_changed try/except/else control flow"
+  },
+  {
+    "repo": "django",
+    "file": "django/contrib/staticfiles/checks.py",
+    "line": 17,
+    "snippet": "except NotImplementedError:",
+    "fingerprint": "1f177eb6d1e64aed",
+    "label": "fp",
+    "note": "finder without check() support skipped, else branch"
+  },
+  {
+    "repo": "django",
+    "file": "django/core/files/storage/filesystem.py",
+    "line": 177,
+    "snippet": "except PermissionError:",
+    "fingerprint": "5a8c04b844181f98",
+    "label": "fp",
+    "note": "best-effort chown, PermissionError expected"
+  },
+  {
+    "repo": "django",
+    "file": "django/core/files/temp.py",
+    "line": 62,
+    "snippet": "except OSError:",
+    "fingerprint": "499cae2df49065a0",
+    "label": "fp",
+    "note": "best-effort cleanup close/unlink in temp file"
+  },
+  {
+    "repo": "django",
+    "file": "django/core/handlers/asgi.py",
+    "line": 209,
+    "snippet": "except RequestAborted:",
+    "fingerprint": "1e24a535fdb7dfeb",
+    "label": "fp",
+    "note": "commented: ignore client disconnects"
+  },
+  {
+    "repo": "django",
+    "file": "django/core/management/commands/shell.py",
+    "line": 87,
+    "snippet": "except AttributeError:",
+    "fingerprint": "100d8058d7a6f6a1",
+    "label": "fp",
+    "note": "commented: missing interactivehook ignored, matches CPython"
+  },
+  {
+    "repo": "django",
+    "file": "django/db/backends/sqlite3/schema.py",
+    "line": 53,
+    "snippet": "except sqlite3.ProgrammingError:",
+    "fingerprint": "899d40c5f13ac0df",
+    "label": "fp",
+    "note": "best-effort sqlite adapt, falls through to manual quoting"
+  },
+  {
+    "repo": "django",
+    "file": "django/db/models/fields/__init__.py",
+    "line": 2289,
+    "snippet": "except exceptions.ValidationError:",
+    "fingerprint": "bcb89c051c1432ce",
+    "label": "fp",
+    "note": "invalid IPv6 falls back to str(value), deliberate"
+  },
+  {
+    "repo": "django",
+    "file": "django/db/models/query.py",
+    "line": 2177,
+    "snippet": "except ValueError:",
+    "fingerprint": "8b1ff2d15deaa58d",
+    "label": "fp",
+    "note": "ignore translations for nonexistent columns, else branch"
+  },
+  {
+    "repo": "django",
+    "file": "django/db/utils.py",
+    "line": 244,
+    "snippet": "except AttributeError:",
+    "fingerprint": "1e62d1c783b6aa53",
+    "label": "fp",
+    "note": "commented: router lacks method, skip to next"
+  },
+  {
+    "repo": "django",
+    "file": "django/utils/translation/__init__.py",
+    "line": 154,
+    "snippet": "except TypeError:",
+    "fingerprint": "a406732c917ca5c5",
+    "label": "fp",
+    "note": "commented: string has no placeholder"
+  },
+  {
+    "repo": "flask",
+    "file": "src/flask/cli.py",
+    "line": 1106,
+    "snippet": "except ValueError:",
+    "fingerprint": "0364dffb563965ac",
+    "label": "fp",
+    "note": "unknown sort key keeps default order, CLI listing"
+  },
+  {
+    "repo": "flask",
+    "file": "src/flask/config.py",
+    "line": 163,
+    "snippet": "except Exception:",
+    "fingerprint": "60b128cef0ddaa47",
+    "label": "fp",
+    "note": "commented intentional fallback to string"
+  },
+  {
+    "repo": "homeland",
+    "file": "lib/homeland.rb",
+    "line": 98,
+    "snippet": "rescue ActiveRecord::NoDatabaseError",
+    "fingerprint": "73b7a1992d00c13e",
+    "label": "fp",
+    "note": "NoDatabaseError ignored during plugin migrate at boot, deliberate"
+  },
+  {
+    "repo": "homeland",
+    "file": "lib/homeland/plugin.rb",
+    "line": 70,
+    "snippet": "rescue LoadError",
+    "fingerprint": "d7b95b0b7483a440",
+    "label": "tp",
+    "note": "plugin require failure (LoadError) silently dropped with no log or comment; broken plugin vanishes unnoticed"
+  },
+  {
+    "repo": "itsdangerous",
+    "file": "src/itsdangerous/timed.py",
+    "line": 114,
+    "snippet": "except Exception:",
+    "fingerprint": "0e17856340202f58",
+    "label": "fp",
+    "note": "decode failure handled, BadTimeSignature raised below"
+  },
+  {
+    "repo": "laravel-realworld",
+    "file": "resources/assets/js/bootstrap.js",
+    "line": 14,
+    "snippet": "} catch (e) {}",
+    "fingerprint": "c832935106c61d80",
+    "label": "fp",
+    "note": "stock Laravel scaffold frontend bootstrap, optional jquery/bootstrap require"
+  }
+]

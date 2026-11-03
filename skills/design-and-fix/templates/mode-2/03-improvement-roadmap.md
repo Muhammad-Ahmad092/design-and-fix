@@ -2,6 +2,8 @@
 
 > Scope: <folders / services audited>
 > Context: <scale>, <key constraint>
+> Format: 1.0.2
+> Audit: plugin 1.0.2 · scanner schema 3 · rev <sha|unknown> · config <config_hash> · <timestamp>
 
 Every issue ID from `01` and `02` appears in exactly one `Action (IDs)` row of the three horizon tables; Suggested Sequence may cite IDs again.
 Placement: S -> Quick Wins, M -> Medium-term, L/XL -> Long-term.

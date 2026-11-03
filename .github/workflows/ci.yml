@@ -2,38 +2,63 @@ name: CI
 
 on:
   push:
+    branches: [main]
+    tags: ["v*"]
   pull_request:
+
+permissions:
+  contents: read
 
 jobs:
   test:
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest]
-        python: ["3.9", "3.12"]
+        python: ["3.9", "3.11", "3.12", "3.13", "3.14"]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: ${{ matrix.python }}
       - name: Unit tests
         run: python -m unittest discover -s tests -v
       - name: Validate manifests
         run: python tests/validate_manifests.py
+      - name: Rule docs are in sync
+        run: python skills/design-and-fix/scripts/gen_rule_docs.py --check
       - name: Scan fixture repo
         run: python skills/design-and-fix/scripts/scan_repo.py tests/fixtures/monorepo --no-git
 
+  clean-install:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: "3.12"
+      - name: Copy the skill alone into a temp dir and scan from there
+        run: |
+          set -e
+          FIXTURE="$PWD/tests/fixtures/monorepo"
+          TMP="$(mktemp -d)"
+          cp -r skills/design-and-fix "$TMP/design-and-fix"
+          cd "$TMP/design-and-fix"
+          python scripts/scan_repo.py "$FIXTURE" --no-git > "$TMP/scan.json"
+          python -c "import json,sys; d=json.load(open(sys.argv[1])); assert d['schema_version']==3, d['schema_version']; print('ok', len(d['signals']), 'signals')" "$TMP/scan.json"
+
   claude-validate:
     runs-on: ubuntu-latest
-    continue-on-error: true
+    timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: "20"
       - name: Install Claude Code
-        run: npm install -g @anthropic-ai/claude-code
+        run: npm install -g @anthropic-ai/claude-code@2.1.312
       - name: Validate plugin
         run: claude plugin validate . --strict
-        continue-on-error: true

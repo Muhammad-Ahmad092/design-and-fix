@@ -1,10 +1,28 @@
-# Internal planning docs (design spec, plan, review) - kept locally, not shipped
+# Internal planning docs (design specs, plans, review notes) - kept locally, never published
 docs/superpowers/
+review1.md
+review2.md
 PUSH-GUIDE.md
+REMAINING-WORK.md
+
+# Development workspaces and downloaded data (normally kept outside the repo)
+.sdd-*/
+.superpowers/
+design-and-fix-corpus/
+graphify-out/
 
 # Plugin output when the skill is run on this repo itself
-docs/
+docs/architecture/
 docs/adr/
+
+# Local eval runs (raw transcripts) and scanner output
+evals/runs/
+scan.json
+!examples/**/scan.json
+*.sarif
+
+# Local tool settings
+.claude/
 
 # Python
 __pycache__/
@@ -12,9 +30,23 @@ __pycache__/
 .venv/
 venv/
 .pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+build/
+dist/
+*.egg-info/
 
 # Editors and OS
 .vscode/
 .idea/
+*.swp
+*~
 .DS_Store
 Thumbs.db
+desktop.ini
+
+# Logs and archives
+*.log
+*.zip

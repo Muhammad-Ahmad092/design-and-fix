@@ -16,7 +16,7 @@ Step 5, after the output files exist. The user can go deeper on, revisit, or cha
 | "Change constraint Y" (scale, stack, team, budget) | Update Assumptions & Constraints (or the `> Context:` line), then re-check only sections that depend on Y |
 | "Generate the tech stack comparison" | Create `04-tech-stack-comparison.md` from `templates/optional/` |
 | "Write an ADR for X" (Mode 2 / Quick) | Write one ADR per `references/adr-guide.md` |
-| "full" / "detailed" after a Quick run | Not a refinement: run the full workflow (it archives the quick file first) |
+| "full" / "detailed" / "complete" after a Quick run | Not a refinement: run the full workflow (it archives the quick file first) |
 | "Re-run the audit" / "audit again" | Not a refinement: full re-run with archive and diff |
 
 ## Topic-to-Section Map
@@ -29,13 +29,14 @@ Step 5, after the output files exist. The user can go deeper on, revisit, or cha
 | Components, C4 Container | `01-system-design.md` | Core Components |
 | Main request flow | `01-system-design.md` | Data Flow |
 | QPS, storage, bandwidth, cache size | `01-system-design.md` | Capacity Estimates |
-| Architectural choices | `01-system-design.md` | Key Architectural Decisions (+ matching ADR) |
+| Architectural choices, options compared | `01-system-design.md` | Key Architectural Decisions (+ matching ADR) |
+| Which decision meets which requirement | `01-system-design.md` | Requirements → Decisions |
 | Monolith vs microservices | `02-architecture-decisions.md` | Pattern Choice |
 | Scaling, caching layers, load balancing | `02-architecture-decisions.md` | Scaling Strategy |
 | Database choice | `02-architecture-decisions.md` | Data Storage |
 | Entities, indexes, ER diagram | `02-architecture-decisions.md` | Data Model |
 | Failures, resilience | `02-architecture-decisions.md` | Failure Modes |
-| Threats, auth hardening | `02-architecture-decisions.md` | Security |
+| Threats, trust boundaries, auth hardening | `02-architecture-decisions.md` | Security & Threat Model |
 | Logs, metrics, traces, alerts | `02-architecture-decisions.md` | Observability |
 | Hosting, monthly cost | `02-architecture-decisions.md` | Deployment & Cost |
 | REST/GraphQL/gRPC | `03-api-design-and-optimization.md` | API Style |
@@ -56,7 +57,7 @@ Step 5, after the output files exist. The user can go deeper on, revisit, or cha
 | Endpoint groups | `02-api-optimization.md` | API Health Snapshot |
 | Routes found | `02-api-optimization.md` | Endpoint Inventory |
 | Caching wins | `02-api-optimization.md` | Caching Opportunities |
-| Cheap vs expensive fixes | `02-api-optimization.md` | Quick Wins vs Structural Fixes |
+| Cheap vs expensive fixes, recommendation risk | `02-api-optimization.md` | Quick Wins vs Structural Fixes |
 | Order of work, timeline | `03-improvement-roadmap.md` | `Action (IDs)` row with that ID / Suggested Sequence |
 
 ### Quick
@@ -92,7 +93,8 @@ Non-interactive: wherever this file says to ask (ambiguous topic, out-of-scope r
 5. **IDs are stable.** Never renumber issues. A new issue gets the next unused number for its prefix; a removed issue's ID is never reused.
 6. **Mode 2 consistency.** If a refinement changes an issue's severity or adds/removes an issue, update the sub-score and headline from the rubric lookup table, keep the ID in exactly one roadmap `Action (IDs)` row, and tell the user in one line.
 7. **Mode 1 decisions.** If a revisited decision changes, update the Key Architectural Decisions row and write a superseding ADR (`references/adr-guide.md`), unless the user opted out of ADRs.
-8. **Report briefly.** Reply with file, section changed, one-line summary and impacted sections. Do not repeat unchanged content.
+8. **Lint the edited file.** Run `lint_output.py` on the folder (`--repo <root>` for audits) and fix what it reports.
+9. **Report briefly.** Reply with file, section changed, one-line summary and impacted sections. Do not repeat unchanged content.
 
 ## Reply Format
 

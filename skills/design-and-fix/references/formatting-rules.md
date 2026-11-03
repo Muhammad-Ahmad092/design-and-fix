@@ -28,14 +28,14 @@ Every row or bullet that recommends something ends with a short reason.
 
 ## Standard Headers
 
-Use these exact names, in this order. Omit a header only when the section does not apply. Never rename headers. A header marked "(re-run only)" appears only when a previous run was archived; the marker is not part of the heading.
+Use these exact names, in this order. Omit a header only when the section does not apply (no empty filler sections); the linter accepts omitted headers but flags renamed, unknown or out-of-order ones. Never rename headers. A header marked "(re-run only)" appears only when a previous run was archived; the marker is not part of the heading.
 
 ### Mode 1
 
 | File | Headers (in order) |
 |---|---|
-| `01-system-design.md` | Overview, System Context, Core Components, Data Flow, Capacity Estimates, Key Architectural Decisions, Assumptions & Constraints |
-| `02-architecture-decisions.md` | Pattern Choice, Scaling Strategy, Data Storage, Data Model, Failure Modes, Security, Observability, Deployment & Cost, Trade-offs Accepted |
+| `01-system-design.md` | Overview, System Context, Core Components, Data Flow, Capacity Estimates, Key Architectural Decisions, Requirements → Decisions, Assumptions & Constraints |
+| `02-architecture-decisions.md` | Pattern Choice, Scaling Strategy, Data Storage, Data Model, Failure Modes, Security & Threat Model, Observability, Deployment & Cost, Trade-offs Accepted |
 | `03-api-design-and-optimization.md` | API Style, Endpoint Conventions, Endpoints, Auth & Rate Limiting, Caching Strategy, Performance Notes |
 
 ### Mode 2
@@ -46,7 +46,7 @@ Use these exact names, in this order. Omit a header only when the section does n
 | `02-api-optimization.md` | API Health Snapshot, Endpoint Inventory, Issues Found, Caching Opportunities, Quick Wins vs Structural Fixes |
 | `03-improvement-roadmap.md` | Quick Wins (days), Medium-term (weeks), Long-term (months/quarters), Suggested Sequence |
 
-The health-score heading carries the result: `## Architecture Health Score: <Band> (<X.X> / 10)` (see `references/health-score-rubric.md`).
+The health-score heading carries the result: `## Architecture Health Score: <Band> (<X.X> / 10)` (see `references/health-score-rubric.md`). On a re-run, `### Score Trend` sits inside Change Since Last Audit (output of `scripts/compare_audits.py`).
 
 ### Quick
 
@@ -67,6 +67,28 @@ The health-score heading carries the result: `## Architecture Health Score: <Ban
 |---|---|
 | `NNNN-<kebab-title>.md` | Context, Decision, Consequences |
 
+Format 1.0.2 ADRs add `## Alternatives` (after Context) and `## Assumptions` (last): Context, Alternatives, Decision, Consequences, Assumptions.
+
+### Required Headers
+
+These always apply and are never omitted (the linter reads this list). ADR sections are all required.
+
+- Required in `01-architecture-issues.md`: Architecture Health Score
+- Required in `02-api-optimization.md`: Issues Found
+- Required in `03-improvement-roadmap.md`: Suggested Sequence
+- Required in `quick-audit.md`: Health Band
+- Required in `01-system-design.md`: Overview, Assumptions & Constraints
+- Required in `quick-design.md`: Overview, Assumptions & Constraints
+
+### Format 1.0.1 (archived runs only)
+
+Files without `> Format: 1.0.2` were written with these older headers; the linter accepts them so archived runs still lint. Never write them for new output.
+
+| File (1.0.1) | Headers (in order) |
+|---|---|
+| `1.0.1/01-system-design.md` | Overview, System Context, Core Components, Data Flow, Capacity Estimates, Key Architectural Decisions, Assumptions & Constraints |
+| `1.0.1/02-architecture-decisions.md` | Pattern Choice, Scaling Strategy, Data Storage, Data Model, Failure Modes, Security, Observability, Deployment & Cost, Trade-offs Accepted |
+
 ## File Skeleton
 
 ```markdown
@@ -74,6 +96,8 @@ The health-score heading carries the result: `## Architecture Health Score: <Ban
 
 > Scope: <one line: project or folders covered>
 > Context: <one line: scale, team, key constraints>
+> Format: 1.0.2
+> Audit: plugin 1.0.2 · scanner schema 3 · rev <sha|unknown> · config <config_hash> · <timestamp>
 
 ## <Section 1>
 ...
@@ -81,6 +105,8 @@ The health-score heading carries the result: `## Architecture Health Score: <Ban
 
 - One `#` title per file, `##` for sections, `###` only if a section needs sub-parts.
 - Scope and Context lines are mandatory at the top of every file except ADRs, which use `Date:` and `Status:` lines (template in `templates/adr/`).
+- `> Format: 1.0.2` goes in every file, ADRs included; it switches on the 1.0.2 linter checks.
+- `> Audit:` values come from the scanner JSON `meta` block (`plugin_version`, `schema_version`, `repo_revision`, `timestamp`). The scanner always emits `config_hash` (an empty config still has one), so write `· config <config_hash>` after the revision on every scanned audit (the skeleton shows the position). Add `· <harness/model>` when known. Design files without a scan write `scanner not run`. Without a scan, write `rev unknown` unless the user gave the revision (you run no `git` command), and take the timestamp from the harness when known, or leave it out. Rule versions are recorded only in the scanner JSON `meta`; the Audit line does not repeat them.
 
 ## Issue IDs
 
@@ -113,18 +139,32 @@ The health-score heading carries the result: `## Architecture Health Score: <Ban
 
 ### Issue Table (Critical Issues, High Issues)
 
-| ID | Issue | Evidence | Root cause | Consequence | Fix | Why |
-|---|---|---|---|---|---|---|
+| ID | Status | Source | Issue | Evidence | Root cause | Consequence | Fix | Verify | Why |
+|---|---|---|---|---|---|---|---|---|---|
 
 ### Combined Issue Table (Medium / Low Issues, Issues Found)
 
-| ID | Severity | Issue | Evidence | Root cause | Consequence | Fix | Why |
-|---|---|---|---|---|---|---|---|
+| ID | Severity | Status | Source | Issue | Evidence | Root cause | Consequence | Fix | Verify | Why |
+|---|---|---|---|---|---|---|---|---|---|---|
 
 ### Quick Audit Issue Table (Top Issues)
 
-| ID | Severity | Issue | Evidence | Fix | Why |
-|---|---|---|---|---|---|
+| ID | Severity | Status | Source | Issue | Evidence | Fix | Verify | Why |
+|---|---|---|---|---|---|---|---|---|
+
+### Finding Fields
+
+| Field | Values / rule |
+|---|---|
+| Status | `confirmed` (you read the code, the defect is visible), `likely` (strong evidence, depends on runtime), `needs-review` (heuristic, could not decide), `not-reproducible` (re-run only: the previous run's issue is gone; the row stays for this run only, is not scored, needs no Verify, detail line or roadmap row, its Evidence may be stale, and `compare_audits.py` counts it as Fixed) |
+| Source | `scanner:<rule>` (e.g. `scanner:http-no-timeout`; bare `scanner` is not allowed), `agent` (found by reading), `scanner+agent` (optionally `scanner+agent:<rule>`) |
+| Evidence | `path:line[-line]`, several separated by `, `; secrets never copied. For an absence (no tests, no health route, no lockfile), cite the folder or file inspected as a bare path (`services/orders/`, `services/orders/go.mod`) |
+| Root cause | short text; `RC-n` when 2+ issues share it |
+| Verify | a concrete check that proves the fix: a test, a command, a metric. Required for High and Critical; `—` allowed for Medium/Low |
+
+- **Dedup:** one issue per root cause; more locations go in Evidence. Different issues sharing a cause cite the same `RC-n`, defined once under the last issue table: `- RC-1: <cause> (<IDs>)`.
+- **Detail list:** under each Critical and High table, one line per issue, Medium/Low none: `- SEC-001: Observed: <what the code shows>. Inference: <what you conclude>. Limitations: <counter-evidence or what could not be checked>.`
+- Severity comes from Severity Definitions in `references/mode-2-existing-project.md`; the scanner's `severity_hint` is a starting point.
 
 ### Decision Table
 
@@ -137,7 +177,7 @@ The health-score heading carries the result: `## Architecture Health Score: <Ban
 |---|---|---|---|
 
 - Placement: S -> Quick Wins, M -> Medium-term, L/XL -> Long-term.
-- Suggested Sequence order: (1) Critical issues, pain-point issues first among them; (2) other pain-point issues; (3) High issues of the weakest category; (4) remaining items by Impact and Effort (high impact, low effort first).
+- Suggested Sequence order: (1) Critical issues, pain-point issues first among them; (2) other pain-point issues; (3) High issues of the weakest category; (4) remaining items by Impact and Effort (high impact, low effort first). Within a group, rank by value × confidence (`confirmed` before `likely` before `needs-review`); when a small change and a large refactor both remove the root cause, the small change goes first.
 
 ## Diagrams
 
@@ -162,7 +202,7 @@ flowchart LR
 
 - C4 Context: your system as one box plus people and external systems only. C4 Container: the containers inside your system.
 - Data Flow: Mermaid `sequenceDiagram` for the main request. Data Model: Mermaid `erDiagram`, max 8 entities.
-- Mode 2 may add one current-state container diagram in `01` only when it clarifies a System Design issue.
+- Mode 2 may add one current-state container diagram in `01` only when it clarifies a System Design issue. Put it under a `###` heading inside the Critical, High or Medium / Low Issues section that holds that SYS issue, never as a new `##` header.
 
 ## Wording Rules
 
@@ -171,6 +211,7 @@ flowchart LR
 - Numbers over adjectives (`p95 < 300 ms`, not `fast`).
 - Cite `path:line` in audit issues; mark unverified claims `Not verified`.
 - No marketing language, no preamble, no closing summary.
+- **Proportionality:** no distributed system, queue, cache, extra datastore or microservice without a stated reason tied to a requirement or a Capacity Estimates number. If nothing requires it, it is `Later` or left out.
 
 ## Length Limits
 
@@ -190,10 +231,12 @@ The OpenAPI skeleton block in `03-api-design-and-optimization.md` does not count
 ## Pre-Write Checklist
 
 - [ ] Standard headers used, in order; re-run-only headers only on re-runs
-- [ ] Scope and Context lines at the top (ADRs: Date and Status)
+- [ ] Scope, Context, Format and Audit lines at the top (ADRs: Date, Status, Format)
+- [ ] Issue rows carry Status, Source and Verify (High/Critical); High/Critical have a detail line; shared causes use `RC-n`
 - [ ] Tables for every comparison of 3+ items
 - [ ] Every recommendation has a "Why"
 - [ ] Severity, Effort and Impact use the fixed vocabulary
 - [ ] Every issue has one ID, defined once, cited with `path:line`, and sits in exactly one roadmap `Action (IDs)` row
 - [ ] Diagrams are Mermaid (ASCII only per the fallback rule), max about 12 nodes
 - [ ] No filler sections, no generic boilerplate
+- [ ] `lint_output.py docs/architecture --repo <root>` reports no findings

@@ -1,0 +1,38 @@
+[
+  {
+    "repo": "create-t3-turbo",
+    "file": "turbo/generators/config.ts",
+    "line": 64,
+    "snippet": "const version = await fetch(",
+    "fingerprint": "1d53c90974cda18f",
+    "label": "tp",
+    "note": "fetch() to npm registry with no timeout/AbortSignal (dev tooling, low impact; baseline tp)"
+  },
+  {
+    "repo": "django-styleguide-example",
+    "file": "styleguide_example/blog_examples/google_login_server_flow/raw/service.py",
+    "line": 96,
+    "snippet": "response = requests.post(self.GOOGLE_ACCESS_TOKEN_OBTAIN_URL, data=data)",
+    "fingerprint": "3eecbf75afc70143",
+    "label": "tp",
+    "note": "requests.post to Google token endpoint with no timeout in login flow (baseline tp)"
+  },
+  {
+    "repo": "django-styleguide-example",
+    "file": "styleguide_example/blog_examples/google_login_server_flow/raw/service.py",
+    "line": 109,
+    "snippet": "response = requests.get(self.GOOGLE_USER_INFO_URL, params={\"access_token\": access_token})",
+    "fingerprint": "a2865a435ff97e93",
+    "label": "tp",
+    "note": "requests.get to Google userinfo with no timeout in login flow (baseline tp)"
+  },
+  {
+    "repo": "django-styleguide-example",
+    "file": "styleguide_example/blog_examples/google_login_server_flow/sdk/services.py",
+    "line": 115,
+    "snippet": "response = requests.get(self.GOOGLE_USER_INFO_URL, params={\"access_token\": access_token})",
+    "fingerprint": "7b19cfa89e3e2743",
+    "label": "tp",
+    "note": "requests.get to Google userinfo with no timeout, sdk variant (baseline tp)"
+  }
+]

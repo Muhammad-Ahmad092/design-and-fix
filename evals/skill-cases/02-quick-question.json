@@ -1,0 +1,20 @@
+{
+  "id": "02-quick-question",
+  "prompt": "Should updating a user's email address be PUT or PATCH?",
+  "setup": {
+    "fixture": "tests/fixtures/monorepo",
+    "preexisting": {}
+  },
+  "must_exist": [],
+  "must_not_exist": [
+    "docs",
+    "docs/architecture/quick-*.md"
+  ],
+  "must_contain": {},
+  "must_not_contain": {},
+  "must_output_contain": [
+    "PATCH"
+  ],
+  "lint": false,
+  "lint_repo": false
+}

@@ -1,0 +1,10 @@
+stages: [build, deploy]
+build:
+  stage: build
+  script:
+    - npm ci
+    - npm run build
+deploy:
+  stage: deploy
+  script:
+    - ./scripts/deploy.sh

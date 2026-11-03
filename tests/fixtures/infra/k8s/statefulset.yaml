@@ -1,0 +1,16 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: db
+spec:
+  serviceName: db
+  template:
+    spec:
+      containers:
+        - name: db
+          image: registry.example.test/db:16.2
+          ports:
+            - containerPort: 5432
+          resources:
+            limits:
+              memory: 1Gi

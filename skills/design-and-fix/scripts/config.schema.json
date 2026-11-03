@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "design-and-fix scanner configuration (.design-and-fix.json)",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "Optional editor hint pointing at this schema."
+    },
+    "exclude": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "Gitignore-style globs for files and folders the scan skips entirely."
+    },
+    "include": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "Gitignore-style globs; when non-empty only matching files are scanned."
+    },
+    "rules": {
+      "type": "object",
+      "description": "Per-rule settings keyed by rule id (see docs/rules.md).",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "enabled": {"type": "boolean", "description": "false drops the rule's signals."},
+          "severity": {
+            "enum": ["Critical", "High", "Medium", "Low"],
+            "description": "Replaces the rule's severity_hint."
+          }
+        }
+      }
+    },
+    "limits": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "max_file_bytes": {"type": "integer", "minimum": 1, "default": 1048576},
+        "max_files": {"type": "integer", "minimum": 1, "default": 50000},
+        "timeout_seconds": {"type": ["number", "null"], "minimum": 0,
+                            "description": "0 or null means no timeout (the default)."}
+      }
+    },
+    "fail_on": {
+      "enum": ["Critical", "High", "Medium", "Low", "none"],
+      "default": "none",
+      "description": "Exit code 3 when a non-suppressed signal is at or above this severity."
+    },
+    "output": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "verbose": {"type": "boolean", "default": false}
+      }
+    }
+  }
+}

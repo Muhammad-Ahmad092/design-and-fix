@@ -14,6 +14,8 @@ SCRIPTS = os.path.join(REPO, "skills", "design-and-fix", "scripts")
 if SCRIPTS not in sys.path:
     sys.path.insert(0, SCRIPTS)
 
+import rubric  # noqa: E402  (needs SCRIPTS on sys.path)
+
 
 def run_cli(*args, env: Optional[Dict[str, str]] = None):
     """Run scan_repo.py as a subprocess; return (exit_code, stdout).
@@ -91,33 +93,14 @@ def header_mismatch(actual: List[str], expected: List[str],
 
 
 def subscore(severities: Iterable[str]) -> int:
-    """Category sub-score from the rubric lookup table, given its issues' severities."""
-    sev = list(severities)
-    crit, high, med = sev.count("Critical"), sev.count("High"), sev.count("Medium")
-    if crit:
-        return {1: 3, 2: 2}.get(crit, 1)
-    if high >= 3:
-        return 3
-    if high == 2:
-        return 4
-    if high == 1:
-        return 6 if med <= 2 else 5
-    if med:
-        return 8 if med <= 2 else 7
-    return 9 if sev else 10
+    """Category sub-score from the rubric lookup table (shared rubric module)."""
+    return rubric.subscore(severities)
 
 
 def overall_score(subscores: Iterable[int]) -> float:
-    """Mean of assessed sub-scores, rounded half up to one decimal."""
-    vals = list(subscores)
-    return int(sum(vals) * 10.0 / len(vals) + 0.5) / 10.0
+    """Equal-weight mean of assessed sub-scores, rounded half up to one decimal."""
+    return rubric.overall({str(i): v for i, v in enumerate(subscores)})
 
 
 def overall_band(score: float) -> str:
-    if score >= 8.0:
-        return "Healthy"
-    if score >= 6.0:
-        return "Stable with risks"
-    if score >= 4.0:
-        return "Fragile"
-    return "Unsafe"
+    return rubric.band(score)

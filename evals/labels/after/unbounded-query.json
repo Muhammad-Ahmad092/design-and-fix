@@ -1,0 +1,83 @@
+[
+  {
+    "repo": "django",
+    "file": "django/contrib/auth/backends.py",
+    "line": 78,
+    "snippet": "perms = Permission.objects.all()",
+    "fingerprint": "e336258adbddfe24",
+    "label": "fp",
+    "note": "Superuser permission set from small auth_permission table (baseline fp)"
+  },
+  {
+    "repo": "django",
+    "file": "django/contrib/gis/db/backends/postgis/introspection.py",
+    "line": 46,
+    "snippet": "SELECT * FROM geometry_columns",
+    "fingerprint": "8d8f65b011694ae3",
+    "label": "fp",
+    "note": "Introspection of PostGIS metadata views, filtered by table/column in the WHERE clause"
+  },
+  {
+    "repo": "django",
+    "file": "django/contrib/gis/db/backends/postgis/introspection.py",
+    "line": 48,
+    "snippet": "SELECT * FROM geography_columns",
+    "fingerprint": "510572e9fe7ecc71",
+    "label": "fp",
+    "note": "Same metadata query, filtered by table/column"
+  },
+  {
+    "repo": "django",
+    "file": "django/db/backends/mysql/base.py",
+    "line": 347,
+    "snippet": "SELECT REFERRING.`%s`, REFERRING.`%s` FROM `%s` as REFERRING",
+    "fingerprint": "bda22165014a4c61",
+    "label": "fp",
+    "note": "Integrity check must scan for dangling FK rows (baseline fp)"
+  },
+  {
+    "repo": "django",
+    "file": "django/db/backends/postgresql/base.py",
+    "line": 561,
+    "snippet": "qparts = [sql.SQL(\"SELECT * FROM \"), name, sql.SQL(\"(\")]",
+    "fingerprint": "ce6d00a742735d3b",
+    "label": "fp",
+    "note": "callproc builds SELECT * FROM function(args); a function call, not a table scan"
+  },
+  {
+    "repo": "django",
+    "file": "django/db/backends/sqlite3/operations.py",
+    "line": 205,
+    "snippet": ") SELECT name FROM tables;",
+    "fingerprint": "1277e2211bc657db",
+    "label": "fp",
+    "note": "Recursive CTE over sqlite_master, schema metadata; bounded"
+  },
+  {
+    "repo": "django",
+    "file": "django/db/models/sql/datastructures.py",
+    "line": 204,
+    "snippet": "SELECT * FROM \"foo\" WHERE somecond",
+    "fingerprint": "b4a95e902ad9320f",
+    "label": "fp",
+    "note": "SQL appears in a docstring example only"
+  },
+  {
+    "repo": "django",
+    "file": "django/db/models/sql/query.py",
+    "line": 855,
+    "snippet": "compute the columns to select from the database and also by the",
+    "fingerprint": "e7514182eada6be2",
+    "label": "fp",
+    "note": "Match is a docstring/comment sentence, not a query"
+  },
+  {
+    "repo": "django-styleguide-example",
+    "file": "styleguide_example/users/selectors.py",
+    "line": 23,
+    "snippet": "qs = BaseUser.objects.all()",
+    "fingerprint": "c479ccf0d4c641ef",
+    "label": "fp",
+    "note": "Selector returns lazy QuerySet that callers paginate/filter (baseline fp)"
+  }
+]

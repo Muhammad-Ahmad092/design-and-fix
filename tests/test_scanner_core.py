@@ -49,7 +49,7 @@ class ScannerCoreTests(unittest.TestCase):
 
     def test_schema_keys(self):
         r = scan(MONO, use_git=False)
-        self.assertEqual(r["schema_version"], 2)
+        self.assertEqual(r["schema_version"], 3)
         for k in ("root", "scope", "detected_stack", "frameworks", "candidate_folders",
                   "import_graph", "routes", "hotspots", "signals", "summary", "notes"):
             self.assertIn(k, r)
@@ -151,6 +151,67 @@ class ScannerCoreTests(unittest.TestCase):
     def test_scan_repo_uses_lf(self):  # final review 17
         with open(os.path.join(SCRIPTS, "scan_repo.py"), "rb") as fh:
             self.assertNotIn(b"\r\n", fh.read())
+
+
+
+def _tree(root, files):
+    for rel, text in files.items():
+        path = os.path.join(root, *rel.split("/"))
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "w", encoding="utf-8") as fh:
+            fh.write(text)
+
+
+class R2StackTests(unittest.TestCase):
+    def test_frameworks_from_parent_manifest(self):  # R2-fp2
+        tree = {"pyproject.toml": '[project]\ndependencies = ["flask>=3"]\n',
+                "src/pkg/a.py": "x = 1\n"}
+        with tempfile.TemporaryDirectory() as d:
+            _tree(d, tree)
+            # Scope below the scan root: manifests at the scan root are read.
+            self.assertIn("flask", scan(d, scope=["src/pkg"], use_git=False)["frameworks"])
+            # Scan root below the repo root (.git above it) with --scope: ancestors up to .git are read.
+            os.makedirs(os.path.join(d, ".git"))
+            r = scan(os.path.join(d, "src"), scope=["pkg"], use_git=False)
+            self.assertIn("flask", r["frameworks"])
+            self.assertIn("Python", r["detected_stack"])
+            # detect_stack reads manifests in the extra directories it is given.
+            files = walk(os.path.join(d, "src"))
+            self.assertEqual(detect_stack(files)[1], [])
+            self.assertEqual(detect_stack(files, extra_manifest_dirs=[d])[1], ["flask"])
+        with tempfile.TemporaryDirectory() as d:
+            _tree(d, tree)
+            # No repo root above the scan root: nothing outside the scan root is read.
+            r = scan(os.path.join(d, "src"), scope=["pkg"], use_git=False)
+            self.assertNotIn("flask", r["frameworks"])
+
+
+# ---------------------------------------------------------------- release review 1.0.2 (area A)
+class CliArgumentReviewTests(unittest.TestCase):  # review M6, M7
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        self.base = self._tmp.name
+        self.root = os.path.join(self.base, "root")
+        _tree(self.root, {"a/x.py": "x = 1\n", "b/y.py": "y = 1\n"})
+        _tree(self.base, {"sib/z.py": "z = 1\n"})
+
+    def test_negative_top_and_depth_rejected(self):
+        for flag in ("--top", "--list-depth", "--max-depth"):
+            code, _ = run_cli(self.root, "--no-git", "--quiet", flag, "-1")
+            self.assertEqual(code, 2, flag)
+        code, out = run_cli(self.root, "--no-git", "--quiet", "--top", "0")
+        self.assertEqual(code, 0)
+        self.assertEqual(json.loads(out)["candidate_folders"], [])
+
+    def test_relative_scope_leaving_root_is_an_error(self):
+        for scope in ("../sib", "a/../../sib", os.path.join(self.base, "sib")):
+            code, out = run_cli(self.root, "--no-git", "--quiet", "--scope", scope)
+            self.assertEqual(code, 1, scope)
+            self.assertIn("scope outside root", json.loads(out)["error"])
+        code, out = run_cli(self.root, "--no-git", "--quiet", "--scope", "b/../a")
+        self.assertEqual(code, 0)
+        self.assertEqual(json.loads(out)["scope"], ["a"])
 
 
 if __name__ == "__main__":

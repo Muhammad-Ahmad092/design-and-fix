@@ -1,0 +1,430 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "design-and-fix scan output (schema 3)",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "root",
+    "scope",
+    "detected_stack",
+    "frameworks",
+    "candidate_folders",
+    "import_graph",
+    "routes",
+    "hotspots",
+    "signals",
+    "summary",
+    "notes",
+    "skipped_files",
+    "meta"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "enum": [
+        3
+      ]
+    },
+    "root": {
+      "type": "string"
+    },
+    "scope": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "detected_stack": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "frameworks": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "candidate_folders": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "path",
+          "file_count",
+          "approx_loc"
+        ],
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "file_count": {
+            "type": "integer"
+          },
+          "approx_loc": {
+            "type": "integer"
+          }
+        },
+        "additionalProperties": true
+      }
+    },
+    "import_graph": {
+      "type": "object",
+      "required": [
+        "modules",
+        "edges",
+        "cycles",
+        "god_modules"
+      ],
+      "properties": {
+        "modules": {
+          "type": "integer"
+        },
+        "edges": {
+          "type": "integer"
+        },
+        "cycles": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "god_modules": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "file",
+              "fan_in",
+              "fan_out",
+              "loc"
+            ],
+            "properties": {
+              "file": {
+                "type": "string"
+              },
+              "fan_in": {
+                "type": "integer"
+              },
+              "fan_out": {
+                "type": "integer"
+              },
+              "loc": {
+                "type": "integer"
+              },
+              "fan_in_non_test": {
+                "type": "integer"
+              }
+            },
+            "additionalProperties": true
+          }
+        },
+        "cycles_meta": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "via_init": {
+                "type": "boolean"
+              }
+            },
+            "additionalProperties": true
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "routes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "method",
+          "path",
+          "file",
+          "line",
+          "framework",
+          "auth_detected"
+        ],
+        "properties": {
+          "method": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          },
+          "file": {
+            "type": "string"
+          },
+          "line": {
+            "type": "integer"
+          },
+          "framework": {
+            "type": "string"
+          },
+          "auth_detected": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": true
+      }
+    },
+    "hotspots": {
+      "type": "object",
+      "required": [
+        "available",
+        "since",
+        "files",
+        "note"
+      ],
+      "properties": {
+        "available": {
+          "type": "boolean"
+        },
+        "since": {
+          "type": "string"
+        },
+        "files": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "file",
+              "commits",
+              "loc",
+              "score"
+            ],
+            "properties": {
+              "file": {
+                "type": "string"
+              },
+              "commits": {
+                "type": "integer"
+              },
+              "loc": {
+                "type": "integer"
+              },
+              "score": {
+                "type": "integer"
+              }
+            },
+            "additionalProperties": true
+          }
+        },
+        "note": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": true
+    },
+    "signals": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "rule",
+          "category",
+          "severity_hint",
+          "file",
+          "line",
+          "snippet",
+          "confidence",
+          "fingerprint",
+          "rule_version"
+        ],
+        "properties": {
+          "rule": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "System Design",
+              "API Design",
+              "Scalability",
+              "Reliability",
+              "Security",
+              "Observability",
+              "Maintainability"
+            ]
+          },
+          "severity_hint": {
+            "type": "string",
+            "enum": [
+              "Critical",
+              "High",
+              "Medium",
+              "Low"
+            ]
+          },
+          "file": {
+            "type": "string"
+          },
+          "line": {
+            "type": "integer"
+          },
+          "snippet": {
+            "type": "string"
+          },
+          "confidence": {
+            "type": "string",
+            "enum": [
+              "high",
+              "medium",
+              "low"
+            ]
+          },
+          "fingerprint": {
+            "type": "string"
+          },
+          "rule_version": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": true
+      }
+    },
+    "summary": {
+      "type": "object",
+      "required": [
+        "files_scanned",
+        "code_files",
+        "approx_loc",
+        "test_files",
+        "signals_by_category",
+        "truncated",
+        "routes_total",
+        "invalid_signals",
+        "suppressed",
+        "partial"
+      ],
+      "properties": {
+        "files_scanned": {
+          "type": "integer"
+        },
+        "code_files": {
+          "type": "integer"
+        },
+        "approx_loc": {
+          "type": "integer"
+        },
+        "test_files": {
+          "type": "integer"
+        },
+        "signals_by_category": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "integer"
+          }
+        },
+        "truncated": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "integer"
+          }
+        },
+        "routes_total": {
+          "type": "integer"
+        },
+        "invalid_signals": {
+          "type": "integer"
+        },
+        "suppressed": {
+          "type": "integer"
+        },
+        "partial": {
+          "type": "boolean"
+        },
+        "skipped_total": {
+          "type": "integer"
+        }
+      },
+      "additionalProperties": true
+    },
+    "notes": {
+      "description": "Free-text notes: partial results, timing (--verbose), invalid signals, invalid .gitignore patterns, and config settings that hide findings (disabled rules, exclude/include patterns).",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "skipped_files": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "path",
+          "reason"
+        ],
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "too_large",
+              "binary",
+              "minified",
+              "generated",
+              "permission",
+              "symlink_outside",
+              "max_files"
+            ]
+          }
+        },
+        "additionalProperties": true
+      }
+    },
+    "meta": {
+      "type": "object",
+      "required": [
+        "plugin_version",
+        "schema_version",
+        "rule_versions",
+        "config_hash",
+        "timestamp",
+        "repo_revision",
+        "scope"
+      ],
+      "properties": {
+        "plugin_version": {
+          "type": "string"
+        },
+        "schema_version": {
+          "type": "integer"
+        },
+        "rule_versions": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "config_hash": {
+          "type": "string"
+        },
+        "timestamp": {
+          "type": "string"
+        },
+        "repo_revision": {
+          "type": "string"
+        },
+        "scope": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

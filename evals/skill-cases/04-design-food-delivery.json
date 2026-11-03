@@ -1,0 +1,32 @@
+{
+  "id": "04-design-food-delivery",
+  "prompt": "Design the architecture for a food-delivery app. Expect about 50k users, a team of 4, and prefer Node.js. Ask me for any missing constraints before writing the design. This is a headless run with no way to reply: treat my answer to any question you would ask as \"You decide.\" and proceed, recording every default under Assumptions & Constraints.",
+  "setup": {
+    "fixture": null,
+    "preexisting": {}
+  },
+  "must_exist": [
+    "docs/architecture/01-system-design.md",
+    "docs/architecture/02-architecture-decisions.md",
+    "docs/architecture/03-api-design-and-optimization.md",
+    "docs/adr/0001-*.md"
+  ],
+  "must_not_exist": [
+    "docs/architecture/04-tech-stack-comparison.md",
+    "docs/adr/0006-*.md"
+  ],
+  "must_contain": {
+    "docs/architecture/01-system-design.md": [
+      "flowchart",
+      "sequenceDiagram",
+      "Assumptions",
+      "Node.js"
+    ],
+    "docs/architecture/02-architecture-decisions.md": [
+      "erDiagram"
+    ]
+  },
+  "must_not_contain": {},
+  "lint": true,
+  "lint_repo": false
+}

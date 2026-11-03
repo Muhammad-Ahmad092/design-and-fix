@@ -1,0 +1,182 @@
+[
+  {
+    "repo": "chi",
+    "file": "_examples/rest/main.go",
+    "line": 81,
+    "snippet": "POST /",
+    "fingerprint": "65aee8bf9aec4325",
+    "label": "fp",
+    "note": "Demo program in chi's _examples/ (in-memory fixtures, no users); not a deployed service, auth out of scope by design."
+  },
+  {
+    "repo": "chi",
+    "file": "_examples/router-walk/main.go",
+    "line": 21,
+    "snippet": "POST /right",
+    "fingerprint": "daf09130f0802ee6",
+    "label": "fp",
+    "note": "router-walk example: the handler only writes \"right road\"; demo of route walking, no data."
+  },
+  {
+    "repo": "chi",
+    "file": "_examples/router-walk/main.go",
+    "line": 26,
+    "snippet": "PUT /ping",
+    "fingerprint": "22cf034fc572c6fd",
+    "label": "fp",
+    "note": "router-walk example PUT /ping handler; demo code, no data."
+  },
+  {
+    "repo": "chi",
+    "file": "_examples/todos-resource/todos.go",
+    "line": 17,
+    "snippet": "POST /",
+    "fingerprint": "f065649da4026270",
+    "label": "fp",
+    "note": "todos-resource example with stub handlers; demo code."
+  },
+  {
+    "repo": "chi",
+    "file": "_examples/todos-resource/todos.go",
+    "line": 24,
+    "snippet": "DELETE /",
+    "fingerprint": "9554ad5c1323a819",
+    "label": "fp",
+    "note": "todos-resource example with stub handlers; demo code."
+  },
+  {
+    "repo": "chi",
+    "file": "_examples/todos-resource/users.go",
+    "line": 18,
+    "snippet": "PUT /",
+    "fingerprint": "c7d77b0531824814",
+    "label": "fp",
+    "note": "todos-resource example with stub handlers; demo code."
+  },
+  {
+    "repo": "chi",
+    "file": "_examples/todos-resource/users.go",
+    "line": 23,
+    "snippet": "PUT /",
+    "fingerprint": "83e7b9699e0a7063",
+    "label": "fp",
+    "note": "todos-resource example with stub handlers; demo code."
+  },
+  {
+    "repo": "chi",
+    "file": "_examples/todos-resource/users.go",
+    "line": 24,
+    "snippet": "DELETE /",
+    "fingerprint": "e5de80257d113059",
+    "label": "fp",
+    "note": "todos-resource example with stub handlers; demo code."
+  },
+  {
+    "repo": "full-stack-fastapi-template",
+    "file": "backend/app/api/routes/login.py",
+    "line": 53,
+    "snippet": "POST /password-recovery/{email}",
+    "fingerprint": "6e928677fa6d04a6",
+    "label": "fp",
+    "note": "Password recovery must be reachable without login (public by design)."
+  },
+  {
+    "repo": "full-stack-fastapi-template",
+    "file": "backend/app/api/routes/login.py",
+    "line": 77,
+    "snippet": "POST /reset-password/",
+    "fingerprint": "2be308eb15eee165",
+    "label": "fp",
+    "note": "Reset-password authenticates with the token in the body (verify_password_reset_token); public by design."
+  },
+  {
+    "repo": "full-stack-fastapi-template",
+    "file": "backend/app/api/routes/private.py",
+    "line": 23,
+    "snippet": "POST /users/",
+    "fingerprint": "cccce4ffc975d3a2",
+    "label": "unsure",
+    "note": "Unauthenticated user creation, but the router is only mounted when ENVIRONMENT == \"local\" (api/main.py); dev-only."
+  },
+  {
+    "repo": "full-stack-fastapi-template",
+    "file": "backend/app/api/routes/users.py",
+    "line": 143,
+    "snippet": "POST /signup",
+    "fingerprint": "40203d0503811bf0",
+    "label": "fp",
+    "note": "Signup endpoint is public by design (\"without the need to be logged in\")."
+  },
+  {
+    "repo": "golang-gin-realworld",
+    "file": "articles/routers.go",
+    "line": 13,
+    "snippet": "POST /",
+    "fingerprint": "3f1c1d9543f5af70",
+    "label": "fp",
+    "note": "Registered on v1 after v1.Use(users.AuthMiddleware(true)) in hello.go; auth is applied from another file."
+  },
+  {
+    "repo": "golang-gin-realworld",
+    "file": "articles/routers.go",
+    "line": 14,
+    "snippet": "PUT /:slug",
+    "fingerprint": "d088511cee766d7e",
+    "label": "fp",
+    "note": "Auth applied via v1.Use(AuthMiddleware(true)) in hello.go before ArticlesRegister."
+  },
+  {
+    "repo": "golang-gin-realworld",
+    "file": "articles/routers.go",
+    "line": 15,
+    "snippet": "DELETE /:slug",
+    "fingerprint": "7e4c5dd139064c2c",
+    "label": "fp",
+    "note": "Auth applied via v1.Use(AuthMiddleware(true)) in hello.go before ArticlesRegister."
+  },
+  {
+    "repo": "golang-gin-realworld",
+    "file": "articles/routers.go",
+    "line": 18,
+    "snippet": "POST /:slug/comments",
+    "fingerprint": "bc9aca8305648ded",
+    "label": "fp",
+    "note": "Auth applied via v1.Use(AuthMiddleware(true)) in hello.go before ArticlesRegister."
+  },
+  {
+    "repo": "golang-gin-realworld",
+    "file": "articles/routers.go",
+    "line": 19,
+    "snippet": "DELETE /:slug/comments/:id",
+    "fingerprint": "2e4608408a62cd1a",
+    "label": "fp",
+    "note": "Auth applied via v1.Use(AuthMiddleware(true)) in hello.go before ArticlesRegister."
+  },
+  {
+    "repo": "golang-gin-realworld",
+    "file": "users/routers.go",
+    "line": 11,
+    "snippet": "POST /",
+    "fingerprint": "e113f60281e6533e",
+    "label": "fp",
+    "note": "User registration is public by design."
+  },
+  {
+    "repo": "golang-gin-realworld",
+    "file": "users/routers.go",
+    "line": 12,
+    "snippet": "POST /login",
+    "fingerprint": "1c1b00bd1ac02576",
+    "label": "fp",
+    "note": "Login is public by design."
+  },
+  {
+    "repo": "golang-gin-realworld",
+    "file": "users/routers.go",
+    "line": 17,
+    "snippet": "PUT /",
+    "fingerprint": "8e9735e85557214e",
+    "label": "fp",
+    "note": "UserRegister is mounted after v1.Use(AuthMiddleware(true)) in hello.go."
+  }
+]

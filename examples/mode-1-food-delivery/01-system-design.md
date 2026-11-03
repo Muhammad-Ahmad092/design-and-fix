@@ -2,6 +2,8 @@
 
 > Scope: Food-delivery platform (customer app, restaurant dashboard, courier app, backend)
 > Context: 50k users, team of 4, Node.js preferred, cost-sensitive, single launch city
+> Format: 1.0.2
+> Audit: plugin 1.0.2 · scanner not run · rev unknown · 2026-11-02T18:30:00Z
 
 ## Overview
 
@@ -54,15 +56,18 @@ flowchart LR
     worker -->|"notifies, HTTPS"| notify
 ```
 
-| Component | Responsibility | Why it exists |
-|---|---|---|
-| Customer app | Browse restaurants, order, pay, track | Primary revenue channel |
-| Restaurant dashboard | Menu management, accept and ready orders | Restaurants work from a tablet browser, no store install |
-| Courier app | Job offers, status updates, location pings | Needs background GPS, so native |
-| API (modular monolith) | Modules: identity, catalog, ordering, payments, dispatch, tracking | One deployable for a team of 4; modules keep boundaries for a later split |
-| Worker | Notifications, payment webhooks, dispatch retries | Keeps slow external calls off the request path |
-| PostgreSQL | Users, restaurants, menus, orders, payments, deliveries | Transactions for order and payment state |
-| Redis | Menu cache, BullMQ jobs, latest courier positions, rate limits | One extra store covers four needs |
+| Component | Responsibility | Required now / Later | Why it exists |
+|---|---|---|---|
+| Customer app | Browse restaurants, order, pay, track | Required now | Primary revenue channel |
+| Restaurant dashboard | Menu management, accept and ready orders | Required now | Restaurants work from a tablet browser, no store install |
+| Courier app | Job offers, status updates, location pings | Required now | Needs background GPS, so native |
+| API (modular monolith) | Modules: identity, catalog, ordering, payments, dispatch, tracking | Required now | One deployable for a team of 4; modules keep boundaries for a later split |
+| Worker | Notifications, payment webhooks, dispatch retries | Required now | Keeps slow external calls off the request path |
+| PostgreSQL | Users, restaurants, menus, orders, payments, deliveries | Required now | Transactions for order and payment state |
+| Redis | Menu cache, BullMQ jobs, latest courier positions, rate limits | Required now | One extra store covers four needs |
+| Search service | Full-text restaurant and dish search | Later: when restaurants exceed about 2,000 or PostgreSQL search p95 passes 300 ms | A single launch city is small enough for PostgreSQL and PostGIS filters |
+
+`Later` components stay out of the diagram until their trigger is met.
 
 ## Data Flow
 
@@ -115,7 +120,27 @@ Location pings are 90% of writes but go to Redis, not PostgreSQL: one API pair, 
 | Background work | BullMQ job queue on Redis | Kafka | Reuses Redis; job volume is thousands per day, not millions |
 | Payments | Hosted payment provider with tokenised cards and idempotency keys | Storing and charging cards in-house | Keeps the system out of full PCI DSS scope |
 
+Options for the architecture pattern:
+
+| Option | Strength | Weakness | Verdict |
+|---|---|---|---|
+| Modular monolith | One deploy, in-process calls, transactions across modules | Modules scale together; one bad release hits every domain | Chosen |
+| Microservices | Independent scaling and deploys per domain | Per-service ops, tracing and contracts for a team of 4 at 30 peak QPS | Rejected: operations cost exceeds any scaling gain |
+| Serverless functions | No servers to patch; pay per call | Cold starts on checkout, awkward WebSocket tracking | Rejected: tracking needs long-lived connections |
+
 ADRs: one per row in `docs/adr/` (shipped in this example under `adr/`).
+
+## Requirements → Decisions
+
+| Requirement | Decision(s) | How it is met |
+|---|---|---|
+| 50k users, about 30 peak QPS | Architecture pattern, Primary database | One API pair and one PostgreSQL primary carry the load without sharding |
+| Team of 4, Node.js preferred | Architecture pattern, Background work | One NestJS deployable and one worker, no service mesh |
+| Live courier tracking | Live courier tracking | Latest positions in Redis, pushed over WebSocket |
+| No double charge on retries | Payments, Primary database | Provider idempotency key and a unique `idempotency_key` index on orders |
+| Card data kept out of scope | Payments | Hosted provider with tokenised cards |
+| p95 < 300 ms, 99.9% availability (Assumed) | Primary database, Background work | Managed PostgreSQL with standby; slow external calls run in the worker |
+| Cost-sensitive, single launch city | Architecture pattern, Background work | About 300–600 USD/month in one region (see `02`, Deployment & Cost) |
 
 ## Assumptions & Constraints
 

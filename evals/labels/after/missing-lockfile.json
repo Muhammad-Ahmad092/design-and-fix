@@ -1,0 +1,20 @@
+[
+  {
+    "repo": "django",
+    "file": "package.json",
+    "line": 1,
+    "snippet": "package.json without package-lock.json / npm-shrinkwrap.json / yarn.lock",
+    "fingerprint": "e2d3894b17b592f9",
+    "label": "tp",
+    "note": "Laravel app asset build deps unlocked, nonreproducible build; low severity"
+  },
+  {
+    "repo": "laravel-realworld",
+    "file": "package.json",
+    "line": 1,
+    "snippet": "package.json without package-lock.json / npm-shrinkwrap.json / yarn.lock",
+    "fingerprint": "e2d3894b17b592f9",
+    "label": "tp",
+    "note": "Laravel app asset build deps unlocked, nonreproducible build; low severity"
+  }
+]

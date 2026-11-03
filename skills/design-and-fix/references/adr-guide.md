@@ -12,14 +12,17 @@ Architecture Decision Records keep the reasons behind each decision next to the 
 
 ## Format
 
-Nygard format, from `templates/adr/0000-template.md`: title line `# NNNN. <Title>`, then `Date:` and `Status:` lines, then the sections Context, Decision, Consequences. 1 page maximum each.
+Nygard format extended, from `templates/adr/0000-template.md`: title line `# NNNN. <Title>`, then `Date:`, `Status:`, optional `Supersedes: NNNN` and `> Format: 1.0.2` lines, then the sections Context, Alternatives, Decision, Consequences, Assumptions. 1 page maximum each.
 
 | Part | Content |
 |---|---|
 | Status | `Accepted`, or `Superseded by NNNN` once replaced |
+| Supersedes | `Supersedes: NNNN` only on an ADR that replaces an earlier one |
 | Context | 2–5 lines: the forces at play (scale, team, constraints) |
-| Decision | Active voice, "We will use …", plus the alternatives considered and why they lost |
+| Alternatives | 1–2 rejected options with strength, weakness and why not chosen (the options compared in `01-system-design.md`) |
+| Decision | Active voice, "We will use …" |
 | Consequences | Positive, negative, and the condition that would make you revisit it |
+| Assumptions | The facts the decision depends on (traffic, team, budget); when one breaks, revisit |
 
 The Decision must agree with the matching Key Architectural Decisions row (same choice, same alternative).
 
@@ -32,12 +35,12 @@ The Decision must agree with the matching Key Architectural Decisions row (same 
 ## Re-runs and Superseding
 
 - Unchanged decisions get no new ADR.
-- A changed decision gets a new ADR with the next number.
-- The ADR it replaces gets exactly one edit: its Status line becomes `Superseded by NNNN` (the new number). Nothing else in it changes.
+- A changed decision gets a new ADR with the next number and a `Supersedes: NNNN` line naming the old one.
+- The ADR it replaces gets exactly one edit: its Status line becomes `Superseded by NNNN` (the new number). Nothing else in it changes. The linter checks both directions.
 
 ## Checklist
 
 - [ ] One ADR per Key Architectural Decisions row, max 5 (Mode 1), unless "no ADRs"
-- [ ] Nygard sections from the template; 1 page max
+- [ ] Sections from the template (Alternatives and Assumptions included); 1 page max
 - [ ] Numbering continues from existing ADRs; no number reused
-- [ ] Re-run: only changed decisions get a new ADR; replaced ADR's Status is `Superseded by NNNN`
+- [ ] Re-run: only changed decisions get a new ADR with `Supersedes: NNNN`; replaced ADR's Status is `Superseded by NNNN`

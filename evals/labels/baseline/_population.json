@@ -1,0 +1,152 @@
+{
+  "scanner_version": "1.0.2",
+  "seed": 1002,
+  "per_rule": 20,
+  "rule_versions": {
+    "console-logging-only": "1",
+    "god-module": "1",
+    "hardcoded-secret": "1",
+    "http-no-timeout": "1",
+    "import-cycle": "1",
+    "no-health-endpoint": "1",
+    "no-tests": "1",
+    "query-in-loop": "1",
+    "retry-no-backoff": "1",
+    "sql-string-concat": "1",
+    "swallowed-error": "1",
+    "unauth-write-route": "1",
+    "unbounded-query": "1"
+  },
+  "repos": {
+    "flask": {
+      "url": "https://codeload.github.com/pallets/flask/tar.gz/refs/tags/3.1.3",
+      "sha256": "36a6183d453925f09bc37b2a8bffdb1eb1b5f18eae384c037c179b07aac88477",
+      "subdir": "src",
+      "files_scanned": 24,
+      "signals": {
+        "import-cycle": 1,
+        "no-health-endpoint": 1,
+        "no-tests": 1,
+        "swallowed-error": 2
+      }
+    },
+    "itsdangerous": {
+      "url": "https://codeload.github.com/pallets/itsdangerous/tar.gz/refs/tags/2.2.0",
+      "sha256": "7b0c6d4186e963b88489b69603b7ab2bf7c8e9eb4135a7b13b5f21bd4b937f2b",
+      "subdir": "src",
+      "files_scanned": 8,
+      "signals": {
+        "no-tests": 1,
+        "swallowed-error": 1
+      }
+    },
+    "full-stack-fastapi-template": {
+      "url": "https://codeload.github.com/fastapi/full-stack-fastapi-template/tar.gz/refs/tags/0.10.0",
+      "sha256": "43e90664c8444863aff7ed7f805d0a6cf5cfc4ef43beda4de5977c20299fd9e9",
+      "subdir": "",
+      "files_scanned": 159,
+      "signals": {
+        "hardcoded-secret": 6,
+        "no-health-endpoint": 1,
+        "no-tests": 2,
+        "unauth-write-route": 4,
+        "unbounded-query": 4
+      }
+    },
+    "django-styleguide-example": {
+      "url": "https://codeload.github.com/HackSoftware/Django-Styleguide-Example/tar.gz/a70ef43d7df03706c1211d4fcfd70b4b0120ba1e",
+      "sha256": "ff18920e617aa6987704425ef1f3354c07884f7f54288f0c782d64948c6faf35",
+      "subdir": "",
+      "files_scanned": 196,
+      "signals": {
+        "hardcoded-secret": 9,
+        "http-no-timeout": 3,
+        "import-cycle": 1,
+        "no-health-endpoint": 9,
+        "no-tests": 8,
+        "query-in-loop": 1,
+        "unbounded-query": 4
+      }
+    },
+    "node-express-boilerplate": {
+      "url": "https://codeload.github.com/hagopj13/node-express-boilerplate/tar.gz/refs/tags/v1.7.0",
+      "sha256": "8068d4fd809e06e9fbf63cd3b02147a02cc359706afbab7b7f6c8a4d82be6823",
+      "subdir": "",
+      "files_scanned": 63,
+      "signals": {
+        "hardcoded-secret": 23,
+        "no-health-endpoint": 1,
+        "no-tests": 9
+      }
+    },
+    "nestjs-prisma-starter": {
+      "url": "https://codeload.github.com/notiz-dev/nestjs-prisma-starter/tar.gz/225e5a906865df237a681c1ad228a3ecf2909326",
+      "sha256": "e759cddf8c000e30e8767743df0dee7d27ab1fbb7cd2c460e320f9ecd031d082",
+      "subdir": "",
+      "files_scanned": 65,
+      "signals": {
+        "hardcoded-secret": 2,
+        "import-cycle": 1,
+        "no-health-endpoint": 1,
+        "no-tests": 4,
+        "unbounded-query": 1
+      }
+    },
+    "golang-gin-realworld": {
+      "url": "https://codeload.github.com/gothinkster/golang-gin-realworld-example-app/tar.gz/refs/tags/0.0.6",
+      "sha256": "900318d76028c18e136a8843442014f70e293e46d492b464ab1945004a254173",
+      "subdir": "",
+      "files_scanned": 18,
+      "signals": {
+        "console-logging-only": 1,
+        "hardcoded-secret": 19,
+        "no-health-endpoint": 2,
+        "no-tests": 1,
+        "unauth-write-route": 12
+      }
+    },
+    "create-t3-turbo": {
+      "url": "https://codeload.github.com/t3-oss/create-t3-turbo/tar.gz/8f945b7bb3bfb3ca8358d48b1ff0214079bc11ee",
+      "sha256": "8f604cc387db633ebb20c8a858569e9144b8e6c15811276fde2deb80bf4149d6",
+      "subdir": "",
+      "files_scanned": 112,
+      "signals": {
+        "console-logging-only": 1,
+        "hardcoded-secret": 1,
+        "http-no-timeout": 1,
+        "import-cycle": 1,
+        "no-tests": 12,
+        "swallowed-error": 1
+      }
+    },
+    "chi": {
+      "url": "https://codeload.github.com/go-chi/chi/tar.gz/refs/tags/v5.5.0",
+      "sha256": "169b74d78e1481a26243b6e84857c02ad5ac29368467326153dba03b121b8102",
+      "subdir": "",
+      "files_scanned": 92,
+      "signals": {
+        "console-logging-only": 1,
+        "no-health-endpoint": 8,
+        "no-tests": 12,
+        "unauth-write-route": 13
+      }
+    },
+    "django": {
+      "url": "https://codeload.github.com/django/django/tar.gz/refs/tags/5.1.4",
+      "sha256": "adbb3c6702033d417401ce1925f7307b70ee2d8bfca636c82c66a38c55b97dda",
+      "subdir": "",
+      "files_scanned": 2892,
+      "signals": {
+        "god-module": 27,
+        "hardcoded-secret": 151,
+        "import-cycle": 18,
+        "no-health-endpoint": 4,
+        "no-tests": 15,
+        "query-in-loop": 44,
+        "sql-string-concat": 1,
+        "swallowed-error": 170,
+        "unbounded-query": 31
+      }
+    }
+  }
+}

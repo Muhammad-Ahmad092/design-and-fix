@@ -1,0 +1,182 @@
+[
+  {
+    "repo": "django",
+    "file": "django/contrib/admin/widgets.py",
+    "line": 482,
+    "snippet": "if supported_code := SELECT2_TRANSLATIONS.get(lang_code[:i]):",
+    "fingerprint": "63f01ae23c7ca46c",
+    "label": "fp",
+    "note": "SELECT2_TRANSLATIONS is a module-level dict; Capitalised receiver .get() is not a DB call."
+  },
+  {
+    "repo": "django",
+    "file": "django/contrib/gis/db/backends/oracle/schema.py",
+    "line": 106,
+    "snippet": "self.execute(sql)",
+    "fingerprint": "7be7b0b11196f033",
+    "label": "fp",
+    "note": "Executes a list of DDL statements (geometry SQL) in order; DDL cannot be batched into one query."
+  },
+  {
+    "repo": "django",
+    "file": "django/contrib/gis/db/backends/spatialite/schema.py",
+    "line": 119,
+    "snippet": "self.execute(sql)",
+    "fingerprint": "c8153cddb360d9bc",
+    "label": "fp",
+    "note": "Executes queued geometry DDL statements; schema migration, not per-row reads."
+  },
+  {
+    "repo": "django",
+    "file": "django/contrib/gis/db/backends/spatialite/schema.py",
+    "line": 148,
+    "snippet": "self.execute(",
+    "fingerprint": "b38d3a6a161b8651",
+    "label": "fp",
+    "note": "DDL per geometry field while remaking a table; schema migration code path."
+  },
+  {
+    "repo": "django",
+    "file": "django/db/backends/base/operations.py",
+    "line": 473,
+    "snippet": "cursor.execute(sql)",
+    "fingerprint": "64294902da7df9c4",
+    "label": "fp",
+    "note": "Runs each statement of a SQL script inside one transaction; inherent, not N+1."
+  },
+  {
+    "repo": "django",
+    "file": "django/db/backends/base/schema.py",
+    "line": 167,
+    "snippet": "self.execute(sql, None)",
+    "fingerprint": "b917361899335c47",
+    "label": "fp",
+    "note": "Runs deferred DDL at the end of a schema editor block; inherent."
+  },
+  {
+    "repo": "django",
+    "file": "django/db/backends/base/schema.py",
+    "line": 519,
+    "snippet": "self.execute(",
+    "fingerprint": "41db2720b945a988",
+    "label": "fp",
+    "note": "ALTER COLUMN COMMENT per field during table creation; DDL, not N+1."
+  },
+  {
+    "repo": "django",
+    "file": "django/db/backends/base/schema.py",
+    "line": 616,
+    "snippet": "self.execute(self._create_unique_sql(model, fields))",
+    "fingerprint": "cf4f1de856f74066",
+    "label": "fp",
+    "note": "CREATE UNIQUE per new constraint; DDL."
+  },
+  {
+    "repo": "django",
+    "file": "django/db/backends/base/schema.py",
+    "line": 637,
+    "snippet": "self.execute(self._create_index_sql(model, fields=fields, suffix=\"_idx\"))",
+    "fingerprint": "41eeacf4d74d15e2",
+    "label": "fp",
+    "note": "CREATE INDEX per new index; DDL."
+  },
+  {
+    "repo": "django",
+    "file": "django/db/backends/base/schema.py",
+    "line": 1043,
+    "snippet": "self.execute(self._delete_index_sql(model, index_name))",
+    "fingerprint": "3f29b05aa5142453",
+    "label": "fp",
+    "note": "DROP INDEX per stale index; DDL."
+  },
+  {
+    "repo": "django",
+    "file": "django/db/backends/base/schema.py",
+    "line": 1189,
+    "snippet": "self.execute(",
+    "fingerprint": "fae9a2bba00dcc79",
+    "label": "fp",
+    "note": "ALTER per pending NOT NULL action; DDL."
+  },
+  {
+    "repo": "django",
+    "file": "django/db/backends/base/schema.py",
+    "line": 1199,
+    "snippet": "self.execute(sql, params)",
+    "fingerprint": "64e43c33d9160aac",
+    "label": "fp",
+    "note": "Post-actions DDL; inherent."
+  },
+  {
+    "repo": "django",
+    "file": "django/db/backends/oracle/creation.py",
+    "line": 330,
+    "snippet": "cursor.execute(stmt)",
+    "fingerprint": "6e95b9eaa4ec60d1",
+    "label": "fp",
+    "note": "Test-database creation statements run one by one; DDL."
+  },
+  {
+    "repo": "django",
+    "file": "django/db/backends/sqlite3/introspection.py",
+    "line": 105,
+    "snippet": "has_json_constraint = cursor.execute(",
+    "fingerprint": "a009c080de8c5b9d",
+    "label": "unsure",
+    "note": "One sqlite_master query per column during introspection: real N+1 shape, but a dev-time introspection path with negligible cost."
+  },
+  {
+    "repo": "django",
+    "file": "django/db/backends/sqlite3/introspection.py",
+    "line": 339,
+    "snippet": "cursor.execute(",
+    "fingerprint": "17f24dbd94bf1172",
+    "label": "unsure",
+    "note": "One sqlite_master query per index during introspection; N+1 shape on a cold path."
+  },
+  {
+    "repo": "django",
+    "file": "django/db/backends/sqlite3/introspection.py",
+    "line": 355,
+    "snippet": "cursor.execute(",
+    "fingerprint": "a283b681accc43f6",
+    "label": "fp",
+    "note": "PRAGMA index_info must be issued per index in SQLite; no batch form exists."
+  },
+  {
+    "repo": "django",
+    "file": "django/db/backends/sqlite3/schema.py",
+    "line": 268,
+    "snippet": "self.execute(sql)",
+    "fingerprint": "cf770b4b9d1e7782",
+    "label": "fp",
+    "note": "Deferred DDL after a table remake; inherent."
+  },
+  {
+    "repo": "django",
+    "file": "django/db/migrations/operations/special.py",
+    "line": 135,
+    "snippet": "schema_editor.execute(statement, params=None)",
+    "fingerprint": "b4fa439689dcb1f7",
+    "label": "fp",
+    "note": "RunSQL executes each statement of a user-supplied script; inherent."
+  },
+  {
+    "repo": "django",
+    "file": "django/utils/cache.py",
+    "line": 354,
+    "snippet": "value = request.META.get(header)",
+    "fingerprint": "97dda7a8eb251557",
+    "label": "fp",
+    "note": "request.META is a dict; .get() is not a DB call."
+  },
+  {
+    "repo": "django-styleguide-example",
+    "file": "styleguide_example/emails/services.py",
+    "line": 63,
+    "snippet": "Email.objects.filter(id=email.id).update(status=Email.Status.SENDING)",
+    "fingerprint": "69de44a810250cee",
+    "label": "fp",
+    "note": "Per-email UPDATE in its own atomic block is deliberate and documented in the docstring (on_commit per email)."
+  }
+]

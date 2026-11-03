@@ -1,7 +1,9 @@
 # API Optimization
 
 > Scope: services/payments, services/orders, services/catalog in `tests/fixtures/monorepo` (synthetic fixture; all paths relative to it). App/ (.NET stub) not assessed.
-> Context: about 50 req/s peak, must keep PostgreSQL, pain point: checkout (charge) is slow and sometimes double-charges
+> Context: payments checkout, about 50 req/s peak, must keep PostgreSQL, pain point: checkout (charge) is slow and sometimes double-charges
+> Format: 1.0.2
+> Audit: plugin 1.0.2 · scanner schema 3 · rev unknown · config 3d96e5d5ea6d · 2026-11-03T11:54:08Z
 
 ## API Health Snapshot
 
@@ -30,12 +32,14 @@ Routes from the scanner in the audited scope (7). `auth_detected` is the scanner
 
 ## Issues Found
 
-| ID | Severity | Issue | Evidence | Root cause | Consequence | Fix | Why |
-|---|---|---|---|---|---|---|---|
-| API-001 | High | Write routes accept unvalidated bodies | `services/payments/src/handlers/charge.ts:15`, `services/catalog/app.py:20` | `req.body as {…}` is a compile-time cast only; `payload["name"]` assumes the key | A body without `items` throws in `totalOf` (line 33) inside an un-awaited async handler: the request hangs, and on Node 15+ the process exits (Node version Not verified) | Validate with a schema (zod in payments, pydantic in catalog) and return 400 | Bad input must never take down checkout |
-| API-002 | Medium | Error responses differ per route | `services/payments/src/handlers/refund.ts:9`, `services/catalog/app.py:32`, `services/payments/src/handlers/webhook.ts:10` | `{ "error": … }` in refund, empty `{}` with 502 in catalog, 200 `null` for a missing charge | Clients need per-route error handling; "not found" looks like success | One `application/problem+json` (RFC 9457) envelope; 404 for missing resources | One client error path for all services |
-| API-003 | Medium | `POST /items` and `POST /orders` return 201 but create nothing | `services/catalog/app.py:21`, `services/catalog/app.py:22`, `services/orders/src/orders.go:39` | `/items` runs a `SELECT` and returns its rows; `/orders` is a stub returning `{"ok": true}` | Callers believe items and orders were created | `INSERT … RETURNING *` and 201 with the created resource (409 on duplicate name) | The status code must match the effect |
-| API-004 | Low | `GET /payments/:id` lives in `webhook.ts` | `services/payments/src/handlers/webhook.ts:6` | File name does not match its only route; no webhook route exists | Readers look for webhook handling that is not there | Rename to `charges.ts` | Files named after their routes |
+| ID | Severity | Status | Source | Issue | Evidence | Root cause | Consequence | Fix | Verify | Why |
+|---|---|---|---|---|---|---|---|---|---|---|
+| API-001 | High | confirmed | scanner:unvalidated-body | Write routes accept unvalidated bodies | `services/payments/src/handlers/charge.ts:15`, `services/catalog/app.py:20` | `req.body as {…}` is a compile-time cast only; `payload["name"]` assumes the key | A body without `items` throws in `totalOf` (line 33) inside an un-awaited async handler: the request hangs, and on Node 15+ the process exits (Node version Not verified) | Validate with a schema (zod in payments, pydantic in catalog) and return 400 | Test: `POST /payments/charge` with `{}` returns 400 and the process stays up | Bad input must never take down checkout |
+| API-002 | Medium | confirmed | agent | Error responses differ per route | `services/payments/src/handlers/refund.ts:9`, `services/catalog/app.py:32`, `services/payments/src/handlers/webhook.ts:10` | `{ "error": … }` in refund, empty `{}` with 502 in catalog, 200 `null` for a missing charge | Clients need per-route error handling; "not found" looks like success | One `application/problem+json` (RFC 9457) envelope; 404 for missing resources | Test: a missing charge ID returns 404 with the shared envelope | One client error path for all services |
+| API-003 | Medium | confirmed | agent | `POST /items` and `POST /orders` return 201 but create nothing | `services/catalog/app.py:21`, `services/catalog/app.py:22`, `services/orders/src/orders.go:39` | `/items` runs a `SELECT` and returns its rows; `/orders` is a stub returning `{"ok": true}` | Callers believe items and orders were created | `INSERT … RETURNING *` and 201 with the created resource (409 on duplicate name) | Test: a created item can be fetched by `GET /items/<id>` | The status code must match the effect |
+| API-004 | Low | confirmed | agent | `GET /payments/:id` lives in `webhook.ts` | `services/payments/src/handlers/webhook.ts:6` | File name does not match its only route; no webhook route exists | Readers look for webhook handling that is not there | Rename to `charges.ts` | — | Files named after their routes |
+
+- API-001: Observed: bodies are cast, never checked, before use. Inference: malformed input crashes or hangs the handler. Limitations: an upstream validation layer is Not verified (none in the repo).
 
 Only `API-*` issues are defined here; other categories are referenced by ID from `01-architecture-issues.md`.
 
@@ -50,10 +54,11 @@ Only `API-*` issues are defined here; other categories are referenced by ID from
 
 ## Quick Wins vs Structural Fixes
 
-**Quick Wins**
-- REL-002, REL-003: 5 s abort on the provider fetch and a status check before recording items. Why: cuts the slow-checkout tail in hours.
-- API-003, API-004: make `POST /items` and `POST /orders` persist; rename `webhook.ts`. Why: contract matches behaviour at near-zero cost.
+| Recommendation (IDs) | Category | Impact | Effort | Risk | Verification | Why |
+|---|---|---|---|---|---|---|
+| API-003, API-004: make `POST /items` and `POST /orders` persist; rename `webhook.ts` | correctness | Medium | S | Low | Created item is returned by `GET /items/<id>` | Contract matches behaviour at near-zero cost |
+| API-001: shared request validation, `400` on malformed bodies | correctness | High | M | Low | `{}` to `POST /payments/charge` returns 400 | Malformed input stops hanging or crashing the service |
+| API-002: one error envelope across the three services | maintainability | Medium | M | Medium | Missing charge returns 404 with the shared envelope | Consistent contracts before more clients integrate |
+| REL-001, SCL-001 (see `01`): idempotent, transactional charge flow | performance | High | M | Medium | Hypothesis: time `POST /payments/charge` p95 with k6 at 50 req/s before/after | Removes double charges and N round trips together |
 
-**Structural Fixes**
-- REL-001, SCL-001: idempotent, transactional charge flow (key table, one multi-row insert). Why: removes double charges and N round trips together.
-- API-001, API-002: shared request validation and one error envelope across the three services. Why: consistent contracts before more clients integrate.
+Small fixes (S/M effort) first, structural fixes (L/XL) after; no L/XL item exists in the API surface.

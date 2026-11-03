@@ -2,6 +2,8 @@
 
 > Scope: Food-delivery platform (customer app, restaurant dashboard, courier app, backend)
 > Context: 50k users, team of 4, Node.js preferred, cost-sensitive, single launch city
+> Format: 1.0.2
+> Audit: plugin 1.0.2 · scanner not run · rev unknown · 2026-11-02T18:30:00Z
 
 ## API Style
 

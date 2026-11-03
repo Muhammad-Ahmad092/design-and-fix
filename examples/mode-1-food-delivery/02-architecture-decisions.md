@@ -2,6 +2,8 @@
 
 > Scope: Food-delivery platform (customer app, restaurant dashboard, courier app, backend)
 > Context: 50k users, team of 4, Node.js preferred, cost-sensitive, single launch city
+> Format: 1.0.2
+> Audit: plugin 1.0.2 · scanner not run · rev unknown · 2026-11-02T18:30:00Z
 
 ## Pattern Choice
 
@@ -77,16 +79,18 @@ erDiagram
 | Courier app offline | Stale position on the map | Show "last seen" age after 30 s; reassign after 5 min silence | Customer sees honest ETA |
 | Notification job fails | Restaurant misses an order | 5 retries with backoff, then alert and dashboard banner | A missed order is lost revenue |
 
-## Security
+## Security & Threat Model
 
-| Threat (STRIDE) | Asset | Mitigation | Why |
-|---|---|---|---|
-| Spoofing: stolen session token | Customer and courier accounts | 15 min JWT + rotating refresh token, revoke on logout | Limits the window of a leaked token |
-| Tampering: client-sent prices | Order totals | Server recomputes totals from MenuItem prices | Clients are untrusted |
-| Repudiation: disputed delivery | Delivery records | Append-only status history with actor and timestamp | Settles disputes with evidence |
-| Information disclosure: customer addresses | User and Address tables | Couriers see the address only while assigned; encrypted at rest | Limits location exposure |
-| Denial of service: OTP flooding | SMS budget, login | 5 OTP requests per phone per hour, per-IP limits | SMS costs money per message |
-| Elevation of privilege: restaurant edits another menu | Catalog | Every query scoped by `restaurant_id` from the token | Tenant isolation |
+Trust boundaries: internet → API (TLS, JWT auth), API → PostgreSQL and Redis (private network only), API → payment provider (outbound HTTPS, signed webhooks back), courier app → API (WSS, token on connect).
+
+| Threat (STRIDE) | Boundary | Asset | Mitigation | Why |
+|---|---|---|---|---|
+| Spoofing: stolen session token | internet → API | Customer and courier accounts | 15 min JWT + rotating refresh token, revoke on logout | Limits the window of a leaked token |
+| Tampering: client-sent prices | internet → API | Order totals | Server recomputes totals from MenuItem prices | Clients are untrusted |
+| Repudiation: disputed delivery | internet → API | Delivery records | Append-only status history with actor and timestamp | Settles disputes with evidence |
+| Information disclosure: customer addresses | API → PostgreSQL | User and Address tables | Couriers see the address only while assigned; encrypted at rest | Limits location exposure |
+| Denial of service: OTP flooding | internet → API | SMS budget, login | 5 OTP requests per phone per hour, per-IP limits | SMS costs money per message |
+| Elevation of privilege: restaurant edits another menu | internet → API | Catalog | Every query scoped by `restaurant_id` from the token | Tenant isolation |
 
 ## Observability
 

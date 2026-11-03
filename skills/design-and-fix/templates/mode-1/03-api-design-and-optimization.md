@@ -2,6 +2,8 @@
 
 > Scope: <project name>
 > Context: <scale> users, team of <size>, <key constraint>
+> Format: 1.0.2
+> Audit: plugin 1.0.2 · scanner not run · rev <sha|unknown> · <timestamp>
 
 ## API Style
 

@@ -9,13 +9,18 @@ Step 3, before writing any output file. Keeps earlier runs instead of overwritin
 ## Steps
 
 1. **Archive.** Move those files to `docs/architecture/history/<YYYY-MM-DD>/` (today's date). If that folder exists, use `<YYYY-MM-DD>-2`, then `-3`, and so on. Move only those plugin filenames; leave every other file in `docs/architecture/` alone (no globs: a user's own `01-notes.md` stays). ADRs in `docs/adr/` are never moved.
-2. **Diff (Mode 2).** Diff only when the archived run is an audit (`01-architecture-issues.md` or `quick-audit.md`); otherwise (Mode 1 files or `quick-design.md` archived) archive and omit Change Since Last Audit. Read the archived `01-architecture-issues.md` and `02-api-optimization.md` and write **Change Since Last Audit** at the top of the new `01-architecture-issues.md` (template in `templates/mode-2/`):
-   - previous → current overall score and band; the "Previous … on <date>" value comes from the archived files' own date (their Scope/Context lines, or the archive folder name if absent),
-   - per-category deltas,
-   - issues fixed (IDs), new issues (IDs), still open (IDs).
-3. **ID stability.** An issue that still exists keeps its previous ID (match by same file + same problem). New issues get the next unused number per prefix. IDs of fixed issues are never reused, so `SEC-002` always means one problem across every run.
+2. **Diff (Mode 2).** Diff only when the archived run is an audit (`01-architecture-issues.md` or `quick-audit.md`); otherwise (Mode 1 files or `quick-design.md` archived) archive and omit Change Since Last Audit. Read the archived issues before assigning IDs (step 3). After the new files are written, run the comparison script instead of diffing by hand:
+
+   ```bash
+   python3 "${CLAUDE_SKILL_DIR}/scripts/compare_audits.py" docs/architecture/history/<YYYY-MM-DD>[-N] docs/architecture --repo <root>
+   ```
+
+   The first argument is the folder you just archived into in step 1 (with its `-N` suffix on a same-day re-run).
+
+   It matches issues by fingerprint (computed from each ID prefix and Evidence cell; you never hash) and prints the whole **Change Since Last Audit** section: Previous → Current band and score, Fixed / New / Still open / Changed / Possibly moved IDs, and `### Score Trend` (last 10 runs from `docs/architecture/history/`). Paste it at the top of the new `01-architecture-issues.md` (template in `templates/mode-2/`) unchanged, keeping every `(uncertain)` marker: an uncertain match is never presented as definitive. Then add the per-category Δ table yourself from the archived and current score tables. Trend dates are the dates the runs were made, read from each run's `> Audit:` timestamp, not the archive folder name. Without a snapshot of the old code (`--old-repo <dir>`, which the skill cannot make), a moved file is detected only when the issue kept its ID, and the move is marked uncertain.
+3. **ID stability.** An issue that still exists keeps its previous ID. Assign IDs by reading the archived issues (same file + same problem); a `Keep old IDs: <new> -> <old>` line from the script means you may have renumbered a surviving issue. If the pair's match is certain, restore the old ID in all files, run the script again, and drop that line. If it is marked `(uncertain)`, read both issues first and restore the old ID only when they are the same problem. New issues get the next unused number per prefix. IDs of fixed issues are never reused, so `SEC-002` always means one problem across every run. You can either drop a fixed issue or keep its row for this one run with Status `not-reproducible`. Either way the script reports it as Fixed, and a kept row is not scored and needs no roadmap row.
 4. **Tell the user.** The delivery line says the previous run was archived and where: `Previous run archived to docs/architecture/history/2026-10-22/`.
-5. **Quick ↔ full diffs.** If the archived run is a `quick-audit.md`, the diff compares overall band/score and issue IDs only (no per-category deltas). A quick re-run after a full audit, or a quick re-run after a quick audit, adds the same 3-line Change Since Last Audit note (band change, fixed IDs, new IDs) at the top of `quick-audit.md`.
+5. **Quick ↔ full diffs.** If the archived run is a `quick-audit.md`, the diff compares overall band/score and issue IDs only (no per-category deltas). A quick re-run after a full audit, or a quick re-run after a quick audit, adds the same 3-line Change Since Last Audit note (band change, fixed IDs, new IDs, taken from the script's output) at the top of `quick-audit.md`.
 
 Finding the next unused number: take the highest number ever used for that prefix across the current run and every folder under `docs/architecture/history/`, then add one.
 
@@ -47,6 +52,6 @@ docs/
 ## Checklist
 
 - [ ] Previous plugin output moved to `docs/architecture/history/<YYYY-MM-DD>[-N]/`; ADRs untouched
-- [ ] Mode 2: Change Since Last Audit at the top of `01` (or the 3-line note in `quick-audit.md`)
+- [ ] Mode 2: Change Since Last Audit from `compare_audits.py` at the top of `01` (or the 3-line note in `quick-audit.md`); uncertain markers kept
 - [ ] Surviving issues keep their IDs; fixed IDs never reused
 - [ ] Delivery line names the archive folder

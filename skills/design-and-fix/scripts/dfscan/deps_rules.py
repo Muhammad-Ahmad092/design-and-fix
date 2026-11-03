@@ -7,6 +7,7 @@ import re
 from typing import Dict, List, Optional, Tuple
 
 from .imports import _read
+from .json_utils import check_json_nesting
 from .model import FileInfo, Signal
 from .registry import RuleMeta, register
 
@@ -56,6 +57,7 @@ def _json(text: str) -> Optional[dict]:
     """The manifest's top-level object, None when it is not an object; MalformedManifest when the
     JSON does not parse."""
     try:
+        check_json_nesting(text)
         data = json.loads(text)
     except (ValueError, RecursionError) as exc:
         raise MalformedManifest(type(exc).__name__) from None

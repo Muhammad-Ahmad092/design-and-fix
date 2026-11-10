@@ -3,7 +3,7 @@
 > Scope: services/payments, services/orders, services/catalog in `tests/fixtures/monorepo` (synthetic fixture; all paths relative to it). App/ (.NET stub) not assessed.
 > Context: payments checkout, about 50 req/s peak, must keep PostgreSQL, pain point: checkout (charge) is slow and sometimes double-charges
 > Format: 1.0.2
-> Audit: plugin 1.0.2 · scanner schema 3 · rev unknown · config 3d96e5d5ea6d · 2026-11-03T11:54:08Z
+> Audit: plugin 1.1.0 · scanner schema 3 · rev unknown · config 3d96e5d5ea6d · 2026-11-05T16:53:17Z
 
 ## API Health Snapshot
 

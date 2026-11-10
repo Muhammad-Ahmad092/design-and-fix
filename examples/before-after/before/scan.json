@@ -1,0 +1,270 @@
+{
+  "schema_version": 3,
+  "root": "tests/fixtures/monorepo (before fix)",
+  "scope": [
+    "services/payments"
+  ],
+  "detected_stack": [
+    "C# / .NET",
+    "Go",
+    "Node.js / JavaScript",
+    "Python",
+    "TypeScript"
+  ],
+  "frameworks": [
+    "aspnetcore",
+    "express",
+    "flask",
+    "gin"
+  ],
+  "candidate_folders": [
+    {
+      "path": "services",
+      "file_count": 8,
+      "approx_loc": 785
+    },
+    {
+      "path": "services/payments",
+      "file_count": 6,
+      "approx_loc": 704
+    },
+    {
+      "path": "services/orders",
+      "file_count": 1,
+      "approx_loc": 49
+    },
+    {
+      "path": "services/catalog",
+      "file_count": 1,
+      "approx_loc": 32
+    },
+    {
+      "path": "App",
+      "file_count": 1,
+      "approx_loc": 6
+    }
+  ],
+  "import_graph": {
+    "modules": 6,
+    "edges": 7,
+    "cycles": [
+      [
+        "services/payments/src/lib/db.ts",
+        "services/payments/src/lib/util.ts",
+        "services/payments/src/lib/db.ts"
+      ]
+    ],
+    "cycles_meta": [
+      {
+        "via_init": false
+      }
+    ],
+    "god_modules": []
+  },
+  "routes": [
+    {
+      "method": "POST",
+      "path": "/payments/charge",
+      "file": "services/payments/src/handlers/charge.ts",
+      "line": 14,
+      "framework": "express",
+      "auth_detected": false
+    },
+    {
+      "method": "POST",
+      "path": "/payments/refund",
+      "file": "services/payments/src/handlers/refund.ts",
+      "line": 15,
+      "framework": "express",
+      "auth_detected": true
+    },
+    {
+      "method": "GET",
+      "path": "/payments/:id",
+      "file": "services/payments/src/handlers/webhook.ts",
+      "line": 6,
+      "framework": "express",
+      "auth_detected": false
+    }
+  ],
+  "hotspots": {
+    "available": false,
+    "since": "12.months",
+    "files": [],
+    "note": "git hotspots disabled (--no-git)"
+  },
+  "signals": [
+    {
+      "rule": "import-cycle",
+      "category": "System Design",
+      "severity_hint": "High",
+      "file": "services/payments/src/lib/db.ts",
+      "line": 1,
+      "snippet": "services/payments/src/lib/db.ts -> services/payments/src/lib/util.ts -> services/payments/src/lib/db.ts",
+      "confidence": "low",
+      "fingerprint": "40120ca3c96a84c4",
+      "rule_version": "4"
+    },
+    {
+      "rule": "unauth-write-route",
+      "category": "Security",
+      "severity_hint": "Critical",
+      "file": "services/payments/src/handlers/charge.ts",
+      "line": 14,
+      "snippet": "POST /payments/charge",
+      "confidence": "low",
+      "fingerprint": "11aa898a41ac8572",
+      "rule_version": "7",
+      "uncertain_reason": "router router in services/payments/src/handlers/charge.ts is exported but not mounted in the scanned files"
+    },
+    {
+      "rule": "http-no-timeout",
+      "category": "Reliability",
+      "severity_hint": "High",
+      "file": "services/payments/src/handlers/charge.ts",
+      "line": 17,
+      "snippet": "const providerResponse = await fetch(PROVIDER_URL, { method: \"POST\", body });",
+      "confidence": "low",
+      "fingerprint": "1da16fa5dae5bad6",
+      "rule_version": "3"
+    },
+    {
+      "rule": "query-in-loop",
+      "category": "Scalability",
+      "severity_hint": "High",
+      "file": "services/payments/src/handlers/charge.ts",
+      "line": 21,
+      "snippet": "db.query inside for loop at line 20",
+      "confidence": "low",
+      "fingerprint": "ed1d7e07b480f686",
+      "rule_version": "5"
+    },
+    {
+      "rule": "swallowed-error",
+      "category": "Reliability",
+      "severity_hint": "Medium",
+      "file": "services/payments/src/handlers/webhook.ts",
+      "line": 11,
+      "snippet": "} catch (e) {}",
+      "confidence": "low",
+      "fingerprint": "84379308b4a5383f",
+      "rule_version": "7"
+    },
+    {
+      "rule": "console-logging-only",
+      "category": "Observability",
+      "severity_hint": "Low",
+      "file": "services/payments",
+      "line": 0,
+      "snippet": "only console/print logging in services/payments",
+      "confidence": "low",
+      "fingerprint": "25414819bc3e0968",
+      "rule_version": "3"
+    },
+    {
+      "rule": "unvalidated-body",
+      "category": "API Design",
+      "severity_hint": "High",
+      "file": "services/payments/src/handlers/charge.ts",
+      "line": 14,
+      "snippet": "POST /payments/charge: body used without validation",
+      "confidence": "low",
+      "fingerprint": "8c73c1a7c6fa8dc5",
+      "rule_version": "1"
+    },
+    {
+      "rule": "unvalidated-body",
+      "category": "API Design",
+      "severity_hint": "High",
+      "file": "services/payments/src/handlers/refund.ts",
+      "line": 15,
+      "snippet": "POST /payments/refund: body used without validation",
+      "confidence": "low",
+      "fingerprint": "bdd188953bfe112a",
+      "rule_version": "1"
+    },
+    {
+      "rule": "missing-lockfile",
+      "category": "Maintainability",
+      "severity_hint": "Medium",
+      "file": "services/payments/package.json",
+      "line": 1,
+      "snippet": "package.json without package-lock.json / npm-shrinkwrap.json / yarn.lock",
+      "confidence": "medium",
+      "fingerprint": "1f34b86d2187077e",
+      "rule_version": "2"
+    }
+  ],
+  "summary": {
+    "files_scanned": 7,
+    "code_files": 6,
+    "approx_loc": 704,
+    "test_files": 1,
+    "signals_by_category": {
+      "System Design": 1,
+      "Security": 1,
+      "Reliability": 2,
+      "Scalability": 1,
+      "Observability": 1,
+      "API Design": 2,
+      "Maintainability": 1
+    },
+    "truncated": {},
+    "routes_total": 3,
+    "invalid_signals": 0,
+    "suppressed": 0,
+    "partial": false,
+    "skipped_total": 0,
+    "default_off_rules": [
+      "openapi-drift"
+    ],
+    "scope_report": {
+      "scanned": 7,
+      "skipped_by_reason": {},
+      "excluded_by_config": 0
+    }
+  },
+  "notes": [
+    "rules off by default (enable in config): openapi-drift",
+    "git hotspots disabled (--no-git)"
+  ],
+  "skipped_files": [],
+  "meta": {
+    "plugin_version": "1.1.0",
+    "schema_version": 3,
+    "rule_versions": {
+      "ci-no-test-step": "1",
+      "console-logging-only": "3",
+      "docker-latest-tag": "1",
+      "docker-no-healthcheck": "2",
+      "docker-root-user": "2",
+      "god-module": "5",
+      "hardcoded-secret": "9",
+      "http-no-timeout": "3",
+      "import-cycle": "4",
+      "k8s-no-limits": "2",
+      "k8s-no-probes": "2",
+      "list-route-no-pagination": "1",
+      "missing-lockfile": "2",
+      "mixed-error-shapes": "1",
+      "no-health-endpoint": "5",
+      "no-tests": "6",
+      "no-version-prefix": "3",
+      "openapi-drift": "2",
+      "query-in-loop": "5",
+      "retry-no-backoff": "1",
+      "sql-string-concat": "6",
+      "swallowed-error": "7",
+      "unauth-write-route": "7",
+      "unbounded-query": "4",
+      "unpinned-dependency": "4",
+      "unvalidated-body": "1"
+    },
+    "config_hash": "3d96e5d5ea6d",
+    "timestamp": "2026-11-05T16:54:09Z",
+    "repo_revision": "unknown",
+    "scope": [
+      "services/payments"
+    ]
+  }
+}

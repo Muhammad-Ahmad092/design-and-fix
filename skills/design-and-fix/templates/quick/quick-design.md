@@ -3,7 +3,7 @@
 > Scope: <component, feature or small system>
 > Context: <scale>, team of <size>, <key constraint>
 > Format: 1.0.2
-> Audit: plugin 1.0.2 · scanner not run · rev <sha|unknown> · <timestamp>
+> Audit: plugin 1.1.0 · scanner not run · rev <sha|unknown> · <timestamp>
 
 ## Overview
 

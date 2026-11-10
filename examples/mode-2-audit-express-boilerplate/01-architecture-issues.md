@@ -3,12 +3,12 @@
 > Scope: `hagopj13/node-express-boilerplate` at tag `v1.7.0` (https://github.com/hagopj13/node-express-boilerplate), whole repository; all paths relative to the repo root. Archive checksum in `evals/corpus.json`.
 > Context: Express + MongoDB starter used as the base of a small REST API, about 2k users, team of 2, must keep MongoDB; Assumed (non-interactive)
 > Format: 1.0.2
-> Audit: plugin 1.0.2 · scanner schema 3 · rev unknown · config 3d96e5d5ea6d · 2026-11-02T18:25:01Z
+> Audit: plugin 1.1.0 · scanner schema 3 · rev unknown · config 3d96e5d5ea6d · 2026-11-05T16:53:20Z
 
 ## Architecture Health Score: Healthy (8.1 / 10)
 
 Healthy: focus on Low/Medium cleanup.
-Evidence: 34 files read, 7 scanner signals reviewed, 2 confirmed
+Evidence: 34 files read, 2 scanner signals reviewed, 2 confirmed
 
 | Category | Score | Band | Weight | Main driver (IDs) |
 |---|---|---|---|---|
@@ -21,8 +21,8 @@ Evidence: 34 files read, 7 scanner signals reviewed, 2 confirmed
 | Maintainability | 9 | Strong | 1.0 | Env-name typo, EOL runtime in CI, dated dependencies (MNT-001 Low, MNT-002 Low, MNT-003 Low) |
 
 - Arithmetic: (9 + 8 + 8 + 8 + 7 + 8 + 9) / 7 = 8.14 → 8.1 → Healthy. `API-*` issues are defined in `02-api-optimization.md`.
-- Rejected signals (5): `hardcoded-secret` at `src/config/tokens.js:4` (a token-type enum value, not a secret) and at `src/docs/components.yml:31` (a sample JWT in the Swagger docs); `no-tests` for `src/controllers`, `src/routes` and `src/validations` (the tests live in the repo-root `tests/` folder: 45 integration tests in `tests/integration/auth.test.js`, 42 in `user.test.js`).
-- `routes[]` lists only the 8 `/v1/auth` routes: the chained `router.route('/').post(...)` style in `src/routes/v1/user.route.js` is not detected, so the 5 user routes in `02` were read from the file.
+- Rejected signals: none. The tests live in the repo-root `tests/` folder (45 integration tests in `tests/integration/auth.test.js`, 42 in `user.test.js`), and the scanner no longer reports `no-tests` for `src/` folders they cover.
+- `routes[]` lists only the 8 `/v1/auth` routes and the Swagger UI route in `src/routes/v1/docs.route.js`: the chained `router.route('/').post(...)` style in `src/routes/v1/user.route.js` is not detected, so the 5 user routes in `02` were read from the file.
 - No git history (`--no-git`; the archive has none), so hotspots were not used to order reading.
 
 ## Medium / Low Issues

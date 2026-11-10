@@ -97,7 +97,7 @@ Files without `> Format: 1.0.2` were written with these older headers; the linte
 > Scope: <one line: project or folders covered>
 > Context: <one line: scale, team, key constraints>
 > Format: 1.0.2
-> Audit: plugin 1.0.2 · scanner schema 3 · rev <sha|unknown> · config <config_hash> · <timestamp>
+> Audit: plugin 1.1.0 · scanner schema 3 · rev <sha|unknown> · config <config_hash> · <timestamp>
 
 ## <Section 1>
 ...
@@ -122,8 +122,8 @@ Files without `> Format: 1.0.2` were written with these older headers; the linte
 
 - Format `PREFIX-NNN`, zero-padded, starting at `001` per prefix (`SEC-001`).
 - **Single-definition rule:** `API-*` issues are defined only in `02-api-optimization.md`; every other issue only in `01-architecture-issues.md`. Other files reference IDs, never restate the row.
-- The roadmap's Action cell starts with the ID(s) it resolves. Every defined ID appears in exactly one `Action (IDs)` row across the three horizon tables (Quick Wins, Medium-term, Long-term); Suggested Sequence may cite IDs again.
-- Quick audit defines every issue in Top Issues; Quick Wins and Next Steps together reference each ID exactly once.
+- The roadmap's Action cell starts with the ID(s) it resolves. Every defined ID appears in exactly one `Action (IDs)` row (scored issues; `informational` / `not-reproducible` at most one) across the three horizon tables (Quick Wins, Medium-term, Long-term); Suggested Sequence may cite IDs again.
+- Quick audit defines every issue in Top Issues; Quick Wins and Next Steps together reference each ID exactly once (`informational` and `not-reproducible` issues at most once).
 
 ## Table Standards
 
@@ -156,14 +156,17 @@ Files without `> Format: 1.0.2` were written with these older headers; the linte
 
 | Field | Values / rule |
 |---|---|
-| Status | `confirmed` (you read the code, the defect is visible), `likely` (strong evidence, depends on runtime), `needs-review` (heuristic, could not decide), `not-reproducible` (re-run only: the previous run's issue is gone; the row stays for this run only, is not scored, needs no Verify, detail line or roadmap row, its Evidence may be stale, and `compare_audits.py` counts it as Fixed) |
+| Status | `confirmed` (you read the code, the defect is visible), `likely` (strong evidence, depends on runtime), `needs-review` (heuristic, could not decide; required when the scanner signal carries `uncertain_reason`, unless resolved as Uncertain signals below says), `informational` (worth knowing, not a defect: a deliberate trade-off, a pattern to watch; is not scored, needs no Verify, detail line or roadmap row, but its Evidence must still resolve), `not-reproducible` (re-run only: the previous run's issue is gone; the row stays for this run only, is not scored, needs no Verify, detail line or roadmap row, its Evidence may be stale, and `compare_audits.py` counts it as Fixed) |
 | Source | `scanner:<rule>` (e.g. `scanner:http-no-timeout`; bare `scanner` is not allowed), `agent` (found by reading), `scanner+agent` (optionally `scanner+agent:<rule>`) |
 | Evidence | `path:line[-line]`, several separated by `, `; secrets never copied. For an absence (no tests, no health route, no lockfile), cite the folder or file inspected as a bare path (`services/orders/`, `services/orders/go.mod`) |
 | Root cause | short text; `RC-n` when 2+ issues share it |
 | Verify | a concrete check that proves the fix: a test, a command, a metric. Required for High and Critical; `—` allowed for Medium/Low |
+| Related (optional) | `Related: <IDs>` at the end of the detail line: other issues that share a code path or must be fixed together (each ID defined in this run); unlike `RC-n`, no shared cause is implied. Omit the field when there are none; never write `Related: none` |
+| First seen (optional) | `First seen: <date or version>` at the end of the detail line: the run that first reported the issue, as the date of that run's `> Audit:` timestamp (`2026-09-01`), not the archive folder name (the folder is named for the day it was archived), or the plugin version (`1.0.2`), read from the archived runs |
 
 - **Dedup:** one issue per root cause; more locations go in Evidence. Different issues sharing a cause cite the same `RC-n`, defined once under the last issue table: `- RC-1: <cause> (<IDs>)`.
-- **Detail list:** under each Critical and High table, one line per issue, Medium/Low none: `- SEC-001: Observed: <what the code shows>. Inference: <what you conclude>. Limitations: <counter-evidence or what could not be checked>.`
+- **Detail list:** under each Critical and High table, one line per issue, Medium/Low none: `- SEC-001: Observed: <what the code shows>. Inference: <what you conclude>. Limitations: <counter-evidence or what could not be checked>.` Optional fields follow Limitations: `- SEC-001: Observed: … Limitations: … Related: SEC-003. First seen: 2026-09-01.` A Medium/Low issue gets a detail line only to carry them.
+- **Uncertain signals:** an issue that cites a scanner signal with `uncertain_reason` (same rule, file and line) keeps Status `needs-review`. It may leave `needs-review` only when you read the file that resolves the uncertainty (the router mount, gateway, middleware or client config the reason points at): then use Source `scanner+agent:<rule>` and add `Uncertainty resolved: <path:line>` to its detail line, naming that file, which must be another file than the signal's own (a Medium/Low issue gets a detail line to carry it). `lint_output.py --scan docs/architecture/.scan/scan.json` enforces this for `scanner:<rule>` (always `needs-review`), `scanner+agent:<rule>` and bare `scanner+agent` (which matches every rule), and checks that the scan file is the one this audit was built from: its `meta` timestamp and config hash must match the `> Audit:` and `> Scope:` lines (every scanned scope folder named on the Scope line). Audit several folders in one scan by repeating the `--scope` flag.
 - Severity comes from Severity Definitions in `references/mode-2-existing-project.md`; the scanner's `severity_hint` is a starting point.
 
 ### Decision Table
@@ -217,7 +220,7 @@ flowchart LR
 
 | Element | Limit |
 |---|---|
-| Overview | 2–3 lines |
+| Overview | 2–3 lines (the Requirements table does not count) |
 | Prose block | 4 lines maximum |
 | "Why" line | 1 line |
 | Section | About half a page |
@@ -236,7 +239,7 @@ The OpenAPI skeleton block in `03-api-design-and-optimization.md` does not count
 - [ ] Tables for every comparison of 3+ items
 - [ ] Every recommendation has a "Why"
 - [ ] Severity, Effort and Impact use the fixed vocabulary
-- [ ] Every issue has one ID, defined once, cited with `path:line`, and sits in exactly one roadmap `Action (IDs)` row
+- [ ] Every issue has one ID, defined once, cited with `path:line`, and sits in exactly one roadmap `Action (IDs)` row (scored issues; `informational` / `not-reproducible` at most one)
 - [ ] Diagrams are Mermaid (ASCII only per the fallback rule), max about 12 nodes
 - [ ] No filler sections, no generic boilerplate
-- [ ] `lint_output.py docs/architecture --repo <root>` reports no findings
+- [ ] `lint_output.py docs/architecture --repo <root> --scan docs/architecture/.scan/scan.json` (audits; design files take no flags) reports `lint: clean`

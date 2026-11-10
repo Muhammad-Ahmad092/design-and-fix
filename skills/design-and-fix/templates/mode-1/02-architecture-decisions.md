@@ -3,13 +3,13 @@
 > Scope: <project name>
 > Context: <scale> users, team of <size>, <key constraint>
 > Format: 1.0.2
-> Audit: plugin 1.0.2 · scanner not run · rev <sha|unknown> · <timestamp>
+> Audit: plugin 1.1.0 · scanner not run · rev <sha|unknown> · <timestamp>
 
 ## Pattern Choice
 
 **Chosen: <Monolith / Modular Monolith / Microservices>**
 
-<2–3 lines justifying the pick against the collected context>
+<2–3 lines justifying the pick against the Requirements table; the options are compared in the pattern trade-off table in `01-system-design.md` (Key Architectural Decisions)>
 
 ## Scaling Strategy
 
@@ -92,5 +92,5 @@ Total: about <low>–<high> USD/month. Assumptions: <region, traffic from Capaci
 
 ## Trade-offs Accepted
 
-- <what is sacrificed> for <what gain>
+- <what is sacrificed> for <what gain> (the weaker columns of the chosen options in the `01` trade-off tables)
 - <what is sacrificed> for <what gain>

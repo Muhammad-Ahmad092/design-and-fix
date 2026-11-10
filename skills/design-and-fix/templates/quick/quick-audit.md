@@ -3,16 +3,18 @@
 > Scope: <folders / services audited>
 > Context: <scale>, <key constraint>
 > Format: 1.0.2
-> Audit: plugin 1.0.2 · scanner schema 3 · rev <sha|unknown> · config <config_hash> · <timestamp>
+> Audit: plugin 1.1.0 · scanner schema 3 · rev <sha|unknown> · config <config_hash> · <timestamp>
 
 ## Change Since Last Audit
 
-(re-run only — delete on first run; copy the Previous line and the Fixed/New bullets as printed by `compare_audits.py docs/architecture/history/<YYYY-MM-DD>[-N] docs/architecture --repo <root>`, using the folder you just archived into)
+(re-run only — delete on first run; copy the Previous line and the Fixed/New bullets as printed by `compare_audits.py docs/architecture/history/<YYYY-MM-DD>[-N] docs/architecture --repo <root>`, using the folder you just archived into, and the Score line (under `### Score Trend` when the script prints one); drop Revision, Still open, Changed, Possibly moved and the trend table; act on `Keep old IDs` (renumber those issues back) before dropping it)
 
 Previous: <Band> (<X.X> / 10) → Current: <Band> (<X.X> / 10)
 
 - Fixed: <IDs>
 - New: <IDs>
+
+Score <+/-X.X> (<old> → <new>): fixed <IDs (severity)>; new <IDs (severity)>.
 
 ## Health Band
 

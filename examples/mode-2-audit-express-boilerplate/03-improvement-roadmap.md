@@ -3,7 +3,7 @@
 > Scope: `hagopj13/node-express-boilerplate` at tag `v1.7.0` (https://github.com/hagopj13/node-express-boilerplate), whole repository; all paths relative to the repo root. Archive checksum in `evals/corpus.json`.
 > Context: Express + MongoDB starter used as the base of a small REST API, about 2k users, team of 2, must keep MongoDB; Assumed (non-interactive)
 > Format: 1.0.2
-> Audit: plugin 1.0.2 · scanner schema 3 · rev unknown · config 3d96e5d5ea6d · 2026-11-02T18:25:01Z
+> Audit: plugin 1.1.0 · scanner schema 3 · rev unknown · config 3d96e5d5ea6d · 2026-11-05T16:53:20Z
 
 Every issue ID from `01` and `02` appears in exactly one `Action (IDs)` row of the three horizon tables; Suggested Sequence may cite IDs again.
 Placement: S -> Quick Wins, M -> Medium-term, L/XL -> Long-term.

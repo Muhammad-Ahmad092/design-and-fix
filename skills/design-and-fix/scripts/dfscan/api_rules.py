@@ -8,6 +8,7 @@ from typing import Callable, Dict, List, Optional, Set, Tuple
 from .auth.core import file_code_text
 from .filecache import FileCache, text_of
 from .imports import _read
+from .json_utils import check_json_safety
 from .model import FileInfo, Signal
 from .registry import RuleMeta, register
 from .routes import _code_text, _kind, find_services, is_health_path
@@ -394,6 +395,7 @@ def _parse_spec(text: str, json_file: bool) -> Tuple[Dict[str, Tuple[int, Set[st
     lines = text.split("\n")
     if json_file:
         try:
+            check_json_safety(text)
             data = json.loads(text)
         except (ValueError, RecursionError) as exc:
             raise MalformedSpec(type(exc).__name__) from None

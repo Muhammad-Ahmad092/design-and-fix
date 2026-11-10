@@ -31,6 +31,7 @@ Spring, ASP.NET, Rails and Laravel support is newer and less measured than the J
 - Anything git-ignored (skipped by default, including local `.env` and key files; `--no-gitignore` includes them), minified or generated files, files over `max_file_bytes`, binary files.
 - Authorization semantics: it sees an auth marker or its absence, not whether the check is correct.
 - Dependency vulnerabilities. There is no CVE lookup; dependency checks are offline hygiene only (`missing-lockfile`, `unpinned-dependency`).
+- JSON manifests, OpenAPI specs, and config files nested more than 128 levels or with numeric tokens longer than 4,300 digits are rejected with an error or skip note.
 
 ## Confidence
 

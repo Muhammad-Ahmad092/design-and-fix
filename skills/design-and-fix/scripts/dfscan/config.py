@@ -9,6 +9,7 @@ from typing import Any, Dict, List, Optional
 
 from . import profiles, registry
 from .ignore import InvalidPattern, compile_glob
+from .json_utils import check_json_safety
 from .walker import MAX_FILE_BYTES
 
 CONFIG_NAME = ".design-and-fix.json"
@@ -194,7 +195,9 @@ def load_config(root: str, explicit: Optional[str] = None,
         return cfg
     try:
         with open(path, "r", encoding="utf-8-sig") as fh:
-            data = json.load(fh)
+            text = fh.read()
+        check_json_safety(text)
+        data = json.loads(text)
     except json.JSONDecodeError as exc:
         raise ConfigError("%s: invalid JSON at line %d column %d (%s); fix: correct the syntax "
                           "(no comments or trailing commas)" % (path, exc.lineno, exc.colno, exc.msg))

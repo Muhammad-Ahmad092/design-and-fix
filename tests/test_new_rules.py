@@ -573,9 +573,13 @@ class MalformedInputTests(unittest.TestCase):
             run_api_rules(walked, find_routes(walked), notes)
         self.assertEqual(sorted(notes), [
             "deps rules skipped bad/package.json: malformed JSON (JSONDecodeError)",
-            "deps rules skipped package.json: malformed JSON (RecursionError)",
-            "deps rules skipped web/composer.json: malformed JSON (RecursionError)",
-            "openapi-drift skipped openapi.json: malformed spec (RecursionError)"])
+            "deps rules skipped package.json: malformed JSON (JSONNestingError)",
+            "deps rules skipped web/composer.json: malformed JSON (JSONNestingError)",
+            "openapi-drift skipped openapi.json: malformed spec (JSONNestingError)"])
+
+    def test_json_safety_limits_do_not_apply_inside_strings(self):
+        from dfscan.json_utils import check_json_safety
+        check_json_safety('{"value": "%s"}' % ("[" * 129 + "9" * 4301))
 
     def test_disabled_openapi_drift_writes_no_note(self):  # final review M1
         files = {"server.js": self.SERVER, "openapi.json": '{"paths": {"/users": '}

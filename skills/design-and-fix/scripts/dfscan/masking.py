@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import functools
 import re
 
 # Secret-naming key words shared by snippet masking and the hardcoded-secret rule, so detection and
@@ -30,22 +31,45 @@ _MASK_AUTH_TUPLE_RE = re.compile(
 _MASK_SLACK_HOOK_RE = re.compile(r"(hooks\.slack\.com/services/)[A-Za-z0-9/_-]+")
 _MASK_TOKEN_RE = re.compile(
     r"AKIA[0-9A-Z]{16}|\b(?:sk|pk|rk)_(?:live|test)_[0-9A-Za-z]{8,}|\bgh[pousr]_[0-9A-Za-z]{20,}"
+    r"|\bgithub_pat_[0-9A-Za-z_]{20,}|\bglpat-[0-9A-Za-z_-]{20,}"
     r"|\bxox[abprs]-[0-9A-Za-z-]{10,}|\beyJ[0-9A-Za-z_-]{10,}\.[0-9A-Za-z_-]{10,}(?:\.[0-9A-Za-z_-]*)?"
     r"|\bAIza[0-9A-Za-z_-]{35}|\bsk-(?:proj-)?[0-9A-Za-z_-]{20,}")
 _ALREADY_MASKED = ("<redacted>", "***")
 
+# Provider token formats that hardcoded-secret reports as a known format (Critical) wherever they
+# appear; every one is also masked by _MASK_TOKEN_RE above. Each starts with a literal prefix
+# (so the regex engine scans for it quickly) followed by one character class, so matching is
+# linear. No leading `\b`: the rule checks that a match does not follow a word character.
+PROVIDER_FORMATS = (
+    ("AWS access key id", r"AKIA[0-9A-Z]{16}"),
+    ("Stripe secret key", r"[sr]k_live_[0-9A-Za-z]{16,}"),
+    ("GitHub token", r"gh[pousr]_[0-9A-Za-z]{36,}"),
+    ("GitHub token", r"github_pat_[0-9A-Za-z_]{40,}"),
+    ("GitLab token", r"glpat-[0-9A-Za-z_-]{20,}"),
+    ("Slack token", r"xox[abprs]-[0-9A-Za-z-]{10,}"),
+    ("Google API key", r"AIza[0-9A-Za-z_-]{35}"),
+    ("Anthropic API key", r"sk-ant-[0-9A-Za-z_-]{20,}"),
+    ("OpenAI API key", r"sk-(?:proj|svcacct|admin)-[0-9A-Za-z_-]{20,}"),
+)
 
+
+MASK_MEMO_SIZE = 256  # distinct snippets remembered (signals on one line share one snippet)
+
+
+@functools.lru_cache(maxsize=MASK_MEMO_SIZE)
 def mask_secrets(snippet: str) -> str:
     """Replace secret-looking values in a snippet with `***` (applied to every rule's snippet).
 
     Masks the value of key = "value" assignments whose key names a secret (password, secret, token,
     api key, access key, client secret, secret access key, private key; `_` or `-` between words),
     unquoted KEY=value in dotenv/YAML style lines, well-known token shapes (AWS key ids, Stripe,
-    GitHub, Slack, Google API keys, OpenAI-style sk- keys, JWTs, Slack webhook paths), URL passwords
+    GitHub ghp_/github_pat_, GitLab glpat-, Slack, Google API keys, OpenAI/Anthropic-style sk- keys,
+    JWTs, Slack webhook paths), URL passwords
     (scheme://user:***@host), basic-auth tuples (auth=('user', '***')), query-string secrets
     (?api_key=...) and Bearer / Authorization header values. Already masked values are left alone.
     False-positive risk: a non-secret value under a secret-sounding key is masked too, which only
-    hides text from the report.
+    hides text from the report. Memoised (a pure function of the snippet), so thousands of
+    signals on one long line mask it once; report.scan clears the memo at the start of a scan.
     """
     spans = []
     for rx in (_MASK_DQ_RE, _MASK_SQ_RE):

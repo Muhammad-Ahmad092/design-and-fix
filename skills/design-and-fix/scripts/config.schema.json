@@ -8,6 +8,10 @@
       "type": "string",
       "description": "Optional editor hint pointing at this schema."
     },
+    "profile": {
+      "enum": ["balanced", "security-focused", "api-focused", "performance-focused", "architecture-focused", "quick"],
+      "description": "Built-in profile applied under this file (this file wins on every key it sets); --profile overrides it. See docs/configuration.md."
+    },
     "exclude": {
       "type": "array",
       "items": {"type": "string"},
@@ -25,7 +29,7 @@
         "type": "object",
         "additionalProperties": false,
         "properties": {
-          "enabled": {"type": "boolean", "description": "false drops the rule's signals."},
+          "enabled": {"type": "boolean", "description": "false drops the rule's signals; true also turns on a rule that is off by default."},
           "severity": {
             "enum": ["Critical", "High", "Medium", "Low"],
             "description": "Replaces the rule's severity_hint."

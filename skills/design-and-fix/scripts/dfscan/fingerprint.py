@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import functools
 import hashlib
 import re
 from typing import List, Optional
@@ -17,7 +18,10 @@ _DEF_RES = [
 ]
 
 
+@functools.lru_cache(maxsize=256)
 def normalise(text: str) -> str:
+    """Line text with strings, numbers and whitespace runs normalised (memoised: every signal
+    on one line normalises the same text; report.scan clears the memo per scan)."""
     text = _STR_RE.sub("S", text.strip())
     text = _NUM_RE.sub("N", text)
     return re.sub(r"\s+", " ", text)

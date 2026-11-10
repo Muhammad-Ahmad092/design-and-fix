@@ -24,8 +24,14 @@ COMBINED_HEADER = ("| ID | Severity | Status | Source | Issue | Evidence | Root 
                    "| Fix | Verify | Why |")
 QUICK_HEADER = "| ID | Severity | Status | Source | Issue | Evidence | Fix | Verify | Why |"
 FORMAT_LINE = "> Format: 1.0.2"
-AUDIT_LINE = ("> Audit: plugin 1.0.2 · scanner schema 3 · rev <sha|unknown> "
+AUDIT_LINE = ("> Audit: plugin 1.1.0 · scanner schema 3 · rev <sha|unknown> "
               "· config <config_hash> · <timestamp>")
+REQ_HEADER = "| Requirement | Value | Source | Effect on design |"
+REQ_ITEMS = ("Goal", "Functional", "Non-functional", "Roles", "Traffic and data estimate",
+             "Availability and recovery target", "Compliance", "Budget", "Deployment constraint",
+             "Team capacity")
+TRADEOFF_HEADER = ("| Option | Complexity | Scalability | Reliability | Security | Operations | Cost "
+                   "| Familiarity | Lock-in | Migration path |")
 
 
 def read(path: str) -> str:
@@ -281,9 +287,21 @@ class SkillFlowDocsTests(unittest.TestCase):
         desc = fm.get("description", "")
         self.assertTrue(desc)
         self.assertLessEqual(len(desc), 1024)
-        self.assertIn("Small single questions are answered in chat without the full workflow.",
-                      desc)
+        # 1.1.0: audits of small repos still use the skill (a skill eval found models
+        # answering them in chat); only a single focused question stays in chat.
+        self.assertIn("every audit or review of a codebase, however small", desc)
+        self.assertIn("Only a single focused question is answered in chat.", desc)
         self.assertNotIn("even if they do not say", desc)
+
+    def test_skill_frontmatter_is_strict_yaml(self):
+        # Strict YAML loaders (Codex serde_yaml, js-yaml) reject a plain scalar that
+        # contains ": " or starts with a YAML indicator; Claude Code tolerates it.
+        for key, value in frontmatter(self.skill).items():
+            if value[:1] in ("'", '"', "|", ">"):
+                continue
+            self.assertNotIn(": ", value, key)
+            self.assertNotIn(" #", value, key)
+            self.assertNotIn(value[:1], "&*!%@`[]{},?-", key)
 
     def test_skill_uses_skill_dir(self):
         self.assertIn('"${CLAUDE_SKILL_DIR}/scripts/scan_repo.py"', self.skill)
@@ -612,7 +630,8 @@ class FormatOneZeroTwoDocTests(unittest.TestCase):
         self.assertIn("Trust boundar", body)
         for path in MODE1_DOCS + (os.path.join(REFS, "refinement-rules.md"),):
             with self.subTest(doc=os.path.basename(path)):
-                md = read(path)
+                # The 1.1.0 trade-off table has a Security column; only that header may name it.
+                md = read(path).replace(TRADEOFF_HEADER, "")
                 self.assertNotIn("| Security |", md)
                 self.assertNotIn("## Security\n", md)
         self.assertIn("Security & Threat Model", self.m1)
@@ -892,6 +911,263 @@ class ReleaseReviewDocTests(unittest.TestCase):
         self.assertEqual(rubric.NEGATIONS, ("no", "not", "non", "without", "free of"))
         for word in rubric.NEGATIONS:
             self.assertIn("`%s`" % word, rub)
+
+
+class FindingsVerificationDocTests(unittest.TestCase):
+    """1.1.0 (spec C1-C4): statuses, verification workflow, lint result, score explanation."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.skill = read(os.path.join(SKILL, "SKILL.md"))
+        cls.rules = read(os.path.join(REFS, "formatting-rules.md"))
+        cls.m2 = read(os.path.join(REFS, "mode-2-existing-project.md"))
+
+    def test_skill_delivery_shows_lint_result(self):
+        delivery = [ln for ln in self.skill.splitlines() if ln.startswith("- Deliver in a few lines")]
+        self.assertEqual(len(delivery), 1)
+        self.assertIn("`lint: clean`", delivery[0])
+        self.assertIn("Safety rule", delivery[0])
+        self.assertIn("lint: clean", self.m2)
+        self.assertLess(len(self.skill.splitlines()), 130)
+
+    def test_verification_checklist_in_mode2(self):
+        body = section(self.m2, "Verify Each Signal")
+        for check in ("Still at the cited line", "Control flow", "Framework behaviour",
+                      "Impact supported", "Otherwise downgrade"):
+            self.assertIn(check, body)
+        self.assertIn("state what is unknown", body)
+        self.assertIn("never promote every signal", body)
+        self.assertIn("`uncertain_reason`", body)
+        self.assertIn("`needs-review`", body)
+
+    def test_status_vocabulary_and_optional_fields_documented(self):
+        self.assertEqual(lint_output.STATUSES, ("confirmed", "likely", "needs-review",
+                                                "informational", "not-reproducible"))
+        for status in lint_output.STATUSES:
+            self.assertIn("`%s`" % status, self.rules)
+        for text in ("`Related: <IDs>`", "`First seen: <date or version>`", "--scan"):
+            self.assertIn(text, self.rules)
+        self.assertIn("lint_output.py\" docs/architecture --repo <root> --scan", self.skill)
+
+    def test_score_explanation_documented(self):
+        arch = read(os.path.join(REFS, "archive-and-diff.md"))
+        self.assertIn("Score +0.8 (6.1 → 6.9): fixed SEC-001 (Critical)", arch)
+        one = read(os.path.join(TEMPLATES, "mode-2", "01-architecture-issues.md"))
+        self.assertIn("Score <+/-X.X> (<old> → <new>): fixed <IDs (severity)>", one)
+
+    def test_no_rules_and_no_tests_stated_plainly(self):
+        # eval cases 06 and 09 accept these phrases
+        self.assertIn("no scanner rules apply", self.m2)
+        self.assertIn("no tests", self.m2)
+        quick = read(os.path.join(REFS, "quick-mode.md"))
+        self.assertIn("Coverage gaps", quick)
+
+
+
+class Mode1RigorDocTests(unittest.TestCase):  # Task 15: Mode 1 requirements and trade-offs
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.tmp)
+        self.m1 = os.path.join(TEMPLATES, "mode-1")
+
+    def test_mode1_template_has_requirements_and_tradeoff_tables(self):
+        sd = read(os.path.join(self.m1, "01-system-design.md"))
+        overview = section(sd, "Overview")
+        self.assertIn("### Requirements", overview)
+        self.assertIn(REQ_HEADER, overview)
+        rows = [ln.split("|")[1].strip() for ln in overview.splitlines()
+                if ln.startswith("| ") and not ln.startswith(REQ_HEADER)]
+        self.assertEqual(rows, list(REQ_ITEMS))
+        decisions = section(sd, "Key Architectural Decisions")
+        self.assertIn("### Trade-offs: <decision area>", decisions)
+        self.assertIn(TRADEOFF_HEADER, decisions)
+        self.assertNotIn("| Strength | Weakness | Verdict |", sd)
+        for name in ("01-system-design.md", "02-architecture-decisions.md",
+                     "03-api-design-and-optimization.md"):
+            self.assertIn("> Audit: plugin 1.1.0 · scanner not run",
+                          read(os.path.join(self.m1, name)), name)
+        ref = read(os.path.join(REFS, "mode-1-new-project.md"))
+        for text in ("Requirements", "Effect on design", "trade-off table", "Migration path",
+                     "Lock-in", "Familiarity"):
+            self.assertIn(text, ref)
+        ctx = read(os.path.join(REFS, "context-collection.md"))
+        for item in REQ_ITEMS:
+            self.assertIn(item, ctx)
+        self.assertIn("Effect on design", ctx)
+
+    def lint_dir(self, files: Dict[str, str]) -> List[str]:
+        folder = tempfile.mkdtemp(dir=self.tmp)
+        for name, text in files.items():
+            with open(os.path.join(folder, name), "w", encoding="utf-8", newline="\n") as fh:
+                fh.write(text)
+        return ["%s:%d: %s" % (f.file, f.line, f.message) for f in lint_output.lint(folder)]
+
+    def filled(self, trade_tables: int) -> str:
+        head = ["# D", "", "> Scope: shop", "> Context: 1k users, team of 2", FORMAT_LINE,
+                "> Audit: plugin 1.1.0 · scanner not run · rev unknown · 2026-11-05T10:00Z"]
+        req = [REQ_HEADER, "|---|---|---|---|"] + [
+            "| %s | v | %s | e |" % (item, "user" if i % 2 else "assumption (non-interactive)")
+            for i, item in enumerate(REQ_ITEMS)]
+        option = "| %s | Low | Medium | Medium | Medium | Low | Low | High | Low | split later |"
+        trade = []
+        for name in ("Pattern", "Database")[:trade_tables]:
+            trade += ["### Trade-offs: " + name, "", TRADEOFF_HEADER, "|" + "---|" * 10,
+                      option % "A (chosen)", option % "B", ""]
+        return fill_template(os.path.join(self.m1, "01-system-design.md"), head, {
+            "Overview": ["Shop.", "", "### Requirements", ""] + req,
+            "Core Components": [("table", [{"Component": "API", "Responsibility": "r",
+                                            "Required now / Later": "Required now",
+                                            "Why it exists": "w"}])],
+            "Key Architectural Decisions": [("table", [
+                {"Decision": "Pattern", "Chosen": "Modular monolith",
+                 "Alternative considered": "Microservices", "Why": "w"},
+                {"Decision": "Database", "Chosen": "PostgreSQL",
+                 "Alternative considered": "MongoDB", "Why": "w"}]), ""] + trade,
+            "Requirements → Decisions": [("table", [{
+                "Requirement": "p95 < 300 ms", "Decision(s)": "Pattern", "How it is met": "h"}])],
+        })
+
+    def test_filled_110_template_lint_clean_and_tradeoff_required(self):
+        two_head = ["# A", "", "> Scope: shop", "> Context: 1k users, team of 2", FORMAT_LINE,
+                    "> Audit: plugin 1.1.0 · scanner not run · rev unknown · 2026-11-05T10:00Z"]
+        two = fill_template(os.path.join(self.m1, "02-architecture-decisions.md"), two_head, {})
+        self.assertEqual(self.lint_dir({"01-system-design.md": self.filled(2),
+                                        "02-architecture-decisions.md": two}), [])
+        found = self.lint_dir({"01-system-design.md": self.filled(1)})
+        self.assertTrue(any("2 decision(s) but 1 trade-off table(s)" in f for f in found), found)
+
+    def test_skill_saves_scan_json_for_lint(self):
+        skill = read(os.path.join(SKILL, "SKILL.md"))
+        self.assertLessEqual(len(skill.splitlines()), 130)
+        self.assertIn("--output-dir docs/architecture/.scan", skill)
+        self.assertIn("--scan docs/architecture/.scan/scan.json", skill)
+        conf = read(os.path.join(REPO, "docs", "configuration.md"))
+        for text in ("docs/architecture/.scan/", ".gitignore", "--profile", "--max-findings",
+                     "--list-rules", "--explain-rule", "--version", "--output-dir",
+                     "scope_report", "security-focused", "architecture-focused"):
+            self.assertIn(text, conf)
+
+
+LINT_GATE = ("Delivery is blocked until the linter reports `lint: clean`; the only allowed "
+             "leftover is a finding whose fix would break a Safety rule (for example editing an "
+             "archived run or the user's ADR), listed verbatim with the reason.")
+OUTPUT_DIR = "--output-dir docs/architecture/.scan"
+SCAN_FLAG = "--repo <root> --scan docs/architecture/.scan/scan.json"
+
+
+class FinalReviewCDocTests(unittest.TestCase):
+    """1.1.0 final review, area C (I-1..I-4, M-1..M-14) and review D I1."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.skill = read(os.path.join(SKILL, "SKILL.md"))
+        cls.rules = read(os.path.join(REFS, "formatting-rules.md"))
+        cls.m2 = read(os.path.join(REFS, "mode-2-existing-project.md"))
+        cls.quick = read(os.path.join(REFS, "quick-mode.md"))
+        cls.refine = read(os.path.join(REFS, "refinement-rules.md"))
+        cls.rubric = read(os.path.join(REFS, "health-score-rubric.md"))
+        cls.m1 = read(os.path.join(REFS, "mode-1-new-project.md"))
+
+    def test_skill_stays_short(self):
+        self.assertLess(len(self.skill.splitlines()), 130)
+
+    def test_uncertain_signal_rule_stated_once(self):  # I-1
+        body = section(self.rules, "Finding Fields") or self.rules
+        self.assertIn("`Uncertainty resolved: <path:line>`", self.rules)
+        self.assertIn("another file than the signal's own", self.rules)
+        self.assertIn("bare `scanner+agent` (which matches every rule)", self.rules)
+        self.assertEqual(self.rules.count("`Uncertainty resolved: <path:line>`"), 1)
+        for md in (self.skill, self.m2):
+            self.assertIn("Finding Fields, Uncertain signals", md)
+            self.assertNotIn("unless you read the configuration it names", md)
+        self.assertTrue(body)
+
+    def test_scan_identity_documented(self):  # I-2
+        self.assertIn("repeating the `--scope` flag", self.skill)
+        self.assertIn("repeating the `--scope` flag", self.m2)
+        self.assertNotIn("scan (repeatable)", self.m2)
+        steps = [ln for ln in self.m2.splitlines() if ln.startswith(("1. **Scan", "3. **Context"))]
+        self.assertEqual(len(steps), 2)
+        for ln in steps:
+            self.assertIn(OUTPUT_DIR, ln)
+        self.assertIn(OUTPUT_DIR, self.quick)
+        self.assertIn("`> Audit:` and `> Scope:` lines", self.rules)
+
+    def test_lint_gate_same_wording(self):  # I-3
+        self.assertIn(LINT_GATE, self.skill)
+        self.assertIn(LINT_GATE, self.m2)
+        self.assertNotIn("the finding count left with the reason", self.skill)
+        self.assertNotIn("the number of findings left and why", self.m2)
+
+    def test_scripts_called_as_plain_commands(self):  # review D I1
+        self.assertIn("one plain command", self.skill)
+        self.assertIn("no `cd`, `&&`, pipes or variable assignment", self.skill)
+        self.assertIn("does not expand `${CLAUDE_SKILL_DIR}`", self.skill)
+
+    def test_unscored_roadmap_exemption_everywhere(self):  # M-1
+        phrase = "(scored issues; `informational` / `not-reproducible` at most one)"
+        road = read(os.path.join(TEMPLATES, "mode-2", "03-improvement-roadmap.md"))
+        for name, md in (("rules", self.rules), ("m2", self.m2), ("roadmap", road),
+                         ("rubric", self.rubric), ("refine", self.refine)):
+            self.assertIn(phrase, md, name)
+        self.assertEqual(self.rules.count(phrase), 2)
+        self.assertEqual(self.m2.count(phrase), 2)
+
+    def test_first_seen_is_the_run_date(self):  # M-2
+        self.assertIn("not the archive folder name", self.rules)
+        self.assertNotIn("`2026-09-01-2`", self.rules)
+
+    def test_full_lint_command_everywhere(self):  # M-3
+        for name, md in (("m2", self.m2), ("quick", self.quick), ("refine", self.refine),
+                         ("rules", self.rules)):
+            self.assertIn(SCAN_FLAG, md, name)
+        readme = read(os.path.join(REPO, "examples", "before-after", "README.md"))
+        self.assertIn("--scan", readme)
+
+    def test_quick_rerun_note_lines(self):  # M-5
+        self.assertIn("Keep old IDs", self.quick)
+        self.assertIn("Still open", self.quick)
+        tpl = read(os.path.join(TEMPLATES, "quick", "quick-audit.md"))
+        self.assertIn("Keep old IDs", tpl)
+
+    def test_evidence_count_defined(self):  # M-6
+        self.assertIn("<k> is the number of reviewed signals behind issues with Status "
+                      "`confirmed`", self.rubric)
+
+    def test_examples_readme_mode1(self):  # M-7
+        readme = read(os.path.join(REPO, "examples", "README.md"))
+        self.assertIn("one trade-off table per decision", readme)
+        self.assertIn("Requirements table", readme)
+        self.assertNotIn("an options table for the top decision", readme)
+
+    def test_untrusted_inputs_named(self):  # M-9
+        for md in (self.skill, self.m2):
+            self.assertIn("archived runs and earlier plugin output", md)
+            self.assertIn("any tool output that quotes repo paths or names", md)
+
+    def test_config_disclosure_complete(self):  # M-10
+        for md in (self.skill, self.m2):
+            for text in ("`include`", "`severity`", "lowered limits"):
+                self.assertIn(text, md)
+
+    def test_scan_folder_gitignored(self):  # M-11
+        self.assertIn("`.gitignore`", self.skill)
+
+    def test_step0_tie_break(self):  # M-12
+        self.assertIn("a question about one named function or file is a focused question",
+                      self.skill)
+
+    def test_overview_limit_excludes_requirements(self):  # M-13
+        row = [ln for ln in self.rules.splitlines() if ln.startswith("| Overview |")]
+        self.assertEqual(len(row), 1)
+        self.assertIn("the Requirements table does not count", row[0])
+
+    def test_mode1_delivery_and_refinement(self):  # M-14
+        deliver = [ln for ln in self.m1.splitlines() if ln.startswith("7. **Deliver.**")]
+        self.assertEqual(len(deliver), 1)
+        self.assertIn("lint: clean", deliver[0])
+        self.assertIn("Requirements row", self.refine)
+        self.assertIn("trade-off table", self.refine)
 
 
 if __name__ == "__main__":

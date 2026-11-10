@@ -2,7 +2,8 @@
 """Lint generated design-and-fix Markdown output against references/formatting-rules.md
 and the health-score rubric.
 
-Usage: lint_output.py <dir-or-file> [--repo ROOT] [--format text|json] [--include-history]
+Usage: lint_output.py <dir-or-file> [--repo ROOT] [--scan SCAN_JSON] [--format text|json]
+                      [--include-history]
 Exit codes: 0 clean, 1 findings (printed as `file:line: message`), 2 usage error.
 
 Folders named `history` (archived runs, references/archive-and-diff.md) are skipped unless
@@ -15,7 +16,36 @@ archive folder must carry that line. 1.0.1-format files (archived runs) are chec
 older rules only, including the `1.0.1/<file>` header rows of formatting-rules.md. ADRs without
 `> Format: 1.0.2` (written by hand or by another tool) get only the supersede pairing check.
 Issues with Status `not-reproducible` are kept for one run but excluded from the score, the
-roadmap, the Verify/detail requirement and the --repo Evidence checks.
+roadmap, the Verify/detail requirement and the --repo Evidence checks. Issues with Status
+`informational` (an observation, not a defect) are not scored and need no Verify, detail line
+or roadmap row, but their Evidence is still checked.
+
+--scan reads the scanner JSON the audit was built from: an issue whose Source is
+`scanner:<rule>`, `scanner+agent:<rule>` or bare `scanner+agent` (every rule) and whose Evidence
+covers a signal of that rule (same file, line inside the cited range) that carries
+`uncertain_reason` must have Status `needs-review`. A `scanner+agent` issue may leave
+`needs-review` only when its detail line names the file that resolved the uncertainty,
+`Uncertainty resolved: <path:line>`, and that file is not the signal's own file (with --repo it
+must exist and hold that line). The scan's `meta` must match each audit file: `timestamp` and
+`config_hash` against the `> Audit:` line (any timestamp spelling of the same instant), every
+`meta.scope` folder named on the `> Scope:` line.
+
+Mode 1 files (01-system-design.md, 02-architecture-decisions.md) whose `> Audit:` line names
+plugin 1.1.0 or later, or that carry a 1.1.0 template heading (`### Requirements` or
+`### Trade-offs: <decision>`; a `### Requirements` heading alone switches the checks on), must
+carry the Requirements table (`| Requirement | Value | Source | Effect on design |`, one row
+per item: Goal, Functional, Non-functional, Roles, Traffic and data estimate, Availability and
+recovery target, Compliance, Budget, Deployment constraint, Team capacity; a Value of `none` or
+`n/a` is valid; Source `user` or `assumption`) and one trade-off table per Key Architectural Decisions
+row (`| Option | Complexity | Scalability | Reliability | Security | Operations | Cost |
+Familiarity | Lock-in | Migration path |`, at least 2 options). Older Mode 1 files are exempt.
+
+Folders whose name starts with a dot (for example `docs/architecture/.scan`, where the skill keeps
+the scanner JSON) are not walked.
+
+Detail lines may carry the optional fields `Related: <IDs>` (each ID defined in the same
+folder) and `First seen: <YYYY-MM-DD or version>` (the archived run's Audit timestamp date, not
+its archive folder name).
 Stdlib only.
 """
 from __future__ import annotations
@@ -25,6 +55,7 @@ import json
 import os
 import re
 import sys
+import datetime
 from dataclasses import dataclass
 from typing import Dict, Iterable, List, Optional, Set, Tuple
 
@@ -43,12 +74,14 @@ PREFIX_MATCH_HEADERS = ("Architecture Health Score",)
 SEVERITIES = ("Critical", "High", "Medium", "Low")
 EFFORTS = ("S", "M", "L", "XL")
 IMPACTS = ("Low", "Medium", "High")
-STATUSES = ("confirmed", "likely", "needs-review", "not-reproducible")
+STATUSES = ("confirmed", "likely", "needs-review", "informational", "not-reproducible")
 HORIZONS = (("Quick Wins", ("S",)), ("Medium-term", ("M",)), ("Long-term", ("L", "XL")))
 MERMAID_HEADERS = ("flowchart", "graph", "sequenceDiagram", "erDiagram", "classDiagram",
                    "stateDiagram", "stateDiagram-v2", "journey", "gantt", "timeline", "mindmap",
                    "pie", "gitGraph")
 RETIRED = "not-reproducible"   # Status kept for one run; not scored, not on the roadmap
+INFORMATIONAL = "informational"  # an observation: not scored, not on the roadmap
+NEEDS_REVIEW = "needs-review"
 EMPTY_VERIFY = ("", "—", "–", "-", "n/a", "none", "tbd")
 AUDIT_KINDS = ("01-architecture-issues.md", "02-api-optimization.md",
                "03-improvement-roadmap.md", "quick-audit.md")
@@ -68,11 +101,26 @@ ABSENCE_RE = re.compile(r"^(?=[^:]*[/.])(\S[^:]*?)/?$")
 CONTROL_RE = re.compile(r"[\x00-\x1f\x7f]")
 AUDIT_LINE_RE = re.compile(r"^> Audit: plugin [^\s·]+ · (?:scanner schema [^\s·]+|scanner not run)"
                            r" · rev [^\s·]+(?: · .+)?$")
+AUDIT_PLUGIN_RE = re.compile(r"^> Audit: plugin v?(\d+)\.(\d+)\.(\d+)")
 _RULES = r"[\w.-]+(?:,\s*[\w.-]+)*"  # one or more scanner rule ids
 SOURCE_RE = re.compile(r"^(?:agent|scanner:%s|scanner\+agent(?::%s)?)$" % (_RULES, _RULES))
 HEADLINE_RE = re.compile(
     r"(Healthy|Stable with risks|Fragile|Unsafe) \((\d+(?:\.\d)?) / 10\)")
 RC_RE = re.compile(r"\bRC-\d+\b")
+# Optional detail-line fields: `Related: SEC-001, REL-002.` and `First seen: 2026-09-01.`
+RELATED_RE = re.compile(r"\bRelated:\s*((?:[A-Za-z]{3}-\d+\b[,\s]*(?:and\s+)?)*)")
+FIRST_SEEN_RE = re.compile(r"\bFirst seen:\s*(\S+?)\.?(?=\s|$)")
+# a run date (the archived run's Audit timestamp date) or a plugin version; an archive folder
+# name (<YYYY-MM-DD>-N) is the day it was archived, not the run date
+FIRST_SEEN_OK = re.compile(r"^(?:\d{4}-\d{2}-\d{2}|v?\d+\.\d+\.\d+)$")
+# `Uncertainty resolved: <path:line>` on a detail line (backticks optional)
+RESOLVED_RE = re.compile(r"\bUncertainty resolved:\s*(?:`([^`]+)`|(\S+?:\d+(?:-\d+)?))")
+# a timestamp anywhere on the Audit line, in any common spelling
+TIMESTAMP_RE = re.compile(r"(\d{4}-\d{2}-\d{2})[T ](\d{2}):(\d{2})(?::(\d{2}))?(?:\.\d+)?"
+                          r"\s*(Z|UTC|GMT|[+-]\d{2}:?\d{2})?")
+CONFIG_RE = re.compile(r"\bconfig\s+`?([0-9A-Fa-f]+)`?")
+NOT_THIS_SCAN = "--scan file is not the scan this audit was built from: "
+DETAIL_HEAD_RE = re.compile(r"^\s*[-*]\s*\**((?:SYS|API|SCL|REL|SEC|OBS|MNT)-\d{3})\**:")
 RC_DEF_RE = re.compile(r"^\s*(?:[-*]\s*)?(?:\|\s*)?\**(RC-\d+)\**\s*(?:[:|]|—|–|- )")
 FORMAT_102_RE = re.compile(r"^>\s*Format:\s*1\.0\.2\s*$")
 ADR_NAME_RE = re.compile(r"^(\d{4})-.+\.md$")
@@ -81,6 +129,21 @@ SUPERSEDED_BY_RE = re.compile(r"^Status: Superseded by (\d{4})\s*$")
 ARROW_RE = re.compile(r"<?-{2,}>?|<?={2,}>?|-\.+->?|~{3,}|&")
 FLOW_SKIP = ("subgraph", "end", "direction", "style", "classDef", "class", "linkStyle",
              "click", "flowchart", "graph")
+
+
+# Mode 1 rigor (plugin 1.1.0+ Mode 1 files, references/mode-1-new-project.md)
+MODE1_RIGOR_FROM = (1, 1, 0)
+MODE1_KINDS = ("01-system-design.md", "02-architecture-decisions.md")
+MODE1_RIGOR_HEADINGS = ("### Requirements",)
+TRADEOFF_HEADING = "### Trade-offs: "
+EMPTY_VALUE = ("", "—", "–", "-", "tbd")  # Requirements Value cells: `none` and `n/a` are valid
+REQ_HEADER = ["Requirement", "Value", "Source", "Effect on design"]
+REQ_ITEMS = ("Goal", "Functional", "Non-functional", "Roles", "Traffic and data estimate",
+             "Availability and recovery target", "Compliance", "Budget", "Deployment constraint",
+             "Team capacity")
+REQ_SOURCE_RE = re.compile(r"^(?:user|assumption(?: \(non-interactive\))?)$", re.IGNORECASE)
+TRADEOFF_HEADER = ["Option", "Complexity", "Scalability", "Reliability", "Security", "Operations",
+                   "Cost", "Familiarity", "Lock-in", "Migration path"]
 
 
 @dataclass(frozen=True)
@@ -117,6 +180,12 @@ class Doc:
         self.header_block = self.lines[:first]
         self.is_102 = any(FORMAT_102_RE.match(ln.strip()) for ln in self.header_block)
         self.archived = bool(ARCHIVE_RE.search(os.path.abspath(path).replace(os.sep, "/")))
+        self.plugin = None  # type: Optional[Tuple[int, int, int]]
+        for ln in self.header_block:
+            m = AUDIT_PLUGIN_RE.match(ln.strip())
+            if m:
+                self.plugin = (int(m.group(1)), int(m.group(2)), int(m.group(3)))
+                break
 
     def _sections(self) -> List[Tuple[str, int, int]]:
         starts = [(self.lines[i][3:].strip(), i) for i in range(len(self.lines))
@@ -292,12 +361,18 @@ class Issue:
         self.id = rec.get("ID", "")
         self.severity = severity
         # `not-reproducible` (gone on a re-run): kept one run, not scored, not on the roadmap
-        self.retired = doc.is_102 and rec.get("Status", "").strip() == RETIRED
+        status = rec.get("Status", "").strip()
+        self.retired = doc.is_102 and status == RETIRED
+        # `informational`: an observation; its Evidence is checked, but it is not scored
+        self.unscored = self.retired or (doc.is_102 and status == INFORMATIONAL)
 
 
 class Linter:
-    def __init__(self, repo: Optional[str]):
+    def __init__(self, repo: Optional[str], signals: Optional[List[dict]] = None,
+                 scan_meta: Optional[dict] = None):
         self.repo = repo
+        self.signals = signals or []  # scanner JSON signals (--scan)
+        self.scan_meta = scan_meta  # scanner JSON `meta` (--scan); {} when it has none
         self.findings = []  # type: List[Finding]
         self.expected, self.optional = load_headers()
         self.required = load_required()
@@ -324,8 +399,71 @@ class Linter:
             self.lint_headers(doc, kind)
             self.lint_scope_context(doc)
             self.lint_format_audit(doc, kind)
+            self.lint_scan_identity(doc, kind)
             self.lint_vocab(doc)
+            if kind in MODE1_KINDS and doc.is_102 and self.mode1_rigor(doc):
+                self.lint_mode1_rigor(doc, kind)
         self.lint_mermaid(doc)
+
+    # -- Mode 1 rigor (1.1.0): Requirements table and one trade-off table per decision
+    @staticmethod
+    def mode1_rigor(doc: Doc) -> bool:
+        """1.1.0 Mode 1 file: written by plugin 1.1.0+ or carrying a 1.1.0 template heading."""
+        if (doc.plugin or (0, 0, 0)) >= MODE1_RIGOR_FROM:
+            return True
+        return any(not doc.in_fence[i] and (ln.strip() in MODE1_RIGOR_HEADINGS
+                                            or ln.startswith(TRADEOFF_HEADING))
+                   for i, ln in enumerate(doc.lines))
+
+    def lint_mode1_rigor(self, doc: Doc, kind: str) -> None:
+        want = "| %s |" % " | ".join(TRADEOFF_HEADER)
+        for table in doc.tables():
+            if table.header[:1] == ["Option"] and table.header != TRADEOFF_HEADER:
+                self.add(doc, table.header_line, "Mode 1: trade-off table columns must be `%s`"
+                         % want)
+        if kind != "01-system-design.md":
+            return
+        self.lint_requirements(doc)
+        sec = doc.section("Key Architectural Decisions", exact=True)
+        if sec is None:
+            return
+        tables = doc.tables(sec[1] + 1, sec[2])
+        decisions = [t for t in tables if t.header[:1] == ["Decision"]]
+        trade = [t for t in tables if t.header == TRADEOFF_HEADER]
+        n = len(decisions[0].rows) if decisions else 0
+        if len(trade) < n:
+            self.add(doc, sec[1] + 1, "Key Architectural Decisions: %d decision(s) but %d "
+                     "trade-off table(s); each decision needs one (`%s`)" % (n, len(trade), want))
+        for t in trade:
+            if len(t.rows) < 2:
+                self.add(doc, t.header_line, "trade-off table needs at least 2 options "
+                         "(the chosen one and an alternative)")
+
+    def lint_requirements(self, doc: Doc) -> None:
+        want = "| %s |" % " | ".join(REQ_HEADER)
+        tables = [t for t in doc.tables() if t.header == REQ_HEADER]
+        if not tables:
+            self.add(doc, 1, "Mode 1: missing the Requirements table `%s` "
+                     "(references/mode-1-new-project.md)" % want)
+            return
+        table = tables[0]
+        seen = []  # type: List[str]
+        for line, cells in table.rows:
+            cells = cells + [""] * (len(REQ_HEADER) - len(cells))
+            name = cells[0].strip("* ")
+            seen.append(name.lower())
+            if not REQ_SOURCE_RE.match(cells[2].strip("* ")):
+                self.add(doc, line, "Requirements: %s: source %r must be `user` or `assumption`"
+                         % (name or "row", cells[2]))
+            # `none` / `n/a` are real values (Compliance: none); Effect on design needs a reason.
+            for col, idx, empty in (("value", 1, EMPTY_VALUE),
+                                    ("effect on design", 3, EMPTY_VERIFY)):
+                if cells[idx].strip().lower() in empty:
+                    self.add(doc, line, "Requirements: %s: %s is empty" % (name or "row", col))
+        for item in REQ_ITEMS:
+            if not any(s.startswith(item.lower()) for s in seen):
+                self.add(doc, table.header_line, "Requirements: row %r is missing (rows: %s)"
+                         % (item, ", ".join(REQ_ITEMS)))
 
     def lint_headers(self, doc: Doc, kind: str) -> None:
         for req in self.required.get(kind, ()):
@@ -357,6 +495,63 @@ class Linter:
             self.add(doc, audit[0][0], "`> Audit:` line must read `plugin <version> · scanner "
                      "schema <n>` (or `scanner not run`) ` · rev <sha|unknown>`, then optional "
                      "`· config <hash>` and `· <timestamp>`")
+
+    def lint_scan_identity(self, doc: Doc, kind: str) -> None:
+        """--scan must be the scan this audit was built from: its meta timestamp and config
+        hash are on the `> Audit:` line and its scope folders on the `> Scope:` line."""
+        if self.scan_meta is None or kind not in AUDIT_KINDS or not doc.is_102 or doc.archived:
+            return
+        meta = self.scan_meta
+        audit = next(((i + 1, ln) for i, ln in enumerate(doc.header_block)
+                      if ln.startswith("> Audit:")), None)
+        if not meta:
+            self.add(doc, audit[0] if audit else 1, NOT_THIS_SCAN + "it has no `meta` block "
+                     "(scan_repo.py always writes one)")
+            return
+        if audit is not None:
+            problems = []
+            line = audit[1]
+            if "scanner not run" in line:
+                problems.append("the Audit line says `scanner not run`")
+            stamp = str(meta.get("timestamp") or "")
+            want = parse_timestamp(stamp)
+            if want is not None:
+                got = [parse_timestamp(m.group(0)) for m in TIMESTAMP_RE.finditer(line)]
+                got = [g for g in got if g is not None]
+                if not got:
+                    problems.append("the Audit line has no timestamp (the scan's is %s)" % stamp)
+                elif not any(same_instant(g, want) for g in got):
+                    problems.append("Audit timestamp %s, scan timestamp %s"
+                                    % (TIMESTAMP_RE.search(line).group(0).strip(), stamp))
+            chash = str(meta.get("config_hash") or "")
+            if chash:
+                m = CONFIG_RE.search(line)
+                if not m:
+                    problems.append("the Audit line has no `config <hash>` (the scan's is %s)"
+                                    % chash)
+                elif m.group(1).lower() != chash.lower():
+                    problems.append("Audit config %s, scan config_hash %s" % (m.group(1), chash))
+            if problems:
+                self.add(doc, audit[0], NOT_THIS_SCAN + "; ".join(problems))
+        scope = meta.get("scope")
+        if isinstance(scope, list):
+            sline = next(((i + 1, ln) for i, ln in enumerate(doc.header_block)
+                          if ln.startswith("> Scope:")), None)
+            if sline is None:
+                return  # reported by lint_scope_context
+            text = sline[1].replace("`", "").replace("\\", "/")
+            missing = []
+            for folder in scope:
+                folder = str(folder).replace("\\", "/").strip().strip("/")
+                if not folder or folder == ".":
+                    continue
+                pat = r"(?<![\w.-])%s/?(?![\w.-])" % re.escape(folder)
+                if not re.search(pat, text):
+                    missing.append(folder)
+            if missing:
+                self.add(doc, sline[0], NOT_THIS_SCAN + "scan scope %s not named on the "
+                         "`> Scope:` line (one scan per audit: repeat the --scope flag)"
+                         % ", ".join(missing))
 
     def lint_vocab(self, doc: Doc) -> None:
         for table in doc.tables():
@@ -598,6 +793,7 @@ class Linter:
             self.lint_evidence(iss)
             if doc.is_102:
                 self.lint_new_fields(iss, rc_defined)
+                self.lint_uncertain_signal(iss)
 
     def lint_evidence(self, iss: Issue) -> None:
         cell = iss.rec.get("Evidence")
@@ -658,7 +854,7 @@ class Linter:
         if source is not None and not SOURCE_RE.match(source):
             self.add(doc, iss.line, "%s: source %r must be scanner:<rule>, agent or "
                      "scanner+agent[:<rule>]" % (iss.id, source))
-        if iss.severity in ("Critical", "High") and not iss.retired:
+        if iss.severity in ("Critical", "High") and not iss.unscored:
             verify = iss.rec.get("Verify", "").strip()
             prose = [ln for ln in doc.lines if not ln.lstrip().startswith("|")]
             in_detail = any(iss.id in ln and re.search(r"verify:", ln, re.I) for ln in prose)
@@ -674,6 +870,107 @@ class Linter:
         for rc in RC_RE.findall(" ".join(iss.rec.values())):
             if rc not in rc_defined:
                 self.add(doc, iss.line, "%s: %s is referenced but never defined" % (iss.id, rc))
+
+    def lint_uncertain_signal(self, iss: Issue) -> None:
+        """An issue built on a signal the scanner marked uncertain (`uncertain_reason`) keeps
+        Status `needs-review`: Source `scanner:<rule>` always, Source `scanner+agent[:<rule>]`
+        unless its detail line names the file that resolved it (`Uncertainty resolved:
+        <path:line>`, another file than the signal's own)."""
+        source = iss.rec.get("Source", "").strip()
+        status = iss.rec.get("Status", "").strip()
+        if not self.signals or status in (NEEDS_REVIEW, RETIRED):
+            return
+        if source.startswith("scanner:"):
+            agent, listed = False, source[len("scanner:"):]
+        elif source == "scanner+agent" or source.startswith("scanner+agent:"):
+            agent, listed = True, source[len("scanner+agent:"):]
+        else:
+            return
+        rules = {r.strip() for r in listed.split(",") if r.strip()} or None  # None: every rule
+        entries = [(p, a, b) for p, a, b, _t in parse_evidence(iss.rec.get("Evidence", ""))]
+        for sig in self.signals:
+            reason = str(sig.get("uncertain_reason") or "").strip()
+            line = sig.get("line")
+            if not reason or not isinstance(line, int):
+                continue
+            if rules is not None and sig.get("rule") not in rules:
+                continue
+            path = str(sig.get("file", ""))
+            if not any(path == p and a <= line <= b for p, a, b in entries):
+                continue
+            if len(reason) > 120:
+                reason = reason[:117] + "..."
+            msg = ("%s: scanner signal %s at %s:%d is uncertain (%s); Status must be "
+                   "needs-review, not %r" % (iss.id, sig.get("rule"), path, line, reason, status))
+            if not agent:
+                self.add(iss.doc, iss.line, msg)
+                return
+            problem = self.resolution_problem(iss, path)
+            if problem:
+                self.add(iss.doc, iss.line, "%s, unless the detail line names the file that "
+                         "resolved it as `Uncertainty resolved: <path:line>`, a file other than "
+                         "%s (%s)" % (msg, path, problem))
+                return
+
+    def resolution_problem(self, iss: Issue, own: str) -> Optional[str]:
+        """None when a detail line of `iss` names `Uncertainty resolved: <path:line>` in a file
+        other than `own` (and, with --repo, that line exists); else why not."""
+        doc = iss.doc
+        head = re.compile(r"^\s*[-*]\s*\**%s\**:" % re.escape(iss.id))
+        tokens = []
+        for n, ln in enumerate(doc.lines):
+            if doc.in_fence[n] or not head.match(ln):
+                continue
+            tokens += [(m.group(1) or m.group(2)).strip() for m in RESOLVED_RE.finditer(ln)]
+        if not tokens:
+            return "no `Uncertainty resolved:` on its detail line"
+        why = []
+        for tok in tokens:
+            m = EVIDENCE_RE.match(tok)
+            if not m:
+                why.append("%r is not path:line" % tok)
+                continue
+            path, first = m.group(1), int(m.group(2))
+            last = int(m.group(3)) if m.group(3) else first
+            if path == own:
+                why.append("%s is the signal's own file" % tok)
+                continue
+            problem = evidence_path_problem(path)
+            if problem:
+                why.append("%s %s" % (tok, problem))
+                continue
+            if self.repo:
+                count = self.line_count(path)
+                if count is None or first < 1 or last > count:
+                    why.append("%s does not exist under the repo root" % tok)
+                    continue
+            return None
+        return "; ".join(why)
+
+    def lint_detail_fields(self, docs: List[Doc], defined: Set[str]) -> None:
+        """Optional `Related: <IDs>` and `First seen: <date or version>` on detail lines."""
+        for doc in docs:
+            if not doc.is_102:
+                continue
+            for n, ln in enumerate(doc.lines):
+                m = DETAIL_HEAD_RE.match(ln)
+                if doc.in_fence[n] or not m:
+                    continue
+                own = m.group(1)
+                rel = RELATED_RE.search(ln)
+                if rel:
+                    ids = ID_ANY_RE.findall(rel.group(1))
+                    if not ids:
+                        self.add(doc, n + 1, "%s: `Related:` must list issue IDs" % own)
+                    for other in ids:
+                        if other not in defined:
+                            self.add(doc, n + 1, "%s: Related cites %s, which is not defined "
+                                     "in this folder" % (own, other))
+                seen = FIRST_SEEN_RE.search(ln)
+                if seen and not FIRST_SEEN_OK.match(seen.group(1)):
+                    self.add(doc, n + 1, "%s: First seen %r must be the first run's date from its "
+                             "Audit timestamp (YYYY-MM-DD, not the archive folder name) or a "
+                             "version (1.0.2)" % (own, seen.group(1)))
 
     # -- health score
     def lint_score(self, doc: Doc, issues: List[Issue], have_api: bool) -> None:
@@ -715,7 +1012,8 @@ class Linter:
                 continue
             if prefix == "API" and not have_api:
                 continue  # API issues live in 02, which is not in this folder
-            sevs = [i.severity for i in issues if i.id.startswith(prefix + "-") and not i.retired]
+            sevs = [i.severity for i in issues
+                    if i.id.startswith(prefix + "-") and not i.unscored]
             cell = rec.get("Score", "")
             if cell == "Not assessed":
                 if sevs:
@@ -771,7 +1069,11 @@ class Linter:
                      % (m.group(1), m.group(2), rubric.band(float(m.group(2)))))
 
     # -- roadmap
-    def lint_roadmap(self, doc: Doc, defined: Dict[str, Issue], have: Set[str]) -> None:
+    def lint_roadmap(self, doc: Doc, defined: Dict[str, Issue], have: Set[str],
+                     optional: Iterable[str] = ()) -> None:
+        """`defined` IDs need exactly one horizon row; `optional` ones (informational,
+        not-reproducible) may have one."""
+        optional = set(optional)
         cited = {}  # type: Dict[str, int]
         first_line = {}  # type: Dict[str, int]
         for horizon, efforts in HORIZONS:
@@ -799,6 +1101,8 @@ class Linter:
         for i, n in cited.items():
             if n > 1:
                 self.add(doc, first_line[i], "%s appears in %d roadmap rows (expected 1)" % (i, n))
+            if i in optional:
+                continue
             if i not in defined and ((i.startswith("API-") and "02" in have)
                                      or (not i.startswith("API-") and "01" in have)):
                 self.add(doc, first_line[i], "roadmap cites undefined ID %s" % i)
@@ -818,7 +1122,11 @@ class Linter:
             counts[i] = counts.get(i, 0) + 1
         for iss in issues:
             n = counts.get(iss.id, 0)
-            if n != 1:
+            if iss.unscored:   # informational / not-reproducible: 0 or 1 references
+                if n > 1:
+                    self.add(doc, iss.line, "%s is referenced %d times in Quick Wins and Next "
+                             "Steps (expected at most 1)" % (iss.id, n))
+            elif n != 1:
                 self.add(doc, iss.line, "%s is referenced %d times in Quick Wins and Next Steps "
                          "(expected exactly 1)" % (iss.id, n))
 
@@ -836,15 +1144,65 @@ def collect_docs(folder: str, linter: Linter, targets: Optional[List[str]],
     return out
 
 
-def lint(path: str, repo: Optional[str] = None, include_history: bool = False) -> List[Finding]:
+def load_scan(path: str) -> List[dict]:
+    """Signals of a scanner JSON file. Raises OSError or ValueError when it cannot be read."""
+    return load_scan_full(path)[0]
+
+
+def load_scan_full(path: str) -> Tuple[List[dict], dict]:
+    """(signals, meta) of a scanner JSON file; meta is {} when missing. Raises OSError or
+    ValueError when it cannot be read."""
+    with open(path, encoding="utf-8") as fh:
+        data = json.load(fh)
+    signals = data.get("signals") if isinstance(data, dict) else None
+    if not isinstance(signals, list):
+        raise ValueError("%s has no signals list (is it scan_repo.py JSON output?)" % path)
+    meta = data.get("meta")
+    return ([sig for sig in signals if isinstance(sig, dict)],
+            meta if isinstance(meta, dict) else {})
+
+
+def parse_timestamp(text: str) -> Optional[Tuple[datetime.datetime, bool]]:
+    """(UTC datetime, has_seconds) of the first timestamp in text, or None. No zone = UTC."""
+    m = TIMESTAMP_RE.search(text or "")
+    if not m:
+        return None
+    date, hh, mm, ss, zone = m.groups()
+    try:
+        when = datetime.datetime.strptime("%s %s:%s:%s" % (date, hh, mm, ss or "00"),
+                                          "%Y-%m-%d %H:%M:%S")
+    except ValueError:
+        return None
+    if zone and zone[0] in "+-":
+        digits = zone[1:].replace(":", "")
+        offset = datetime.timedelta(hours=int(digits[:2]), minutes=int(digits[2:]))
+        when = when - offset if zone[0] == "+" else when + offset
+    return when, ss is not None
+
+
+def same_instant(got: Tuple[datetime.datetime, bool],
+                 want: Tuple[datetime.datetime, bool]) -> bool:
+    """Same instant; an Audit timestamp written without seconds matches to the minute."""
+    if got[1] and want[1]:
+        return got[0] == want[0]
+    return got[0].replace(second=0) == want[0].replace(second=0)
+
+
+def lint(path: str, repo: Optional[str] = None, include_history: bool = False,
+         scan: Optional[str] = None) -> List[Finding]:
     """Lint a docs folder (recursively) or one Markdown file; returns findings.
+
+    `scan` is an optional scanner JSON file: a signal with `uncertain_reason` requires Status
+    `needs-review` on the `scanner:<rule>` / unresolved `scanner+agent[:<rule>]` issue that cites
+    it, and its `meta` must match the audit files' `> Audit:` and `> Scope:` lines.
 
     Folders named `history` (archived runs) are skipped unless include_history is set. For a
     single file the sibling files in its folder are read for cross-file checks, but only
     findings in the given file are returned."""
     if not os.path.exists(path):
         raise FileNotFoundError(path)
-    linter = Linter(repo)
+    signals, meta = load_scan_full(scan) if scan else (None, None)
+    linter = Linter(repo, signals, meta)
     if os.path.isdir(path):
         base = os.path.abspath(path)
         folders = []
@@ -904,9 +1262,12 @@ def lint_folder(linter: Linter, folder: str, base: str) -> None:
     road = "03-improvement-roadmap.md"
     if road in by_kind:
         have = {k for k, f in (("01", one), ("02", "02-api-optimization.md")) if f in by_kind}
-        defined = {i: s for i, s in seen.items()
-                   if s.doc.rel.rsplit("/", 1)[-1] != "quick-audit.md" and not s.retired}
-        linter.lint_roadmap(by_kind[road], defined, have)
+        audit = {i: s for i, s in seen.items()
+                 if s.doc.rel.rsplit("/", 1)[-1] != "quick-audit.md"}
+        defined = {i: s for i, s in audit.items() if not s.unscored}
+        linter.lint_roadmap(by_kind[road], defined, have,
+                            optional=[i for i, s in audit.items() if s.unscored])
+    linter.lint_detail_fields([d for d, k in docs if k != ADR_KEY], set(seen))
     linter.lint_adr_pairs([d for d, k in docs if k == ADR_KEY])
 
 
@@ -916,6 +1277,9 @@ def main(argv: Optional[List[str]] = None) -> int:
                     "score arithmetic, roadmap placement, evidence, Mermaid, ADRs).")
     parser.add_argument("target", help="docs/architecture folder or one Markdown file")
     parser.add_argument("--repo", help="repo root: verify evidence files and line numbers")
+    parser.add_argument("--scan", help="scanner JSON the audit was built from: issues on "
+                        "uncertain signals (uncertain_reason) must be needs-review, and its meta "
+                        "must match the Audit and Scope lines")
     parser.add_argument("--format", choices=("text", "json"), default="text")
     parser.add_argument("--include-history", action="store_true",
                         help="also lint archived runs under history/ (skipped by default)")
@@ -923,10 +1287,17 @@ def main(argv: Optional[List[str]] = None) -> int:
     if args.repo and not os.path.isdir(args.repo):
         print("error: --repo %s is not a directory" % args.repo, file=sys.stderr)
         return 2
+    if args.scan and not os.path.isfile(args.scan):
+        print("error: --scan %s is not a file" % args.scan, file=sys.stderr)
+        return 2
     try:
-        findings = lint(args.target, args.repo, include_history=args.include_history)
+        findings = lint(args.target, args.repo, include_history=args.include_history,
+                        scan=args.scan)
     except FileNotFoundError as exc:
         print("error: %s does not exist" % exc, file=sys.stderr)
+        return 2
+    except ValueError as exc:   # json.JSONDecodeError is a ValueError
+        print("error: --scan %s: %s" % (args.scan, exc), file=sys.stderr)
         return 2
     except OSError as exc:
         print("error: %s" % exc, file=sys.stderr)

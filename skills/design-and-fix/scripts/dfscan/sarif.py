@@ -16,12 +16,15 @@ def _rules() -> List[dict]:
     out = []
     for rid in sorted(registry.RULES):
         m = registry.RULES[rid]
+        config = {"level": LEVELS.get(m.default_severity, "warning")}  # type: Dict[str, object]
+        if not m.default_enabled:  # SARIF's default is enabled: only off-by-default rules say so
+            config["enabled"] = False
         out.append({
             "id": rid,
             "shortDescription": {"text": m.description},
             "fullDescription": {"text": m.limitations or m.description},
             "help": {"text": m.remediation},
-            "defaultConfiguration": {"level": LEVELS.get(m.default_severity, "warning")},
+            "defaultConfiguration": config,
             "properties": {"category": m.category},
         })
     return out
@@ -42,13 +45,16 @@ def to_sarif(result: dict) -> dict:
     root = result.get("root", "")
     results = []
     for s in result.get("signals", []):
-        results.append({
+        res = {
             "ruleId": s["rule"],
             "level": LEVELS.get(s["severity_hint"], "warning"),
             "message": {"text": s.get("snippet") or registry.RULES[s["rule"]].description},
             "locations": [_location(root, s["file"], s["line"])],
             "partialFingerprints": {"dfscan/v1": s.get("fingerprint", "")},
-        })
+        }
+        if s.get("uncertain_reason"):
+            res["properties"] = {"uncertainReason": s["uncertain_reason"]}
+        results.append(res)
     base = {}  # type: Dict[str, dict]
     if root:
         uri = Path(root).as_uri()

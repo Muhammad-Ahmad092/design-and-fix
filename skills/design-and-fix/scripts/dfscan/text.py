@@ -6,6 +6,7 @@ from typing import List
 # Characters that can start a comment or a string; everything between them is copied in one slice.
 _HASH_STARTS = re.compile(r"[#\"']")
 _SLASH_STARTS = re.compile(r"//|/\*|[\"'`]")
+_NON_NL_RE = re.compile(r"[^\n]")
 
 
 def strip_comments(text: str, lang: str) -> str:
@@ -41,7 +42,7 @@ def strip_comments(text: str, lang: str) -> str:
         elif not hash_style and two == "/*":
             j = text.find("*/", i + 2)
             j = n if j < 0 else j + 2
-            out.append("".join(ch if ch == "\n" else " " for ch in text[i:j]))
+            out.append(_NON_NL_RE.sub(" ", text[i:j]))
             i = j
         elif c in "\"'`" and not (c == "`" and hash_style):
             if hash_style and text[i:i + 3] in ('"""', "'''"):

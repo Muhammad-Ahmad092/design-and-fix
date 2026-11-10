@@ -4,7 +4,7 @@ import json
 import os
 import tempfile
 import unittest
-from typing import Dict, List, Set, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 from helpers import FIXTURES, REPO
 from dfscan import registry
@@ -29,18 +29,29 @@ def _tree(root: str, files: Dict[str, str]) -> None:
             fh.write(text)
 
 
-def _signals(files: Dict[str, str]) -> List[dict]:
+# openapi-drift ships off by default (1.1.0 release decision); tests of the rule enable it.
+OPENAPI_ON = {"openapi-drift": {"enabled": True}}
+
+
+def _signals(files: Dict[str, str], rule_config: Optional[Dict[str, Any]] = None) -> List[dict]:
     with tempfile.TemporaryDirectory() as d:
         _tree(d, files)
-        return scan(d, use_git=False)["signals"]
+        return scan(d, use_git=False, rule_config=rule_config)["signals"]
 
 
-def _hits(files: Dict[str, str], rule: str) -> List[dict]:
-    return [s for s in _signals(files) if s["rule"] == rule]
+def _hits(files: Dict[str, str], rule: str,
+          rule_config: Optional[Dict[str, Any]] = None) -> List[dict]:
+    return [s for s in _signals(files, rule_config) if s["rule"] == rule]
 
 
-def _pairs(root: str) -> Set[Tuple[str, str]]:
-    return {(s["rule"], s["file"]) for s in scan(root, use_git=False)["signals"]}
+def _drift(files: Dict[str, str]) -> List[dict]:
+    """openapi-drift hits with the rule enabled explicitly in config."""
+    return _hits(files, "openapi-drift", OPENAPI_ON)
+
+
+def _pairs(root: str, rule_config: Optional[Dict[str, Any]] = None) -> Set[Tuple[str, str]]:
+    return {(s["rule"], s["file"])
+            for s in scan(root, use_git=False, rule_config=rule_config)["signals"]}
 
 
 EXPRESS_HEAD = ("const express = require('express');\n"
@@ -228,14 +239,14 @@ class OpenapiDriftTests(unittest.TestCase):
     def test_spec_matches_routes(self):
         files = _express(ROUTES_OK)
         files["openapi.json"] = json.dumps(SPEC, indent=2)
-        self.assertEqual(_hits(files, "openapi-drift"), [])
+        self.assertEqual(_drift(files), [])
 
     def test_missing_both_ways_flagged(self):
         spec = json.loads(json.dumps(SPEC))
         spec["paths"]["/legacy"] = {"get": {}}
         files = _express(ROUTES_OK + "app.delete('/users/:id', h);\n")
         files["openapi.json"] = json.dumps(spec, indent=2)
-        hits = _hits(files, "openapi-drift")
+        hits = _drift(files)
         got = sorted((h["file"], h["line"]) for h in hits)
         legacy_line = files["openapi.json"].split("\n").index('    "/legacy": {') + 1
         self.assertEqual(got, [("openapi.json", legacy_line), ("server.js", 7)])
@@ -245,14 +256,14 @@ class OpenapiDriftTests(unittest.TestCase):
         files["openapi.yaml"] = ("openapi: 3.0.0\nservers:\n  - url: /api\npaths:\n"
                                  "  /users:\n    get: {}\n    post: {}\n"
                                  "  /users/{id}:\n    get: {}\n")
-        self.assertEqual(_hits(files, "openapi-drift"), [])
+        self.assertEqual(_drift(files), [])
 
     def test_unrelated_client_spec_ignored(self):
         files = _express(ROUTES_OK)
         files["clients/stripe/openapi.json"] = json.dumps(
             {"openapi": "3.0.0", "paths": {"/v1/charges": {"post": {}}}})
         files["clients/stripe/index.js"] = "module.exports = {};\n"
-        self.assertEqual(_hits(files, "openapi-drift"), [])
+        self.assertEqual(_drift(files), [])
 
 
 # ---------------------------------------------------------------------------------- infra
@@ -505,8 +516,12 @@ class FixtureTests(unittest.TestCase):
             must = {tuple(x) for x in exp[key]["must_find"]}
             self.assertEqual(must - got, set(), key)
             self.assertEqual({tuple(x) for x in exp[key]["must_not_find"]} & got, set(), key)
+            if "must_find_when_enabled" in exp[key]:  # default-off rules, enabled in config
+                got_on = _pairs(os.path.join(FIXTURES, key), exp[key]["enabled_rules"])
+                on = {tuple(x) for x in exp[key]["must_find_when_enabled"]}
+                self.assertEqual((on | must) - got_on, set(), key)
         rules = {r for key in ("api-service", "infra", "deps") for r, _ in
-                 (tuple(x) for x in exp[key]["must_find"])}
+                 (tuple(x) for x in exp[key]["must_find"] + exp[key].get("must_find_when_enabled", []))}
         self.assertTrue(set(API_RULES + INFRA_RULES + DEPS_RULES) <= rules)
 
     def test_clean_service_still_zero(self):
@@ -534,7 +549,7 @@ class MalformedInputTests(unittest.TestCase):
         for servers in ("1", "true", '"x"', "{}"):
             files = {"server.js": self.SERVER, "openapi.json":
                      '{"openapi":"3.0.0","servers":%s,"paths":{"/users":{"get":{}}}}' % servers}
-            hits = _hits(files, "openapi-drift")  # scan() must not raise
+            hits = _drift(files)  # scan() must not raise
             self.assertEqual([h["snippet"] for h in hits], ["POST /users not in openapi.json"])
 
     def test_deeply_nested_json_is_skipped_with_note(self):  # I13, C1
@@ -548,7 +563,7 @@ class MalformedInputTests(unittest.TestCase):
                  "openapi.json": '{"paths": %s}' % deep,
                  "bad/package.json": '{"dependencies": {"a": "*"',
                  "ok/package.json": '{"private": true, "dependencies": {"a": "*"}}'}
-        sigs = _signals(files)  # scan() must not raise
+        sigs = _signals(files, OPENAPI_ON)  # scan() with openapi-drift on must not raise
         self.assertIn(("unpinned-dependency", "ok/package.json"),
                       {(s["rule"], s["file"]) for s in sigs})
         d, walked = _walked(files)
@@ -558,13 +573,20 @@ class MalformedInputTests(unittest.TestCase):
             run_api_rules(walked, find_routes(walked), notes)
         self.assertEqual(sorted(notes), [
             "deps rules skipped bad/package.json: malformed JSON (JSONDecodeError)",
-            "deps rules skipped package.json: malformed JSON (JSONNestingError)",
-            "deps rules skipped web/composer.json: malformed JSON (JSONNestingError)",
-            "openapi-drift skipped openapi.json: malformed spec (JSONNestingError)"])
+            "deps rules skipped package.json: malformed JSON (RecursionError)",
+            "deps rules skipped web/composer.json: malformed JSON (RecursionError)",
+            "openapi-drift skipped openapi.json: malformed spec (RecursionError)"])
 
-    def test_json_nesting_in_strings_is_not_counted(self):
-        from dfscan.json_utils import check_json_nesting
-        check_json_nesting('{"value": "%s"}' % ("[" * 129))
+    def test_disabled_openapi_drift_writes_no_note(self):  # final review M1
+        files = {"server.js": self.SERVER, "openapi.json": '{"paths": {"/users": '}
+        note = "openapi-drift skipped openapi.json: malformed spec (JSONDecodeError)"
+        with tempfile.TemporaryDirectory() as d:
+            _tree(d, files)
+            default = scan(d, use_git=False)["notes"]
+            on = scan(d, use_git=False, rule_config=OPENAPI_ON)["notes"]
+        self.assertNotIn(note, default)
+        self.assertIn("rules off by default (enable in config): openapi-drift", default)
+        self.assertIn(note, on)
 
 
 class OpenapiDriftReviewTests(unittest.TestCase):
@@ -578,10 +600,10 @@ class OpenapiDriftReviewTests(unittest.TestCase):
                  "openapi.yaml": ("openapi: 3.0.0\npaths:\n  /api/users:\n    get: {}\n"
                                   "    post: {}\n  /api/users/{id}:\n    get: {}\n"
                                   "  /me:\n    get: {}\n")}
-        self.assertEqual(_hits(files, "openapi-drift"), [])
+        self.assertEqual(_drift(files), [])
         # A spec path that is only a parameter never matches as a suffix.
         files["openapi.yaml"] += "  /{id}:\n    get: {}\n"
-        hits = _hits(files, "openapi-drift")
+        hits = _drift(files)
         self.assertEqual([h["snippet"] for h in hits], ["spec path /{id} has no route in code"])
 
     def test_spec_in_docs_folder_is_used(self):  # I2
@@ -590,7 +612,7 @@ class OpenapiDriftReviewTests(unittest.TestCase):
                                    "app.delete('/users/:id', requireAuth, h);\napp.listen(3);\n"),
                  "docs/openapi.yaml": ("openapi: 3.0.0\npaths:\n  /users:\n    get: {}\n"
                                        "    post: {}\n  /legacy:\n    get: {}\n")}
-        hits = _hits(files, "openapi-drift")
+        hits = _drift(files)
         self.assertEqual(sorted(h["snippet"] for h in hits),
                          ["DELETE /users/:id not in docs/openapi.yaml",
                           "spec path /legacy has no route in code"])
@@ -601,7 +623,7 @@ class OpenapiDriftReviewTests(unittest.TestCase):
                  "svc/b/server.js": ("const app = require('express')();\napp.get('/b', h);\n"
                                      "app.get('/c', h);\napp.listen(3);\n"),
                  "svc/a/openapi.json": json.dumps({"paths": {"/a": {"get": {}}, "/b": {"get": {}}}})}
-        hits = _hits(files, "openapi-drift")
+        hits = _drift(files)
         self.assertEqual([h["snippet"] for h in hits], ["spec path /b has no route in code"])
 
     def test_aspnet_controller_case_insensitive(self):  # I3
@@ -614,7 +636,7 @@ class OpenapiDriftReviewTests(unittest.TestCase):
             "swagger.json": json.dumps({"swagger": "2.0", "paths": {
                 "/api/Orders": {"get": {}}, "/api/Orders/{id}": {"get": {}},
                 "/api/import": {"post": {}}}}, indent=2)}
-        self.assertEqual(_hits(files, "openapi-drift"), [])
+        self.assertEqual(_drift(files), [])
 
     def test_yaml_license_url_is_not_a_base(self):  # M3
         files = _express("app.get('/v1/users', h);\napp.post('/v1/users', h);\n"
@@ -623,7 +645,7 @@ class OpenapiDriftReviewTests(unittest.TestCase):
                                  "    name: MIT\n    url: https://example.com/v1\n"
                                  "paths:\n  /v1/users:\n    get: {}\n    post: {}\n"
                                  "  /v1/orders:\n    get: {}\n  /v1/legacy:\n    get: {}\n")
-        hits = _hits(files, "openapi-drift")
+        hits = _drift(files)
         self.assertEqual([h["snippet"] for h in hits], ["spec path /v1/legacy has no route in code"])
 
     def test_large_json_spec_lines_are_linear(self):  # M2
@@ -637,9 +659,10 @@ class OpenapiDriftReviewTests(unittest.TestCase):
         self.assertEqual(paths["/p19999"][0], text.split("\n").index('    "/p19999": {') + 1)
 
     def test_registry_versions_and_languages(self):  # I4
-        for rid in ("openapi-drift", "no-version-prefix"):
+        # no-version-prefix 3: Task 16 (RSpec *_spec.rb files are tests and no longer count).
+        for rid, version in (("openapi-drift", "2"), ("no-version-prefix", "3")):
             meta = registry.RULES[rid]
-            self.assertEqual(meta.version, "2", rid)
+            self.assertEqual(meta.version, version, rid)
             self.assertTrue({"Java", "Kotlin", "C#", "Ruby", "PHP"} <= set(meta.languages), rid)
         for rid in ("list-route-no-pagination", "mixed-error-shapes", "unvalidated-body"):
             self.assertEqual(registry.RULES[rid].languages,
@@ -714,7 +737,39 @@ class DepsReviewTests(unittest.TestCase):
 
     def test_rule_versions(self):
         self.assertEqual(registry.RULES["missing-lockfile"].version, "2")
-        self.assertEqual(registry.RULES["unpinned-dependency"].version, "3")
+        self.assertEqual(registry.RULES["unpinned-dependency"].version, "4")
+
+
+class UnpinnedDocsToolingTests(unittest.TestCase):  # 1.1.0 Task 9
+    DOCS_REQ = "pyenchant\nSphinx>=4.5.0\nsphinxcontrib-spelling\nblacken-docs\n"
+
+    def test_unpinned_docs_requirements_in_library_not_flagged(self):
+        # django: docs/requirements.txt in a library (pyproject [project]) only builds the docs.
+        lib = '[project]\nname = "Django"\nrequires-python = ">=3.12"\n'
+        for marker in ({"pyproject.toml": lib}, {"setup.py": "from setuptools import setup\nsetup()\n"},
+                       {"setup.cfg": "[metadata]\nname = lib\n"}):
+            files = dict(marker, **{"docs/requirements.txt": self.DOCS_REQ})
+            self.assertEqual(_hits(files, "unpinned-dependency"), [], sorted(marker))
+            files = dict(marker, **{"doc/source/requirements.txt": self.DOCS_REQ})
+            self.assertEqual(_hits(files, "unpinned-dependency"), [], sorted(marker))
+        # The library's other requirement files are still read.
+        files = {"pyproject.toml": lib, "docs/requirements.txt": self.DOCS_REQ,
+                 "requirements.txt": "requests\n"}
+        self.assertEqual([(h["file"], h["line"]) for h in _hits(files, "unpinned-dependency")],
+                         [("requirements.txt", 1)])
+
+    def test_docs_requirements_in_application_still_flagged(self):
+        # No library marker (an app, example-voting-app style): docs requirements still reported.
+        hits = _hits({"docs/requirements.txt": self.DOCS_REQ}, "unpinned-dependency")
+        self.assertEqual(sorted(h["line"] for h in hits), [1, 2, 3, 4])
+        # A pyproject without [project] / [build-system] (tool config only) is not a library.
+        hits = _hits({"pyproject.toml": "[tool.black]\nline-length = 100\n",
+                      "docs/requirements.txt": self.DOCS_REQ}, "unpinned-dependency")
+        self.assertEqual(len(hits), 4)
+        # App service requirements in a repo with a library marker elsewhere are still read.
+        hits = _hits({"vote/requirements.txt": "Flask\nRedis\n",
+                      "pyproject.toml": '[project]\nname = "x"\n'}, "unpinned-dependency")
+        self.assertEqual(sorted(h["line"] for h in hits), [1, 2])
 
 
 class InfraReviewTests(unittest.TestCase):

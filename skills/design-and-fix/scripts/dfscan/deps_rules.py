@@ -6,8 +6,8 @@ import posixpath
 import re
 from typing import Dict, List, Optional, Tuple
 
+from .filecache import FileCache
 from .imports import _read
-from .json_utils import check_json_nesting
 from .model import FileInfo, Signal
 from .registry import RuleMeta, register
 
@@ -57,7 +57,6 @@ def _json(text: str) -> Optional[dict]:
     """The manifest's top-level object, None when it is not an object; MalformedManifest when the
     JSON does not parse."""
     try:
-        check_json_nesting(text)
         data = json.loads(text)
     except (ValueError, RecursionError) as exc:
         raise MalformedManifest(type(exc).__name__) from None
@@ -93,7 +92,7 @@ def rule_missing_lockfile(fi: FileInfo, text: str) -> List[Signal]:
                 return []
         except OSError:
             return []
-        if not re.search(r"(?m)^\s*(?:gem|gemspec)\b", text):
+        if not re.search(r"(?m)^[ \t]*(?:gem|gemspec)\b", text):
             return []
     elif name == "composer.json":
         data = _json(text)
@@ -218,7 +217,7 @@ def _pyproject(fi: FileInfo, text: str) -> List[Signal]:
     in_deps = False
     # A distributable package ([build-system]) declares lower bounds on purpose: its [project]
     # dependencies are not checked.
-    library = re.search(r"(?m)^\s*\[build-system\]", text) is not None
+    library = re.search(r"(?m)^[ \t]*\[build-system\]", text) is not None
     for i, raw in enumerate(text.split("\n")):
         ln = re.sub(r"\s#.*$", "", raw).strip()
         if ln.startswith("#"):
@@ -257,20 +256,63 @@ def _pyproject(fi: FileInfo, text: str) -> List[Signal]:
     return out
 
 
+_DOCS_DIRS = {"docs", "doc"}
+_PY_LIBRARY_TABLE_RE = re.compile(r"(?m)^[ \t]*\[(?:project|build-system)\][ \t]*\r?$")
+_SETUP_CFG_METADATA_RE = re.compile(r"(?m)^[ \t]*\[metadata\][ \t]*\r?$")
+
+
+def _read_file(path: str) -> str:
+    try:
+        with open(path, "r", encoding="utf-8", errors="ignore") as fh:
+            return fh.read(200000)
+    except OSError:
+        return ""
+
+
+def _python_library_root(folder: str) -> bool:
+    """A distributable Python package is declared in this folder: setup.py, setup.cfg with
+    [metadata], or pyproject.toml with [project] or [build-system]."""
+    if os.path.isfile(os.path.join(folder, "setup.py")):
+        return True
+    if _SETUP_CFG_METADATA_RE.search(_read_file(os.path.join(folder, "setup.cfg"))):
+        return True
+    return _PY_LIBRARY_TABLE_RE.search(_read_file(os.path.join(folder, "pyproject.toml"))) is not None
+
+
+def _library_docs_requirements(fi: FileInfo) -> bool:
+    """requirements.txt under a docs/ or doc/ folder of a Python library (a library marker in an
+    ancestor of the docs folder, up to the scan root): documentation-build tooling, not deployed."""
+    parts = fi.rel.split("/")[:-1]
+    if not any(p.lower() in _DOCS_DIRS for p in parts):
+        return False
+    root = os.path.normcase(os.path.abspath(_root_of(fi)))
+    cur = os.path.dirname(os.path.dirname(fi.abs))
+    for _ in range(len(parts)):
+        if _python_library_root(cur):
+            return True
+        if os.path.normcase(os.path.abspath(cur)) == root:
+            break
+        cur = os.path.dirname(cur)
+    return False
+
+
 def rule_unpinned_dependency(fi: FileInfo, text: str) -> List[Signal]:
     """Dependency with no upper bound: requirements.txt bare names / >= / > ranges, package.json
     `*` / latest / empty / >= without <, pyproject [project] dependencies with >= only, Poetry `*`.
     `*` / latest are reported in category Security; ^ and ~ ranges are fine.
 
     False-positive risks: libraries deliberately declare lower bounds only (pyproject [project]
-    dependencies are skipped when the file has a [build-system] table, otherwise emit low
-    confidence; bare names there are not flagged); a constraints
+    dependencies are skipped when the file has a [build-system] table, otherwise reported; bare
+    names there are not flagged); a constraints
     file or lockfile next to requirements.txt that pins versions is not read. peerDependencies are
     skipped. Requirements included with -r / -c and other requirement file names are not read.
+    A requirements.txt under docs/ or doc/ in a Python library (setup.py, setup.cfg [metadata] or
+    pyproject [project]/[build-system] above the docs folder) is documentation tooling and is
+    skipped; docs requirements of an application are still read.
     """
     name = posixpath.basename(fi.rel)
     if name == "requirements.txt":
-        return _requirements(fi, text)
+        return [] if _library_docs_requirements(fi) else _requirements(fi, text)
     if name == "package.json":
         return _package_json(fi, text)
     if name == "pyproject.toml":
@@ -281,7 +323,8 @@ def rule_unpinned_dependency(fi: FileInfo, text: str) -> List[Signal]:
 MANIFESTS = set(LOCKS) | {"requirements.txt", "pyproject.toml"}
 
 
-def run_deps_rules(files: List[FileInfo], notes: Optional[List[str]] = None) -> List[Signal]:
+def run_deps_rules(files: List[FileInfo], notes: Optional[List[str]] = None,
+                   cache: Optional[FileCache] = None) -> List[Signal]:
     """missing-lockfile and unpinned-dependency over manifests outside test/example folders.
 
     A JSON manifest that does not parse (package.json, composer.json) is skipped, with a note
@@ -290,7 +333,7 @@ def run_deps_rules(files: List[FileInfo], notes: Optional[List[str]] = None) -> 
     for fi in files:
         if fi.is_test or fi.is_example or posixpath.basename(fi.rel) not in MANIFESTS:
             continue
-        text = _read(fi).replace("\r\n", "\n")
+        text = (cache.text(fi) if cache is not None else _read(fi)).replace("\r\n", "\n")
         try:
             sigs = rule_missing_lockfile(fi, text) + rule_unpinned_dependency(fi, text)
         except MalformedManifest as exc:
@@ -313,17 +356,23 @@ for _m in [
              "pyproject.toml and Cargo.toml are not checked. A package.json or composer.json that is "
              "not valid JSON is skipped with a note.",
              "Commit the lockfile and install with the frozen/ci command in CI.", _DEPS_LANGS),
-    RuleMeta("unpinned-dependency", "3", "Maintainability", "Low", "low",
+    RuleMeta("unpinned-dependency", "4", "Maintainability", "Low", "low",
              "Dependency without an upper bound: requirements.txt bare names or >= ranges, "
              "package.json `*`/latest/>= ranges, pyproject >= ranges and Poetry `*` "
              "(`*`/latest are reported as Security).",
              "^ and ~ ranges are treated as fine. pyproject [project] dependencies are skipped "
              "when the file has [build-system] (a distributable package uses lower bounds on "
-             "purpose), otherwise emit low confidence; bare names there are not flagged. "
+             "purpose), otherwise reported; bare names there are not flagged. "
              "Constraints files, lockfiles that pin versions anyway, -r includes, other "
              "requirement file names, Pipfile, Gemfile, Cargo.toml and peerDependencies are not "
-             "read. An npm alias without a version (npm:pkg) counts as latest. A package.json that "
-             "is not valid JSON is skipped with a note. No vulnerability lookup.",
+             "read. A requirements.txt under docs/ or doc/ of a Python library (setup.py, setup.cfg "
+             "[metadata] or pyproject [project]/[build-system] above the docs folder) is skipped as "
+             "documentation tooling; docs requirements of an application are still reported, but a "
+             "Poetry or other packaged application that declares [build-system] or [project] is "
+             "treated as a library, so its docs requirements are skipped too. An npm "
+             "alias without a version (npm:pkg) counts as latest. A package.json that is not valid "
+             "JSON is skipped with a note. No vulnerability lookup. Always low confidence (the rule "
+             "ceiling; measured precision cannot raise it).",
              "Pin exact versions (or bounded ranges) and rely on a lockfile for transitive pins.",
              ["Node.js", "Python"]),
 ]:

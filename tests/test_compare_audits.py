@@ -420,6 +420,137 @@ class ReviewFixTests(unittest.TestCase):
                              ["2026-03-01", "2026-03-01-2", "2026-03-01-10", "2026-04-01"])
 
 
+class ScoreExplanationTests(unittest.TestCase):
+    """1.1.0: one line explaining the score change, under Score Trend."""
+
+    @staticmethod
+    def _cmp(prev, cur, resolved=(), new=(), changed=(), moved=()):
+        cmp = ca.Comparison()
+        cmp.previous = {"overall": prev, "band": "Stable with risks"}
+        cmp.current = {"overall": cur, "band": "Stable with risks"}
+        cmp.resolved = [dict(ca._entry(i, i, False, "r"), severity=s) for i, s in resolved]
+        cmp.new = [dict(ca._entry(i, None, False, "r", i), severity=s) for i, s in new]
+        cmp.changed = [dict(ca._entry(i, i, False, r, i), severity=s) for i, s, r in changed]
+        cmp.moved = [dict(ca._entry(i, i, True, r, i), severity=s) for i, s, r in moved]
+        return cmp
+
+    def test_explain_status_only_change_does_not_crash(self):
+        # a "severity" word inside a status part used to raise StopIteration
+        cmp = self._cmp(5.0, 5.0, changed=[("REL-001", "High",
+                                             "status needs-review (severity unclear) \u2192 likely")])
+        self.assertEqual(ca.explain_score_change(cmp),
+                         "Score +0.0 (5.0 \u2192 5.0): no issues fixed or new.")
+
+    def test_explain_moved_severity_change_keeps_uncertain_marker(self):
+        cmp = self._cmp(5.0, 4.4, moved=[("SEC-001", "Critical",
+                                           "a.py \u2192 b.py; severity High \u2192 Critical")])
+        self.assertEqual(ca.explain_score_change(cmp),
+                         "Score -0.6 (5.0 \u2192 4.4): changed SEC-001 (severity High \u2192 "
+                         "Critical; uncertain).")
+        cmp = self._cmp(6.0, 7.0, resolved=[("REL-002", "High")])
+        cmp.resolved[0]["uncertain"] = True
+        self.assertIn("fixed REL-002 (High; uncertain)", ca.explain_score_change(cmp))
+
+    def test_explain_caps_ids_per_group(self):
+        ids = [("MNT-%03d" % n, "Low") for n in range(1, 10)]
+        line = ca.explain_score_change(self._cmp(6.0, 7.0, resolved=ids))
+        self.assertTrue(line.endswith("MNT-006 (Low), +3 more."), line)
+        self.assertNotIn("MNT-007", line)
+
+    def test_explain_leaves_out_unscored_issues(self):
+        cmp = self._cmp(6.0, 6.0, new=[("SYS-001", "High")], resolved=[("OBS-001", "Low")])
+        cmp.new[0]["status"] = "informational"
+        cmp.resolved[0]["status"] = "informational"
+        self.assertEqual(ca.explain_score_change(cmp),
+                         "Score +0.0 (6.0 \u2192 6.0): no issues fixed or new.")
+        with tempfile.TemporaryDirectory() as d:
+            h = "| ID | Severity | Status | Issue | Evidence |\n|---|---|---|---|---|\n"
+            old, new = os.path.join(d, "old"), os.path.join(d, "new")
+            _write(old, "quick-audit.md", _audit([], header=h))
+            _write(new, "quick-audit.md", _audit([], header=h)
+                   + "| SYS-001 | High | informational | t | `src/db.py:2` |\n")
+            cmp = ca.compare(old, new, REPO_NEW)
+            self.assertEqual(cmp.new[0]["status"], "informational")
+            self.assertTrue(ca.explain_score_change(cmp).endswith("no issues fixed or new."))
+
+    def test_explain_counts_moves_into_and_out_of_unscored(self):
+        # final review C M-4: a re-rating to or from informational moves the score
+        arrow = "→"
+        into = self._cmp(5.0, 6.0, changed=[("REL-002", "High",
+                                              "status confirmed %s informational" % arrow)])
+        into.changed[0]["status"] = "informational"
+        self.assertEqual(ca.explain_score_change(into),
+                         "Score +1.0 (5.0 %s 6.0): changed REL-002 (High %s informational)."
+                         % (arrow, arrow))
+        back = self._cmp(6.0, 5.0, changed=[("REL-002", "High",
+                                              "severity Medium %s High; status informational %s "
+                                              "likely" % (arrow, arrow))])
+        back.changed[0]["status"] = "likely"
+        self.assertEqual(ca.explain_score_change(back),
+                         "Score -1.0 (6.0 %s 5.0): changed REL-002 (informational %s High)."
+                         % (arrow, arrow))
+        # severity changed too on the way out: the old severity is named
+        out = self._cmp(5.0, 6.0, moved=[("REL-002", "Low", "a.py %s b.py; severity High %s "
+                                          "Low; status confirmed %s informational"
+                                          % (arrow, arrow, arrow))])
+        out.moved[0]["status"] = "informational"
+        self.assertEqual(ca.explain_score_change(out),
+                         "Score +1.0 (5.0 %s 6.0): changed REL-002 (High %s informational; "
+                         "uncertain)." % (arrow, arrow))
+        # end to end through compare()
+        with tempfile.TemporaryDirectory() as d:
+            h = "| ID | Severity | Status | Issue | Evidence |\n|---|---|---|---|---|\n"
+            old, new = os.path.join(d, "old"), os.path.join(d, "new")
+            _write(old, "quick-audit.md", _audit([], header=h)
+                   + "| SYS-001 | High | confirmed | t | `src/db.py:2` |\n")
+            _write(new, "quick-audit.md", _audit([], header=h)
+                   + "| SYS-001 | High | informational | t | `src/db.py:2` |\n")
+            line = ca.explain_score_change(ca.compare(old, new, REPO_NEW))
+            self.assertIn("changed SYS-001 (High %s informational" % arrow, line)
+
+    def test_explain_score_change_line(self):
+        cmp = self._cmp(6.1, 6.9, resolved=[("SEC-002", "High"), ("SEC-001", "Critical")],
+                        new=[("MNT-004", "Low")])
+        self.assertEqual(ca.explain_score_change(cmp),
+                         "Score +0.8 (6.1 → 6.9): fixed SEC-001 (Critical), SEC-002 (High); "
+                         "new MNT-004 (Low).")
+
+    def test_explain_score_change_variants(self):
+        self.assertEqual(ca.explain_score_change(self._cmp(6.9, 6.1, new=[("SEC-003", "High")])),
+                         "Score -0.8 (6.9 → 6.1): new SEC-003 (High).")
+        self.assertEqual(ca.explain_score_change(self._cmp(5.0, 5.0)),
+                         "Score +0.0 (5.0 → 5.0): no issues fixed or new.")
+        changed = self._cmp(5.0, 4.4, changed=[("REL-001", "Critical",
+                                                 "severity High → Critical")])
+        self.assertEqual(ca.explain_score_change(changed),
+                         "Score -0.6 (5.0 → 4.4): changed REL-001 (severity High → "
+                         "Critical).")
+        self.assertEqual(ca.explain_score_change(self._cmp(None, 6.0, new=[("MNT-001", "Low")])),
+                         "Score change unknown (previous score not found): new MNT-001 (Low).")
+
+    def test_entries_carry_severity_and_markdown_prints_explanation(self):
+        cmp = ca.compare(OLD, NEW, REPO_NEW, REPO_OLD)
+        self.assertEqual(_by_id(cmp.new)["SCL-002"]["severity"], "Medium")
+        self.assertTrue(all("severity" in e for e in cmp.resolved + cmp.unchanged))
+        out = ca.render_markdown(cmp, ca.trend(HISTORY, NEW, current_date="2026-11-02"))
+        _head, _, tail = out.partition("### Score Trend\n\n")
+        self.assertTrue(tail.startswith(ca.explain_score_change(cmp) + "\n\n| Date |"), tail)
+        self.assertTrue(ca.explain_score_change(cmp).startswith("Score +2.4 (3.9 → 6.3): "))
+        # without history rows the line still follows the bullets
+        self.assertIn(ca.explain_score_change(cmp), ca.render_markdown(cmp))
+
+
+class PublicHelperTests(unittest.TestCase):
+    def test_public_names_used_by_evals(self):
+        self.assertIs(ca.read_text, ca._read)
+        self.assertIs(ca.split_row, ca._split_row)
+        self.assertIs(ca.clean_cell, ca._clean)
+        self.assertEqual(ca.split_row("| a | `b|c` |"), ["a", "`b|c`"])
+        self.assertEqual(ca.clean_cell(" **`x`** "), "x")
+        self.assertEqual(ca.FUZZY_TITLE_MIN, 0.6)
+        self.assertTrue(callable(ca.parse_issues))
+
+
 class CliTests(unittest.TestCase):
     def _run(self, *args):
         proc = subprocess.run([sys.executable, os.path.join(SCRIPTS, "compare_audits.py")] + list(args),

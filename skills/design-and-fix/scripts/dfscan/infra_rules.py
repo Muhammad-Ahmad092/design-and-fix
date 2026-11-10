@@ -4,6 +4,7 @@ import posixpath
 import re
 from typing import Dict, List, Optional, Tuple
 
+from .filecache import FileCache
 from .imports import _read
 from .model import FileInfo, Signal
 from .registry import RuleMeta, register
@@ -310,23 +311,25 @@ def _ci_root(rel: str) -> str:
 
 
 # ---------------------------------------------------------------- runner
-def run_infra_rules(files: List[FileInfo]) -> List[Signal]:
-    """Run every infra rule over the is_infra files (test and example folders skipped)."""
+def run_infra_rules(files: List[FileInfo], cache: Optional[FileCache] = None) -> List[Signal]:
+    """Run every infra rule over the is_infra files (test and example folders skipped).
+    `cache` is the scan's file cache (files are read directly without one)."""
+    read = cache.text if cache is not None else _read
     infra = [f for f in files if f.is_infra and not f.is_test and not f.is_example]
     # k8s workload YAML whose `kind:` line carries a trailing comment (`kind: Deployment # web`)
     # may be walked as plain config; pick it up by content here.
     infra += [f for f in files if not f.is_infra and f.is_config and not f.is_test
               and not f.is_example and f.ext in (".yml", ".yaml")
-              and _KIND_COMMENT_RE.search(_read(f))]
+              and _KIND_COMMENT_RE.search(read(f))]
     if not infra:
         return []
-    texts = {f.rel: _read(f).replace("\r\n", "\n") for f in infra}
+    texts = {f.rel: read(f).replace("\r\n", "\n") for f in infra}
     k8s = [f for f in infra if not _is_dockerfile(f) and not _is_ci(f)]
     has_limit_range = any(
-        re.search(r"(?m)^kind:[ \t]*[\"']?LimitRange\b", _read(f))
+        re.search(r"(?m)^kind:[ \t]*[\"']?LimitRange\b", read(f))
         for f in files if f.is_config and f.ext in (".yml", ".yaml") and not f.is_test)
     compose_health = any(
-        re.search(r"(?m)^[ \t]+healthcheck:", _read(f)) for f in files
+        re.search(r"(?m)^[ \t]+healthcheck:", read(f)) for f in files
         if re.match(r"(?:docker-)?compose(?:\.[\w-]+)?\.ya?ml$", posixpath.basename(f.rel)))
     out: List[Signal] = []
     ci: List[Tuple[FileInfo, str]] = []

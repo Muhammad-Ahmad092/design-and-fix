@@ -576,6 +576,202 @@ class ReviewFixTests(TempCase):
         self.assertFinding(lint_output.lint(d), "overall", "6.0")
 
 
+class FindingFieldsTests(TempCase):
+    """1.1.0: informational status, uncertain scanner signals, Related / First seen."""
+
+    def make(self, text: str) -> str:
+        d = os.path.join(self.tmp, "docs")
+        write(os.path.join(d, "01-architecture-issues.md"), text)
+        return d
+
+    # the scan FORMAT_102's Audit and Scope lines were copied from
+    META = {"timestamp": "2026-11-02T10:00:00Z", "config_hash": "0a1b2c3d4e5f",
+            "scope": ["services/payments"]}
+
+    def scan_file(self, signals, meta=None) -> str:
+        path = os.path.join(self.tmp, "scan-%d.json" % len(os.listdir(self.tmp)))
+        data = {"schema_version": 3, "signals": signals}
+        if meta is not False:
+            data["meta"] = dict(self.META) if meta is None else meta
+        write(path, json.dumps(data))
+        return path
+
+    def test_informational_status_accepted_not_scored(self):
+        text = (FORMAT_102.replace("| REL-001 | No timeout | confirmed |",
+                                   "| REL-001 | No timeout | informational |")
+                .replace("Test aborts after 5 s", "—")
+                .replace(DETAIL + "\n", "")
+                .replace("| Reliability | 6 | Mixed |", "| Reliability | 10 | Strong |")
+                .replace("Stable with risks (6.0 / 10)", "Healthy (10.0 / 10)"))
+        d = self.make(text)
+        self.assertEqual(self.messages(lint_output.lint(d)), [])
+        write(os.path.join(d, "03-improvement-roadmap.md"), ROADMAP_EMPTY)
+        self.assertEqual(self.messages(lint_output.lint(d)), [])   # no roadmap row needed
+        # unlike not-reproducible, its Evidence must still exist
+        repo = os.path.join(self.tmp, "repo")
+        os.makedirs(repo)
+        self.assertFinding(lint_output.lint(d, repo=repo), "REL-001", "does not exist")
+        # scoring it as if it were a defect is an arithmetic error
+        scored = text.replace("| Reliability | 10 | Strong |", "| Reliability | 6 | Mixed |")
+        scored = scored.replace("Healthy (10.0 / 10)", "Stable with risks (6.0 / 10)")
+        self.assertFinding(lint_output.lint(self.make(scored)), "Reliability", "sub-score")
+
+    def test_needs_review_required_when_signal_uncertain(self):
+        uncertain = {"rule": "no-timeout", "file": "a.ts", "line": 3,
+                     "uncertain_reason": "auth config outside --scope"}
+        scan = self.scan_file([uncertain])
+        d = self.make(FORMAT_102)
+        found = lint_output.lint(d, scan=scan)
+        self.assertFinding(found, "REL-001", "needs-review", "no-timeout")
+        ok = self.make(FORMAT_102.replace("| confirmed |", "| needs-review |"))
+        self.assertEqual(self.messages(lint_output.lint(ok, scan=scan)), [])
+        # a certain signal, another line, another rule, or an agent-sourced issue: no finding
+        for sig in (dict(uncertain, uncertain_reason=""), dict(uncertain, line=4),
+                    dict(uncertain, rule="other-rule"),
+                    {"rule": "no-timeout", "file": "a.ts", "line": 3}):
+            self.assertEqual(self.messages(lint_output.lint(d, scan=self.scan_file([sig]))), [],
+                             sig)
+        agent = self.make(FORMAT_102.replace("| scanner:no-timeout |", "| agent |"))
+        self.assertEqual(self.messages(lint_output.lint(agent, scan=scan)), [])
+        # a signal inside an Evidence range matches too
+        ranged = self.make(FORMAT_102.replace("`a.ts:3`", "`a.ts:2-5`"))
+        self.assertFinding(lint_output.lint(ranged, scan=scan), "REL-001", "needs-review")
+        # CLI: --scan is optional; a missing or broken scan file is a usage error (exit 2)
+        proc = subprocess.run([sys.executable, LINT, d, "--scan", scan], capture_output=True,
+                              text=True, encoding="utf-8")
+        self.assertEqual(proc.returncode, 1)
+        self.assertIn("needs-review", proc.stdout)
+        bad = os.path.join(self.tmp, "bad.json")
+        write(bad, "{not json")
+        for path in (bad, os.path.join(self.tmp, "missing.json")):
+            proc = subprocess.run([sys.executable, LINT, d, "--scan", path], capture_output=True,
+                                  text=True, encoding="utf-8")
+            self.assertEqual(proc.returncode, 2, path)
+            self.assertNotIn("Traceback", proc.stderr)
+
+    def test_scanner_agent_source_does_not_escape_uncertain_gate(self):
+        # final review C I-1: relabelling Source to scanner+agent must not turn the gate off
+        uncertain = {"rule": "no-timeout", "file": "a.ts", "line": 3,
+                     "uncertain_reason": "client configured outside --scope"}
+        scan = self.scan_file([uncertain])
+        for source in ("scanner+agent:no-timeout", "scanner+agent",
+                       "scanner+agent:other-rule, no-timeout"):
+            d = self.make(FORMAT_102.replace("| scanner:no-timeout |", "| %s |" % source))
+            self.assertFinding(lint_output.lint(d, scan=scan), "REL-001", "needs-review",
+                               "Uncertainty resolved")
+        # another rule only: the signal is not this issue's
+        other = self.make(FORMAT_102.replace("| scanner:no-timeout |",
+                                             "| scanner+agent:other-rule |"))
+        self.assertEqual(self.messages(lint_output.lint(other, scan=scan)), [])
+        # resolved: the detail line names the file that resolved it, another file
+        base = FORMAT_102.replace("| scanner:no-timeout |", "| scanner+agent:no-timeout |")
+        resolved = base.replace("Limitations: none.", "Limitations: none. Uncertainty "
+                                "resolved: `config/http.ts:4`.")
+        self.assertEqual(self.messages(lint_output.lint(self.make(resolved), scan=scan)), [])
+        bare = base.replace("Limitations: none.",
+                            "Limitations: none. Uncertainty resolved: config/http.ts:4.")
+        self.assertEqual(self.messages(lint_output.lint(self.make(bare), scan=scan)), [])
+        # the signal's own file does not resolve anything
+        own = base.replace("Limitations: none.",
+                           "Limitations: none. Uncertainty resolved: `a.ts:9`.")
+        self.assertFinding(lint_output.lint(self.make(own), scan=scan), "REL-001",
+                           "needs-review", "other than a.ts")
+        # with --repo, the resolving file must exist and hold that line
+        repo = os.path.join(self.tmp, "repo")
+        write(os.path.join(repo, "a.ts"), "x\n" * 5)
+        d = self.make(resolved)
+        self.assertFinding(lint_output.lint(d, repo=repo, scan=scan), "REL-001",
+                           "config/http.ts:4")
+        write(os.path.join(repo, "config", "http.ts"), "x\n" * 5)
+        self.assertEqual(self.messages(lint_output.lint(d, repo=repo, scan=scan)), [])
+        # a scanner:<rule> source is held to needs-review even with a resolution line
+        plain = resolved.replace("| scanner+agent:no-timeout |", "| scanner:no-timeout |")
+        self.assertFinding(lint_output.lint(self.make(plain), scan=scan), "REL-001",
+                           "needs-review")
+
+    def test_scan_meta_must_match_audit_and_scope_lines(self):
+        # final review C I-2: --scan must be the scan this audit was built from
+        d = self.make(FORMAT_102)
+        self.assertEqual(self.messages(lint_output.lint(d, scan=self.scan_file([]))), [])
+        cases = (
+            (dict(self.META, timestamp="2026-11-03T09:00:00Z"), "2026-11-03T09:00:00Z"),
+            (dict(self.META, config_hash="ffffffffffff"), "ffffffffffff"),
+            (dict(self.META, scope=["services/orders"]), "services/orders"),
+            (dict(self.META, scope=["services/payments", "services/catalog"]),
+             "services/catalog"),
+            ({}, "meta"),
+        )
+        for meta, needle in cases:
+            found = lint_output.lint(d, scan=self.scan_file([], meta=meta))
+            self.assertFinding(found, "not the scan this audit was built from", needle)
+        self.assertFinding(lint_output.lint(d, scan=self.scan_file([], meta=False)),
+                           "not the scan this audit was built from", "meta")
+        # the Audit line lost its timestamp or config hash, or says no scan ran
+        for old, new in ((" · 2026-11-02T10:00:00Z", ""),
+                         (" · config 0a1b2c3d4e5f", ""),
+                         ("scanner schema 3", "scanner not run")):
+            bad = self.make(FORMAT_102.replace(old, new))
+            self.assertFinding(lint_output.lint(bad, scan=self.scan_file([])),
+                               "not the scan this audit was built from")
+        # lenient on format, strict on value: same instant written differently is fine
+        for stamp in ("2026-11-02 10:00:00 UTC", "2026-11-02T12:00:00+02:00",
+                      "2026-11-02T10:00Z", "`2026-11-02T10:00:00Z` (claude-code)"):
+            ok = self.make(FORMAT_102.replace("2026-11-02T10:00:00Z", stamp)
+                           .replace("config 0a1b2c3d4e5f", "config 0A1B2C3D4E5F"))
+            self.assertEqual(self.messages(lint_output.lint(ok, scan=self.scan_file([]))), [],
+                             stamp)
+        late = self.make(FORMAT_102.replace("2026-11-02T10:00:00Z", "2026-11-02T10:00:01Z"))
+        self.assertFinding(lint_output.lint(late, scan=self.scan_file([])), "timestamp")
+        # a whole-root scan (empty scope) names no folder to check; archived runs are skipped
+        root = dict(self.META, scope=[])
+        d = self.make(FORMAT_102)   # make() rewrites the one docs folder
+        self.assertEqual(self.messages(lint_output.lint(d, scan=self.scan_file([], root))), [])
+        # the same check runs on every audit file in the folder
+        write(os.path.join(d, "03-improvement-roadmap.md"), ROADMAP_EMPTY.replace(
+            "rev unknown", "rev unknown · config 0a1b2c3d4e5f · 2026-11-01T00:00:00Z").replace(
+            "> Scope: s", "> Scope: services/payments"))
+        self.assertFinding(lint_output.lint(d, scan=self.scan_file([])),
+                           "03-improvement-roadmap.md", "not the scan")
+
+    def test_quick_audit_unscored_issue_needs_no_next_step(self):
+        head = ("# Quick Audit\n\n> Scope: s\n> Context: c\n> Format: 1.0.2\n" + AUDIT
+                + "\n## Health Band\n\n**Healthy (9.0 / 10)**: fine.\n"
+                "Evidence: 1 files read, 0 scanner signals reviewed, 0 confirmed\n\n"
+                "## Top Issues\n\n"
+                "| ID | Severity | Status | Source | Issue | Evidence | Fix | Verify | Why |\n"
+                "|---|---|---|---|---|---|---|---|---|\n"
+                "| MNT-001 | Low | confirmed | agent | Dead code | `a.py:1` | Remove | \u2014 | r |\n"
+                "| SYS-001 | High | %s | agent | Sync call by design | `a.py:2` | Keep | \u2014 | r |\n"
+                "\n## Next Steps\n\n1. MNT-001: remove. Why: r\n")
+        d = os.path.join(self.tmp, "q")
+        for status in ("informational", "not-reproducible"):
+            write(os.path.join(d, "quick-audit.md"), head % status)
+            self.assertEqual(self.messages(lint_output.lint(d)), [], status)
+            write(os.path.join(d, "quick-audit.md"),
+                  (head % status) + "2. SYS-001: watch. Why: r\n")
+            self.assertEqual(self.messages(lint_output.lint(d)), [], status)   # once is fine
+            write(os.path.join(d, "quick-audit.md"), (head % status)
+                  + "2. SYS-001: watch. Why: r\n3. SYS-001: again. Why: r\n")
+            self.assertFinding(lint_output.lint(d), "SYS-001", "at most 1")
+        write(os.path.join(d, "quick-audit.md"), head % "confirmed")
+        self.assertFinding(lint_output.lint(d), "SYS-001", "expected exactly 1")
+
+    def test_related_and_first_seen_fields(self):
+        good = FORMAT_102.replace("Limitations: none.",
+                                  "Limitations: none. Related: REL-001. First seen: 2026-09-01.")
+        self.assertEqual(self.messages(lint_output.lint(self.make(good))), [])
+        version = good.replace("First seen: 2026-09-01", "First seen: 1.0.2")
+        self.assertEqual(self.messages(lint_output.lint(self.make(version))), [])
+        undefined = good.replace("Related: REL-001", "Related: SEC-009")
+        self.assertFinding(lint_output.lint(self.make(undefined)), "REL-001", "Related", "SEC-009")
+        # final review C M-2: an archive folder name (<date>-N) is not a run date
+        archive = good.replace("First seen: 2026-09-01", "First seen: 2026-09-01-2")
+        self.assertFinding(lint_output.lint(self.make(archive)), "REL-001", "First seen",
+                           "Audit timestamp")
+        bad_date = good.replace("First seen: 2026-09-01", "First seen: last spring")
+        self.assertFinding(lint_output.lint(self.make(bad_date)), "REL-001", "First seen")
+
+
 class CliTests(TempCase):
     def run_cli(self, *args):
         proc = subprocess.run([sys.executable, LINT] + list(args), capture_output=True,
@@ -599,6 +795,106 @@ class CliTests(TempCase):
         self.assertTrue(err.strip())
         code, _, _ = self.run_cli()
         self.assertEqual(code, 2)
+
+
+
+class Mode1RigorTests(TempCase):  # Task 15: Requirements and trade-off tables (plugin 1.1.0 files)
+    SD = "01-system-design.md"
+    TRADEOFF = ("| Option | Complexity | Scalability | Reliability | Security | Operations | Cost "
+                "| Familiarity | Lock-in | Migration path |")
+
+    def test_example_is_110_and_clean(self):
+        md = read(os.path.join(MODE1, self.SD))
+        self.assertIn("### Requirements", md)
+        self.assertIn("| Requirement | Value | Source | Effect on design |", md)
+        self.assertGreaterEqual(md.count(self.TRADEOFF), 5)
+        self.assertEqual(self.messages(lint_output.lint(MODE1)), [])
+
+    def test_lint_flags_missing_tradeoff_table(self):
+        d = self.copy(MODE1)
+        text = read(os.path.join(d, self.SD))
+        start = text.index("### Trade-offs: Background work")
+        end = text.index("### Trade-offs: Payments")
+        write(os.path.join(d, self.SD), text[:start] + text[end:])
+        self.assertFinding(lint_output.lint(d), self.SD, "5 decision", "4 trade-off table")
+
+    def test_lint_flags_old_option_table_columns(self):
+        d = self.copy(MODE1)
+        self.mutate(d, self.SD, self.TRADEOFF, "| Option | Strength | Weakness | Verdict |")
+        self.assertFinding(lint_output.lint(d), self.SD, "trade-off table", "columns")
+
+    def test_lint_flags_tradeoff_with_one_option(self):
+        d = self.copy(MODE1)
+        text = read(os.path.join(d, self.SD))
+        i = text.index("### Trade-offs: Payments")
+        rows = [ln for ln in text[i:].splitlines() if ln.startswith("| ")][1:]  # option rows
+        write(os.path.join(d, self.SD), text[:i] + text[i:].replace(rows[1] + "\n", "", 1))
+        self.assertFinding(lint_output.lint(d), self.SD, "at least 2 options")
+
+    def test_lint_flags_missing_requirements_table(self):
+        d = self.copy(MODE1)
+        self.mutate(d, self.SD, "| Requirement | Value | Source | Effect on design |",
+                    "| Requirement | Value | Notes |")
+        self.assertFinding(lint_output.lint(d), self.SD, "Requirements table")
+
+    def test_lint_flags_bad_requirement_rows(self):
+        d = self.copy(MODE1)
+        text = read(os.path.join(d, self.SD))
+        budget = next(ln for ln in text.splitlines() if ln.startswith("| Budget |"))
+        text = text.replace(budget + "\n", "")
+        goal = next(ln for ln in text.splitlines() if ln.startswith("| Goal |"))
+        cells = goal.split("|")
+        cells[3] = " maybe "
+        text = text.replace(goal, "|".join(cells))
+        write(os.path.join(d, self.SD), text)
+        found = lint_output.lint(d)
+        self.assertFinding(found, self.SD, "Budget", "missing")
+        self.assertFinding(found, self.SD, "Goal", "source", "user", "assumption")
+
+    def test_requirement_value_none_is_valid_but_effect_needs_reason(self):  # fix round 1
+        d = self.copy(MODE1)
+        text = read(os.path.join(d, self.SD))
+        comp = next(ln for ln in text.splitlines() if ln.startswith("| Compliance |"))
+        budget = next(ln for ln in text.splitlines() if ln.startswith("| Budget |"))
+        text = text.replace(comp, "| Compliance | none | user | none: no regulated data |")
+        text = text.replace(budget, "| Budget | n/a | assumption | none: no budget limit given |")
+        write(os.path.join(d, self.SD), text)
+        self.assertEqual(self.messages(lint_output.lint(d)), [])
+        self.mutate(d, self.SD, "| Compliance | none | user | none: no regulated data |",
+                    "| Compliance | none | user | none |")
+        found = lint_output.lint(d)
+        self.assertFinding(found, self.SD, "Compliance", "effect on design is empty")
+        self.assertFalse([m for m in self.messages(found) if "value is empty" in m])
+
+    def test_plugin_110_audit_line_switches_checks_on(self):
+        d = self.copy(MODE1)
+        text = read(os.path.join(d, self.SD)).replace("> Audit: plugin 1.0.2", "> Audit: plugin 1.1.0")
+        write(os.path.join(d, self.SD), text.replace("### Requirements\n", "").replace(
+            "### Trade-offs: ", "#### Options: "))
+        self.assertEqual(self.messages(lint_output.lint(d)), [])
+        self.mutate(d, self.SD, "| Requirement | Value | Source | Effect on design |",
+                    "| Requirement | Value | Notes |")
+        self.assertFinding(lint_output.lint(d), self.SD, "Requirements table")
+
+    def test_older_mode1_files_are_exempt(self):
+        d = self.copy(MODE1)
+        # An older (1.0.2) file: no 1.1.0 headings and an older plugin on the Audit line.
+        text = read(os.path.join(d, self.SD)).replace("### Requirements\n", "")
+        text = text.replace("plugin 1.1.0", "plugin 1.0.2")
+        text = text.replace("### Trade-offs: ", "#### Options: ")
+        text = text.replace(self.TRADEOFF, "| Option | Strength | Weakness | Verdict |")
+        text = text.replace("| Requirement | Value | Source | Effect on design |",
+                            "| Requirement | Value | Notes |")
+        write(os.path.join(d, self.SD), text)
+        self.assertEqual(self.messages(lint_output.lint(d)), [])
+
+    def test_scan_folder_is_not_linted(self):
+        d = self.copy(MODE1)
+        write(os.path.join(d, ".scan", self.SD), "# broken\n\n## Nonsense\n")
+        write(os.path.join(d, ".scan", "scan.json"), '{"signals": []}')
+        self.assertEqual(self.messages(lint_output.lint(d)), [])
+        self.assertEqual(self.messages(lint_output.lint(d, scan=os.path.join(
+            d, ".scan", "scan.json"))), [])
 
 
 if __name__ == "__main__":

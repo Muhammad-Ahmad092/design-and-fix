@@ -1,0 +1,21 @@
+{
+  "console-logging-only": "low",
+  "docker-no-healthcheck": "medium",
+  "docker-root-user": "medium",
+  "god-module": "low",
+  "hardcoded-secret": "low",
+  "http-no-timeout": "low",
+  "import-cycle": "low",
+  "k8s-no-limits": "medium",
+  "k8s-no-probes": "medium",
+  "missing-lockfile": "medium",
+  "no-health-endpoint": "high",
+  "no-tests": "medium",
+  "no-version-prefix": "low",
+  "openapi-drift": "low",
+  "swallowed-error": "low",
+  "unauth-write-route": "low",
+  "unbounded-query": "low",
+  "unpinned-dependency": "high",
+  "unvalidated-body": "low"
+}

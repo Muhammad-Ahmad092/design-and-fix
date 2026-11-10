@@ -5,11 +5,13 @@ import os
 import shutil
 import tempfile
 import unittest
+from unittest import mock
 
 from helpers import FIXTURES, SCRIPTS, run_cli
 from dfscan import config as dfconfig
 from dfscan.registry import RULES, SEVERITIES
 from dfscan.report import scan
+from dfscan.meta import PLUGIN_VERSION
 from dfscan.sarif import to_sarif
 
 MONO = os.path.join(FIXTURES, "monorepo")
@@ -170,6 +172,32 @@ class FailOnTests(TempTree):
         self.assertEqual(run_cli(*args)[0], 0)
         self.assertEqual(run_cli(*args, "--fail-on", "Low")[0], 3)
 
+    def test_partial_scan_fails_closed_with_gate(self):  # final review I4
+        note = "partial scan: --fail-on gate fails closed"
+        for limits in ({"timeout_seconds": 0.000001}, {"max_files": 1}):
+            with self.subTest(limits=limits):
+                cfg = os.path.join(self.d, "limits.json")
+                with open(cfg, "w", encoding="utf-8") as fh:
+                    json.dump({"limits": limits}, fh)
+                base = (MONO, "--no-git", "--quiet", "--config", cfg)
+                code, out = run_cli(*base)
+                self.assertEqual(code, 0)  # no gate: a partial scan still exits 0
+                self.assertTrue(json.loads(out)["summary"]["partial"])
+                self.assertNotIn(note, json.loads(out)["notes"])
+                code, out = run_cli(*base, "--fail-on", "Low")
+                result = json.loads(out)
+                self.assertTrue(result["summary"]["partial"])
+                self.assertEqual(result["signals"], [])  # no threshold hit, yet the gate fails
+                self.assertEqual(code, 3)
+                self.assertIn(note, result["notes"])
+                self.assertEqual(run_cli(*base, "--fail-on", "none")[0], 0)
+        # A complete scan with a gate and nothing at the threshold still exits 0, without the note.
+        put(self.d, "clean/a.py", "x = 1\n")
+        code, out = run_cli(os.path.join(self.d, "clean"), "--no-git", "--quiet",
+                            "--fail-on", "Critical")
+        self.assertEqual(code, 0)
+        self.assertNotIn(note, json.loads(out)["notes"])
+
     def test_fail_on_applies_to_sarif_format(self):
         code, out = run_cli(MONO, "--no-git", "--quiet", "--format", "sarif", "--fail-on", "High")
         self.assertEqual(code, 3)
@@ -187,7 +215,7 @@ class SarifTests(unittest.TestCase):
         self.assertEqual(s["version"], "2.1.0")
         run = s["runs"][0]
         driver = run["tool"]["driver"]
-        self.assertEqual((driver["name"], driver["version"]), ("design-and-fix", "1.0.2"))
+        self.assertEqual((driver["name"], driver["version"]), ("design-and-fix", PLUGIN_VERSION))
         self.assertEqual([r["id"] for r in driver["rules"]], sorted(RULES))
         r0 = driver["rules"][0]
         meta = RULES[r0["id"]]
@@ -367,7 +395,7 @@ class ConfigReviewTests(TempTree):  # review I2, M5, M12, config notes
                           "rules": {"no-tests": {"enabled": False},
                                     "http-no-timeout": {"severity": "Low"}}})
         notes = self.signals()["notes"]
-        self.assertIn("config disabled rules: no-tests (their signals are dropped and not "
+        self.assertIn("rules disabled by config or profile: no-tests (their signals are dropped and not "
                       "counted in summary.suppressed)", notes)
         self.assertIn("config exclude patterns: legacy/", notes)
         self.assertTrue(any(n.startswith("config include patterns: src/**") for n in notes))
@@ -425,3 +453,139 @@ class SarifUriTests(unittest.TestCase):
                                         "fingerprint": "f"}]}
         loc = to_sarif(res)["runs"][0]["results"][0]["locations"][0]["physicalLocation"]
         self.assertEqual(loc["artifactLocation"]["uri"], "my%20dir/a%20b%231.ts")
+
+
+class SarifUncertainReasonTests(unittest.TestCase):
+    def _result(self, **extra):
+        sig = {"rule": "http-no-timeout", "severity_hint": "Medium", "file": "a.ts", "line": 3,
+               "snippet": "x", "fingerprint": "f"}
+        sig.update(extra)
+        return to_sarif({"root": "", "signals": [sig]})["runs"][0]["results"][0]
+
+    def test_uncertain_reason_becomes_property(self):
+        res = self._result(uncertain_reason="auth config outside scope")
+        self.assertEqual(res["properties"], {"uncertainReason": "auth config outside scope"})
+
+    def test_no_property_without_uncertain_reason(self):
+        self.assertNotIn("properties", self._result())
+        self.assertNotIn("properties", self._result(uncertain_reason=""))
+
+
+class ConfigDefaultOffTests(TempTree):  # Review Focus 1: a 1.0.2 config keeps its rules
+    def test_existing_enabled_true_keeps_default_off_rule(self):
+        put(self.d, "src/a.ts", FETCH)
+        cfg_file(self.d, {"rules": {"http-no-timeout": {"enabled": True},
+                                    "openapi-drift": {"enabled": True}}})
+        with mock.patch.object(RULES["http-no-timeout"], "default_enabled", False):
+            r = self.signals()
+        self.assertIn("http-no-timeout", {s["rule"] for s in r["signals"]})
+        self.assertFalse([n for n in r["notes"] if "off by default" in n])
+
+    def test_silent_config_gets_note_not_signal(self):
+        put(self.d, "src/a.ts", FETCH)
+        cfg_file(self.d, {"rules": {"no-tests": {"severity": "Low"},
+                                    "openapi-drift": {"enabled": True}}})
+        with mock.patch.object(RULES["http-no-timeout"], "default_enabled", False):
+            r = self.signals()
+        self.assertNotIn("http-no-timeout", {s["rule"] for s in r["signals"]})
+        self.assertIn("rules off by default (enable in config): http-no-timeout", r["notes"])
+        self.assertEqual(r["summary"]["default_off_rules"], ["http-no-timeout"])
+
+
+class ProfileTests(TempTree):  # Task 15: profiles; Review Focus 4: config file beats profile
+    def rules_of(self, *args):
+        code, out = run_cli(self.d, "--no-git", "--quiet", *args)
+        self.assertEqual(code, 0, out)
+        res = json.loads(out)
+        return {s["rule"] for s in res["signals"]}, res
+
+    def test_profiles_are_valid_partial_configs(self):
+        from dfscan import profiles
+        self.assertEqual(set(profiles.PROFILES), {
+            "balanced", "security-focused", "api-focused", "performance-focused",
+            "architecture-focused", "quick"})
+        self.assertEqual(profiles.PROFILES["balanced"], {})
+        for name, data in profiles.PROFILES.items():
+            with self.subTest(profile=name):
+                self.assertLessEqual(set(data), {"rules", "limits"})
+                dfconfig.parse_config(data, "<profile %s>" % name)  # raises on a bad entry
+                for entry in data.get("rules", {}).values():
+                    self.assertEqual(set(entry), {"enabled"})  # selection only, never severity
+
+    def test_focused_profiles_cover_every_rule(self):
+        from dfscan import profiles
+        for name, (cats, extras) in profiles.FOCUS.items():
+            with self.subTest(profile=name):
+                disabled = {r for r, e in profiles.PROFILES[name]["rules"].items()
+                            if e["enabled"] is False}
+                expected = {r for r, m in RULES.items()
+                            if m.category not in cats and r not in extras}
+                self.assertEqual(disabled, expected)
+                self.assertFalse(any(e["enabled"] for e in profiles.PROFILES[name]["rules"].values()))
+
+    def test_profile_disables_out_of_focus_rules(self):
+        put(self.d, "src/a.ts", FETCH)  # http-no-timeout (Reliability)
+        rules, _ = self.rules_of()
+        self.assertIn("http-no-timeout", rules)
+        rules, res = self.rules_of("--profile", "security-focused")
+        self.assertNotIn("http-no-timeout", rules)
+        self.assertTrue(any(n.startswith("profile security-focused") for n in res["notes"]))
+
+    def test_profile_then_config_precedence(self):
+        from dfscan import profiles
+        put(self.d, "src/a.ts", FETCH)
+        # A profile that turns a rule on loses to a config file that turns it off.
+        fake = dict(profiles.PROFILES, enabler={"rules": {"http-no-timeout": {"enabled": True}},
+                                                "limits": {"max_files": 7}})
+        cfg_file(self.d, {"rules": {"http-no-timeout": {"enabled": False}},
+                          "limits": {"max_files": 9}})
+        with mock.patch.object(profiles, "PROFILES", fake):
+            cfg = dfconfig.load_config(self.d, profile="enabler")
+        self.assertIs(cfg.rules["http-no-timeout"]["enabled"], False)
+        self.assertEqual(cfg.limits["max_files"], 9)
+        self.assertEqual(cfg.profile, "enabler")
+        # Keys the config file does not set still come from the profile.
+        cfg_file(self.d, {"rules": {"http-no-timeout": {"severity": "Low"}}})
+        with mock.patch.object(profiles, "PROFILES", fake):
+            cfg = dfconfig.load_config(self.d, profile="enabler")
+        self.assertEqual(cfg.rules["http-no-timeout"], {"enabled": True, "severity": "Low"})
+        self.assertEqual(cfg.limits["max_files"], 7)
+        # A real profile that disables a rule loses to a config file that enables it.
+        cfg_file(self.d, {"rules": {"http-no-timeout": {"enabled": True}}})
+        rules, _ = self.rules_of("--profile", "security-focused")
+        self.assertIn("http-no-timeout", rules)
+
+    def test_cli_flag_beats_profile_and_config(self):
+        cfg_file(self.d, {"profile": "quick", "fail_on": "none"})
+        put(self.d, "src/a.ts", FETCH)
+        code, _ = run_cli(self.d, "--no-git", "--quiet", "--fail-on", "High")
+        self.assertEqual(code, 3)
+
+    def test_config_file_profile_key_and_cli_override(self):
+        put(self.d, "src/a.ts", FETCH)
+        cfg_file(self.d, {"profile": "security-focused"})
+        rules, res = self.rules_of()
+        self.assertNotIn("http-no-timeout", rules)
+        rules, res = self.rules_of("--profile", "balanced")
+        self.assertIn("http-no-timeout", rules)
+        cfg_file(self.d, {"profile": "nope"})
+        code, out = run_cli(self.d, "--no-git", "--quiet")
+        self.assertEqual(code, 2)
+        self.assertIn("profile", json.loads(out)["error"])
+
+    def test_unknown_cli_profile_is_usage_error(self):
+        code, _ = run_cli(self.d, "--no-git", "--quiet", "--profile", "turbo")
+        self.assertEqual(code, 2)
+
+    def test_profile_changes_config_hash(self):
+        a = dfconfig.config_hash(dfconfig.load_config(self.d))
+        b = dfconfig.config_hash(dfconfig.load_config(self.d, profile="security-focused"))
+        c = dfconfig.config_hash(dfconfig.load_config(self.d, profile="balanced"))
+        self.assertNotEqual(a, b)
+        self.assertEqual(a, c)
+
+    def test_schema_lists_every_profile(self):
+        from dfscan import profiles
+        with open(os.path.join(SCRIPTS, "config.schema.json"), encoding="utf-8") as fh:
+            schema = json.load(fh)
+        self.assertEqual(set(schema["properties"]["profile"]["enum"]), set(profiles.PROFILES))

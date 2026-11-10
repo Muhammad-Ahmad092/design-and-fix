@@ -2,15 +2,19 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import tempfile
 import unittest
+from typing import Any, Dict, Optional
 from unittest import mock
 
 from helpers import FIXTURES, SCRIPTS
 from schema_validate import validate
 from dfscan import patterns, registry
 from dfscan.fingerprint import signal_fingerprint
+from dfscan.meta import PLUGIN_VERSION
 from dfscan.model import Signal
+from dfscan.registry import RuleMeta
 from dfscan.report import scan
 
 MONO = os.path.join(FIXTURES, "monorepo")
@@ -24,6 +28,17 @@ SUMMARY_1_0_1 = {
     "files_scanned": int, "code_files": int, "approx_loc": int, "test_files": int,
     "signals_by_category": dict, "truncated": dict, "routes_total": int,
 }
+
+
+# Release decision (1.1.0): openapi-drift measured 0% precision at n=14, so it ships off by default.
+RELEASE_DEFAULT_OFF = ["openapi-drift"]
+OPENAPI_NOTE = "rules off by default (enable in config): openapi-drift"
+
+
+def _scan_with_rule_off(rule_id: str, config: Optional[Dict[str, Any]] = None) -> dict:
+    """Scan the monorepo fixture with `rule_id` patched to default-off (restored afterwards)."""
+    with mock.patch.object(registry.RULES[rule_id], "default_enabled", False):
+        return scan(MONO, use_git=False, rule_config=(config or {}).get("rules"))
 
 
 def _schema() -> dict:
@@ -125,7 +140,7 @@ class RegistryTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             m = scan(tmp, use_git=True)["meta"]
         self.assertEqual(m["repo_revision"], "unknown")
-        self.assertEqual(m["plugin_version"], "1.0.2")
+        self.assertEqual(m["plugin_version"], PLUGIN_VERSION)
         self.assertTrue(m["timestamp"].endswith("Z"))
         self.assertEqual(set(m["rule_versions"]), set(registry.RULES))
 
@@ -143,7 +158,8 @@ class RegistryTests(unittest.TestCase):
 class ReviewRegistryTests(unittest.TestCase):
     def test_hardcoded_secret_version_bumped_and_limitations_name_keys(self):
         meta = registry.RULES["hardcoded-secret"]
-        self.assertEqual(meta.version, "7")  # key words, masking and dotenv comments changed
+        # 7 in 1.0.2 (key words, masking, dotenv comments); bumped again by the 1.1.0 rework.
+        self.assertGreaterEqual(int(meta.version), 7)
         for word in ("access key", "client secret", "secret access key", "UTF-16"):
             self.assertIn(word, meta.limitations)
 
@@ -160,6 +176,167 @@ class ReviewRegistryTests(unittest.TestCase):
                      "high")
         self.assertLessEqual(len(sig.snippet), 160)
         self.assertNotIn("Zq8f", sig.snippet)
+
+
+class DefaultOffTests(unittest.TestCase):
+    def test_only_release_decision_rules_are_off_by_default(self):
+        off = sorted(rid for rid, m in registry.RULES.items() if not m.default_enabled)
+        self.assertEqual(off, RELEASE_DEFAULT_OFF)
+
+    def test_is_enabled_precedence(self):
+        registry.RULES["demo-off"] = RuleMeta("demo-off", "1", "Security", "High", "low",
+                                              "d", "l", "r", ["Python"], default_enabled=False)
+        self.addCleanup(registry.RULES.pop, "demo-off")
+        self.assertFalse(registry.is_enabled("demo-off", {}))
+        self.assertTrue(registry.is_enabled("demo-off", {"demo-off": {"enabled": True}}))
+        self.assertFalse(registry.is_enabled("http-no-timeout",
+                                             {"http-no-timeout": {"enabled": False}}))
+        self.assertTrue(registry.is_enabled("http-no-timeout", {}))
+        self.assertTrue(registry.is_enabled("http-no-timeout",
+                                            {"http-no-timeout": {"severity": "Low"}}))
+        self.assertFalse(registry.is_enabled("openapi-drift", {}))
+        self.assertTrue(registry.is_enabled("openapi-drift", {"openapi-drift": {"enabled": True}}))
+
+    def test_default_off_rule_dropped_and_noted(self):  # Review Focus 1
+        res = _scan_with_rule_off("http-no-timeout")
+        self.assertNotIn("http-no-timeout", {s["rule"] for s in res["signals"]})
+        self.assertNotIn("openapi-drift", {s["rule"] for s in res["signals"]})
+        self.assertEqual(res["summary"]["default_off_rules"], ["http-no-timeout", "openapi-drift"])
+        self.assertIn("rules off by default (enable in config): http-no-timeout, openapi-drift",
+                      res["notes"])
+        self.assertEqual(validate(res, _schema()), [])
+
+    def test_config_reenables_default_off_rule(self):  # Review Focus 1
+        res = _scan_with_rule_off("http-no-timeout",
+                                  config={"rules": {"http-no-timeout": {"enabled": True}}})
+        self.assertIn("http-no-timeout", {s["rule"] for s in res["signals"]})
+        self.assertEqual(res["summary"]["default_off_rules"], RELEASE_DEFAULT_OFF)
+        self.assertEqual([n for n in res["notes"] if "off by default" in n], [OPENAPI_NOTE])
+
+    def test_config_disabling_default_off_rule_is_not_double_noted(self):
+        res = _scan_with_rule_off("http-no-timeout",
+                                  config={"rules": {"http-no-timeout": {"enabled": False}}})
+        self.assertNotIn("http-no-timeout", {s["rule"] for s in res["signals"]})
+        self.assertEqual(res["summary"]["default_off_rules"], RELEASE_DEFAULT_OFF)
+        self.assertEqual([n for n in res["notes"] if "off by default" in n], [OPENAPI_NOTE])
+        self.assertTrue([n for n in res["notes"] if n.startswith("rules disabled by config or profile: ")])
+
+    def test_only_release_default_off_rules_noted_by_default(self):
+        res = scan(MONO, use_git=False)
+        self.assertEqual(res["summary"]["default_off_rules"], RELEASE_DEFAULT_OFF)
+        self.assertEqual([n for n in res["notes"] if "off by default" in n], [OPENAPI_NOTE])
+
+    def test_no_default_off_note_when_all_rules_enabled(self):
+        res = scan(MONO, use_git=False, rule_config={"openapi-drift": {"enabled": True}})
+        self.assertEqual(res["summary"]["default_off_rules"], [])
+        self.assertFalse([n for n in res["notes"] if "off by default" in n])
+
+    def test_rule_docs_default_column(self):
+        import gen_rule_docs
+        text = gen_rule_docs.render()
+        header = [ln for ln in text.splitlines() if ln.startswith("| Rule |")][0]
+        self.assertIn("| Default |", header)
+        row = [ln for ln in text.splitlines() if ln.startswith("| `http-no-timeout` |")][0]
+        self.assertIn("| on |", row)
+        with mock.patch.object(registry.RULES["http-no-timeout"], "default_enabled", False):
+            row = [ln for ln in gen_rule_docs.render().splitlines()
+                   if ln.startswith("| `http-no-timeout` |")][0]
+        self.assertIn("| off |", row)
+
+
+class UncertainReasonTests(unittest.TestCase):
+    def test_uncertain_reason_secret_masked_and_capped(self):
+        from dfscan.model import REASON_MAX
+        from dfscan.sarif import to_sarif
+        secret = "Zq8f" + "Hkd9" + "3LmP" + "x7Rt"
+        reason = "auth config read: pass" + "word=\"" + secret + "\""
+        short = Signal("r", "Security", "High", "a.py", 1, "x", "low", uncertain_reason=reason)
+        self.assertNotIn(secret, short.uncertain_reason)
+        long_reason = "y" * 230 + " pass" + "word=\"" + secret + "\""
+        cut = Signal("r", "Security", "High", "a.py", 1, "x", "low", uncertain_reason=long_reason)
+        self.assertLessEqual(len(cut.uncertain_reason), REASON_MAX)
+        self.assertNotIn(secret[:4], cut.uncertain_reason)
+
+        def rule(fi, text):
+            if fi.rel.endswith("catalog/app.py"):
+                return [Signal("swallowed-error", "Reliability", "Medium", fi.rel, 1, "x", "low",
+                               uncertain_reason=reason)]
+            return []
+
+        with mock.patch.object(patterns, "FILE_RULES", [rule]):
+            r = scan(MONO, use_git=False)
+        hits = [s for s in r["signals"] if s["rule"] == "swallowed-error"]
+        self.assertEqual(len(hits), 1)
+        self.assertIn("***", hits[0]["uncertain_reason"])
+        self.assertNotIn(secret, json.dumps(r))
+        self.assertNotIn(secret, json.dumps(to_sarif(r)))
+
+    def test_uncertain_reason_serialised_only_when_set(self):
+        self.assertNotIn("uncertain_reason",
+                         Signal("r", "Security", "High", "a.py", 1, "x", "low").to_dict())
+        d = Signal("r", "Security", "High", "a.py", 1, "x", "low",
+                   uncertain_reason="auth config not found").to_dict()
+        self.assertEqual(d["uncertain_reason"], "auth config not found")
+
+    def test_uncertain_reason_survives_scan_and_validates(self):
+        def rule(fi, text):
+            if fi.rel.endswith("catalog/app.py"):
+                return [Signal("swallowed-error", "Reliability", "Medium", fi.rel, 1, "x", "low",
+                               uncertain_reason="auth config not found")]
+            return []
+
+        with mock.patch.object(patterns, "FILE_RULES", [rule]):
+            r = scan(MONO, use_git=False)
+        hits = [s for s in r["signals"] if s["rule"] == "swallowed-error"]
+        self.assertEqual([s["uncertain_reason"] for s in hits], ["auth config not found"])
+        self.assertEqual(validate(r, _schema()), [])
+        items = _schema()["properties"]["signals"]["items"]
+        self.assertEqual(items["properties"]["uncertain_reason"]["type"], "string")
+        self.assertNotIn("uncertain_reason", items["required"])
+        summary = _schema()["properties"]["summary"]
+        self.assertIn("default_off_rules", summary["properties"])
+        self.assertNotIn("default_off_rules", summary["required"])
+        self.assertIn("skipped", summary["properties"]["default_off_rules"]["description"])
+
+
+# ---------------------------------------------------------------- final review 1.1.0 (I5)
+_TIER_RES = (
+    re.compile(r"\b(high|medium|low)\s+confidence\b", re.I),        # "at medium confidence"
+    re.compile(r"\bconfidence\s+[\"'`]?(high|medium|low)\b", re.I),  # "confidence low"
+)
+
+
+class ConfidenceWordingTests(unittest.TestCase):
+    """report._stamp caps every signal at the rule's registry confidence (measured.json can only
+    lower it), so rule text must not promise a confidence tier the scan never emits."""
+
+    def _tiers(self, text: str):
+        return [m.group(1).lower() for rx in _TIER_RES for m in rx.finditer(text)]
+
+    def test_no_text_mentions_a_tier_above_the_effective_ceiling(self):
+        for rid, meta in sorted(registry.RULES.items()):
+            ceiling = registry.CONFIDENCES.index(meta.confidence)
+            text = meta.description + " " + meta.limitations
+            for tier in self._tiers(text):
+                self.assertGreaterEqual(
+                    registry.CONFIDENCES.index(tier), ceiling,
+                    "%s mentions %s confidence above its ceiling %s" % (rid, tier, meta.confidence))
+
+    def test_rules_capped_at_low_say_always_low(self):
+        # A rule capped at low that describes tiers ("X emits low confidence") must say every
+        # signal is low; "Always low" on a rule whose ceiling is higher would be stale.
+        for rid, meta in sorted(registry.RULES.items()):
+            text = meta.description + " " + meta.limitations
+            always = "always low confidence" in text.lower()
+            if meta.confidence == "low" and self._tiers(text):
+                self.assertTrue(always, "%s is capped at low but its text describes tiers" % rid)
+            if always:
+                self.assertEqual(meta.confidence, "low", rid)
+
+    def test_checker_catches_a_promise_above_the_ceiling(self):
+        self.assertEqual(self._tiers("Known formats are reported at high confidence."), ["high"])
+        self.assertEqual(self._tiers("emits confidence medium"), ["medium"])
+        self.assertEqual(self._tiers("Always low confidence."), ["low"])
 
 
 if __name__ == "__main__":

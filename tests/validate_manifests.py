@@ -7,7 +7,7 @@ import re
 import sys
 from typing import Any, List, Optional
 
-EXPECTED_VERSION = "1.0.2"
+EXPECTED_VERSION = "1.1.0"
 OPENAI_KEYS = {"interface", "policy", "dependencies"}
 INTERFACE_REQUIRED = [
     "displayName", "shortDescription", "longDescription", "developerName",

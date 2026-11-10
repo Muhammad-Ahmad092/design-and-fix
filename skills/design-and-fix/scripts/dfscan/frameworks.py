@@ -5,6 +5,7 @@ import re
 from bisect import bisect_right
 from typing import Callable, Dict, List, Optional, Set, Tuple
 
+from .filecache import FileCache
 from .model import FileInfo
 from .text import strip_comments
 from .walker import walk
@@ -15,12 +16,17 @@ from .walker import walk
 #   Spring   @PreAuthorize / @Secured / @RolesAllowed on the method or the controller class
 #   ASP.NET  [Authorize] on the action or controller ([AllowAnonymous] on the action wins),
 #            .RequireAuthorization() on a minimal-API route or its MapGroup
-#   Rails    before_action :authenticate... in the controller or a parent controller
-#            (skip_before_action honoured, only:/except: read), or an `authenticate` block
-#            in config/routes.rb
+#   Rails    before_action :authenticate... / :authorize... / :require_admin, CanCanCan
+#            load_and_authorize_resource / authorize_resource, Pundit verify_authorized in the
+#            controller, its concerns or a parent controller (skip_* honoured, only:/except:
+#            read), or an `authenticate` block in config/routes.rb
 #   Laravel  ->middleware('auth...') on the route or an enclosing Route group
+# Auth applied elsewhere (Spring Security filter chains, ASP.NET Core global policies, Laravel
+# controller middleware and the group loading a route file) is resolved by dfscan/auth/, which
+# reads each route's controller/action details through route_details().
 
 FRAMEWORK_EXTS = (".java", ".kt", ".cs", ".rb", ".php")
+_EXTRA = "_extra"
 
 _PAIRS = {"(": ")", "[": "]", "{": "}"}
 _MAX_SCAN = 200_000
@@ -69,7 +75,8 @@ def _read_code(fi: FileInfo, lang: str) -> str:
     if hit is None:
         try:
             with open(fi.abs, "r", encoding="utf-8", errors="ignore") as fh:
-                hit = strip_comments(fh.read(_MAX_SCAN), lang)
+                raw = fh.read(_MAX_SCAN)
+                hit = strip_comments(_rb_text(raw) if lang == "Ruby" else raw, lang)
         except OSError:
             hit = ""
         if len(_READ_CACHE) > 4096:
@@ -78,9 +85,15 @@ def _read_code(fi: FileInfo, lang: str) -> str:
     return hit
 
 
-def _route(method: str, path: str, fi: FileInfo, line: int, framework: str, auth: bool) -> dict:
-    return {"method": method, "path": path, "file": fi.rel, "line": line,
-            "framework": framework, "auth_detected": auth}
+def _route(method: str, path: str, fi: FileInfo, line: int, framework: str, auth: bool,
+           extra: Optional[dict] = None) -> dict:
+    """A route dict. `extra` (controller, action, [AllowAnonymous], ...) is read by the auth
+    adapters through route_details() and never reaches the route inventory."""
+    r = {"method": method, "path": path, "file": fi.rel, "line": line,
+         "framework": framework, "auth_detected": auth}
+    if extra:
+        r[_EXTRA] = extra
+    return r
 
 
 def _line_index(text: str) -> Callable[[int], int]:
@@ -189,12 +202,15 @@ _DECL_MODIFIERS = {
     "sealed", "inner", "suspend", "override", "synchronized", "default", "async", "virtual",
     "partial", "readonly", "unsafe", "new", "extern", "operator", "inline", "annotation",
 }
-_CLASS_WORDS = {"class", "interface", "object", "record", "enum"}
+_CLASS_WORDS = {"class", "interface", "record", "enum"}
+# `object` declares a class only in Kotlin; in C# and Java it is a type (`public object Bulk()`).
+_KT_CLASS_WORDS = _CLASS_WORDS | {"object"}
 _WORD_RE = re.compile(r"\s*([A-Za-z_]\w*)")
 _MEMBER_RE = re.compile(r"([A-Za-z_]\w*)\s*(?:<[^>()]*>)?\s*\(")
 
 
-def _classify(group: _Group, code: str) -> None:
+def _classify(group: _Group, code: str, kotlin: bool = False) -> None:
+    words = _KT_CLASS_WORDS if kotlin else _CLASS_WORDS
     pos = group.end
     while True:
         m = _WORD_RE.match(code, pos)
@@ -204,7 +220,7 @@ def _classify(group: _Group, code: str) -> None:
         pos = m.end()
         if word in _DECL_MODIFIERS:
             continue
-        if word in _CLASS_WORDS:
+        if word in words:
             nm = _WORD_RE.match(code, pos)
             group.is_class = True
             group.class_name = nm.group(1) if nm else ""
@@ -219,7 +235,7 @@ def _classify(group: _Group, code: str) -> None:
 _JAVA_ANN_RE = re.compile(r"(?<![\w@.\"'])@([A-Za-z_][\w.]*)")
 
 
-def _java_groups(code: str) -> List[_Group]:
+def _java_groups(code: str, kotlin: bool = False) -> List[_Group]:
     groups: List[_Group] = []
     pos = 0
     # Annotation names are found with string contents blanked ("see @GetMapping" in a string is
@@ -244,7 +260,7 @@ def _java_groups(code: str) -> List[_Group]:
             groups.append(_Group(m.start(), end, [item]))
         pos = end
     for g in groups:
-        _classify(g, code)
+        _classify(g, code, kotlin)
     return groups
 
 
@@ -288,13 +304,9 @@ def _enclosing_span(classes: List[_ClassSpan], pos: int) -> Optional[_ClassSpan]
     return best
 
 
-def _enclosing_class(classes: List[_ClassSpan], pos: int) -> Optional[_Group]:
-    """Class-level group of the innermost class containing pos (None: no class or no group)."""
-    best = _enclosing_span(classes, pos)
-    return best[2] if best else None
-
-
 _CLASS_DECL_RE = re.compile(
+    r"(?<![.\w])(?:class|interface|record|struct|enum(?!\s+class\b))\s+([A-Za-z_]\w*)")
+_KT_CLASS_DECL_RE = re.compile(
     r"(?<![.\w])(?:class|interface|object|record|struct|enum(?!\s+class\b))\s+([A-Za-z_]\w*)")
 # A header line that starts a new declaration (or an annotation of the next one): the class
 # before it has no body (Kotlin).
@@ -346,10 +358,12 @@ def _cs_base(header: str) -> str:
     return m.group(1).rsplit(".", 1)[-1] if m else ""
 
 
-def _class_index(code: str, groups: List[_Group]) -> List[_ClassSpan]:
-    """Body span, class-level group (or None), name and base of every class with a body."""
+def _class_index(code: str, groups: List[_Group], kotlin: bool = False) -> List[_ClassSpan]:
+    """Body span, class-level group (or None), name and base of every class with a body
+    (`object` declarations only when `kotlin`)."""
+    decl_re = _KT_CLASS_DECL_RE if kotlin else _CLASS_DECL_RE
     decls = [(m.start(), m.end(), m.group(1))
-             for m in _CLASS_DECL_RE.finditer(_blank_strings(code))]
+             for m in decl_re.finditer(_blank_strings(code))]
     owner: Dict[int, _Group] = {}
     for g in groups:
         if g.is_class:
@@ -455,8 +469,9 @@ def _spring_auth(items: List[Tuple[int, str, str]]) -> Optional[bool]:
 
 
 def _spring_routes(fi: FileInfo, code: str) -> List[dict]:
-    groups = _java_groups(code)
-    classes = _class_index(code, groups)
+    kotlin = fi.rel.endswith(".kt")
+    groups = _java_groups(code, kotlin)
+    classes = _class_index(code, groups, kotlin)
     line_of = _line_index(code)
     consts: Dict[str, str] = {}
     for cm in _SPRING_CONST_RE.finditer(code):
@@ -468,8 +483,10 @@ def _spring_routes(fi: FileInfo, code: str) -> List[dict]:
     for g in groups:
         if g.is_class:
             continue
-        cls = _enclosing_class(classes, g.start)
+        span = _enclosing_span(classes, g.start)
+        cls = span[2] if span else None
         cls_items = cls.items if cls else []
+        extra = {"controller": span[3] if span else "", "action": g.member}
         if {n for _, n, _ in cls_items} & _SPRING_CLIENT:
             continue
         prefixes = [p for _, name, args in cls_items if name == "RequestMapping"
@@ -479,13 +496,15 @@ def _spring_routes(fi: FileInfo, code: str) -> List[dict]:
         for pos, name, args in g.items:
             if name not in _SPRING_MAPPING:
                 continue
+            # @RequestMapping with no method= takes every verb: listed as ANY, plus POST so
+            # the write-route checks see it (Spring dispatches POST to it too).
             methods = [_SPRING_MAPPING[name]] if _SPRING_MAPPING[name] else (
-                _spring_methods(args) or ["ANY"])
+                _spring_methods(args) or ["ANY", "POST"])
             for prefix in prefixes:
                 for path in _spring_paths(args, consts):
                     for meth in methods:
                         out.append(_route(meth, _join(prefix, path), fi, line_of(pos),
-                                          "spring", auth))
+                                          "spring", auth, extra))
     return out
 
 
@@ -551,20 +570,24 @@ def _cs_file_table(f: FileInfo) -> Dict[str, _CsClass]:
 
 
 def _cs_other_classes(fi: FileInfo, files: Optional[List[FileInfo]]) -> Dict[str, _CsClass]:
-    """Classes declared in the other walked .cs files: the whole scan when `files` is given,
-    else the scanned file's folder (and below)."""
+    """Classes declared in the walked .cs files: the whole scan when `files` is given, else the
+    scanned file's other files in its folder (and below).
+
+    The whole-scan table holds every candidate file, the asking file included, so the one table
+    cached per scan serves every later file the same way (callers resolve their own file's
+    classes first, see _cs_inherited); the result does not depend on which file asks first."""
     global _cs_scan_files, _cs_scan_table
     if files is not None and files is _cs_scan_files:
         return _cs_scan_table
     if files is not None:
         cands = [f for f in files if f.ext == ".cs" and not f.is_test]
     else:
-        cands = [f for f in _policy_files(fi, None, fi.rel.rpartition("/")[0]) if f.ext == ".cs"]
+        cands = [f for f in _policy_files(fi, None, fi.rel.rpartition("/")[0])
+                 if f.ext == ".cs" and f.rel != fi.rel]
     table: Dict[str, _CsClass] = {}
     for f in cands:
-        if f.rel != fi.rel:
-            for name, entry in _cs_file_table(f).items():
-                table.setdefault(name, entry)
+        for name, entry in _cs_file_table(f).items():
+            table.setdefault(name, entry)
     if files is not None:
         _cs_scan_files, _cs_scan_table = files, table
     return table
@@ -630,6 +653,8 @@ def _aspnet_controller_routes(fi: FileInfo, code: str,
         detected = False if anon else (auth or (cls_auth and not cls_anon))
         if not verbs:
             verbs = [("ANY", None)]
+        extra = {"kind": "controller", "anon": anon or (cls_anon and not auth),
+                 "class_auth": cls_auth, "action": g.member, "controller": cls_name}
         line = line_of(g.start)
         for meth, sub in verbs:
             subs = [sub] if sub is not None else (routes or [""])
@@ -640,7 +665,7 @@ def _aspnet_controller_routes(fi: FileInfo, code: str,
                     else:
                         path = _join(prefix, s)
                     path = _cs_template(path, cls_name, g.member)
-                    out.append(_route(meth, path, fi, line, "aspnetcore", detected))
+                    out.append(_route(meth, path, fi, line, "aspnetcore", detected, extra))
     return out
 
 
@@ -662,12 +687,15 @@ def _aspnet_minimal_routes(fi: FileInfo, code: str) -> List[dict]:
         close = _match_close(code, open_idx)
         chain = code[close + 1:_chain_end(code, close + 1, ".")]
         args = _blank_strings(code[open_idx:close + 1])
-        if "AllowAnonymous" in chain or _CS_ANON_RE.search(args):
+        anon = "AllowAnonymous" in chain or bool(_CS_ANON_RE.search(args))
+        if anon:
             auth = False
         else:
             auth = group_auth or "RequireAuthorization" in chain or bool(_CS_AUTH_RE.search(args))
+        extra = {"kind": "minimal", "anon": anon, "class_auth": group_auth, "action": ""}
         for meth in methods:
-            out.append(_route(meth, _join(prefix, path), fi, line_of(start), "aspnetcore", auth))
+            out.append(_route(meth, _join(prefix, path), fi, line_of(start), "aspnetcore", auth,
+                              extra))
 
     for m in _CS_MAP_RE.finditer(code):
         prefix, group_auth = groups.get(m.group(1), ("", False))
@@ -771,29 +799,68 @@ def _pluralize(name: str) -> str:
     return name + "s"
 
 
-_RB_AUTH_FILTER = (r"(?::\w+[!?]?\s*,\s*)*:(?:authenticate\w*|require_(?:login|user|auth\w*)"
-                   r"|doorkeeper_authorize)!?")
+_RB_AUTH_FILTER = (r"(?::\w+[!?]?\s*,\s*)*:(?:authenticate\w*|require_(?:login|user|auth\w*|admin\w*)"
+                   r"|authorize\w*|doorkeeper_authorize)!?")
+_RB_FRAMEWORK_BASES = ("ActionController::Base", "ActionController::API")
+# Included modules from Rails itself define no controller actions.
+_RB_FRAMEWORK_NS = {"action_controller", "action_view", "abstract_controller", "active_support",
+                    "action_dispatch", "active_model", "rails"}
+_RB_INCLUDE_LINE_RE = re.compile(r"^[ \t]*include\s+([^\n]+?)\s*$", re.M)
+# Actions defined by metaprogramming or a gem: the controller's action list is not known.
+_RB_META_RE = re.compile(r"\b(?:method_missing|action_missing|define_method|inherit_resources"
+                         r"|InheritedResources|resources_controller_for|alias_method|alias)\b")
+
+
+def _rb_text(text: str) -> str:
+    """Ruby source with `#{` interpolation openers neutralised (same length), so a regex or
+    string interpolation such as /[#{User::FORMAT}]/ is not read as a comment start."""
+    return text.replace("#{", "_{")
 
 
 class _RailsAuth:
-    """Resolve `before_action :authenticate...` for controller actions (parent chain and
-    included app/controllers/concerns followed). Controller files are read only from the walked
-    file list, so ignored files and symlinks out of the root are not consulted."""
+    """Resolve `before_action :authenticate...` (and CanCanCan load_and_authorize_resource /
+    authorize_resource, Pundit after_action :verify_authorized) for controller actions (parent
+    chain and included app/controllers/concerns followed). Controller files are read only from
+    the walked file list, so ignored files and symlinks out of the root are not consulted."""
 
     # [ \t]* rather than \s*: \s* crosses newlines, which is quadratic on long blank runs.
     _BEFORE_RE = re.compile(
         r"^[ \t]*(?:prepend_)?before_(?:action|filter)\s+" + _RB_AUTH_FILTER + r"(.*)$"
-        r"|^[ \t]*(http_basic_authenticate_with)\b(.*)$", re.M)
+        r"|^[ \t]*(http_basic_authenticate_with)\b(.*)$"
+        r"|^[ \t]*(load_and_authorize_resource|authorize_resource"
+        r"|after_action\s+:verify_authorized)\b(.*)$", re.M)
     _SKIP_RE = re.compile(
         r"^[ \t]*(?:skip_before_(?:action|filter)\s+" + _RB_AUTH_FILTER +
-        r"|allow_unauthenticated_access\b)(.*)$", re.M)
+        r"|allow_unauthenticated_access\b|skip_authorize_resource\b"
+        r"|skip_load_and_authorize_resource\b)(.*)$", re.M)
     _CLASS_RE = re.compile(r"^[ \t]*class\s+([\w:]+)\s*<\s*([\w:]+)", re.M)
-    _INCLUDE_RE = re.compile(r"^[ \t]*include\s+([\w:]+)", re.M)
     _MODULE_RE = re.compile(r"module\s+([\w:]+)")
 
-    def __init__(self, controllers: Dict[str, FileInfo]) -> None:
+    def __init__(self, controllers: Dict[str, FileInfo],
+                 root_files: Optional[Dict[str, FileInfo]] = None) -> None:
         self.controllers = controllers  # path under app/controllers -> walked file
+        self.root_files = root_files or {}  # path below the Rails root (app/helpers/x.rb, lib/...)
         self.cache: Dict[str, str] = {}
+        self._root_cache: Dict[str, str] = {}
+        self._events_memo: Dict[str, List[Tuple[int, bool, str]]] = {}
+        self._parent_memo: Dict[str, Optional[str]] = {}
+        self._facts_memo: Dict[str, Tuple[Set[str], bool, List[List[str]]]] = {}
+        self._module_memo: Dict[Tuple[str, str], Optional[Tuple[str, str]]] = {}
+
+    def found(self, controller: str) -> bool:
+        return bool(self._text(controller + "_controller.rb"))
+
+    def missing_parent(self, controller: str) -> bool:
+        """The controller inherits (directly or further up) from a controller that is not in
+        the scanned files, so filters declared there are not seen."""
+        for _ in range(5):
+            parent = self._parent(controller)
+            if parent is None:
+                return True
+            if not parent:
+                return False
+            controller = parent
+        return False
 
     def _text(self, rel: str) -> str:
         if rel not in self.cache:
@@ -821,19 +888,93 @@ class _RailsAuth:
 
     def _events(self, text: str, at: Optional[int] = None) -> List[Tuple[int, bool, str]]:
         """(position, adds auth, options) of the auth filters in text (all at `at` if given)."""
-        events = [(m.start(), True, m.group(1) if m.group(1) is not None else m.group(3) or "")
-                  for m in self._BEFORE_RE.finditer(text)]
+        events = []
+        for m in self._BEFORE_RE.finditer(text):
+            opts = m.group(1) if m.group(1) is not None else (
+                m.group(3) if m.group(2) is not None else m.group(5))
+            events.append((m.start(), True, opts or ""))
         events += [(m.start(), False, m.group(1) or "") for m in self._SKIP_RE.finditer(text)]
         return [(at, a, o) for _, a, o in events] if at is not None else events
 
-    def action(self, controller: str, action: str, depth: int = 0) -> bool:
+    def _root_text(self, rel: str) -> str:
+        if rel.startswith("app/controllers/"):
+            return self._text(rel[len("app/controllers/"):])
+        if rel not in self._root_cache:
+            fi = self.root_files.get(rel)
+            self._root_cache[rel] = _read_code(fi, "Ruby") if fi is not None else ""
+        return self._root_cache[rel]
+
+    def _module(self, name: str, nesting: str) -> Optional[Tuple[str, str]]:
+        """(path, text) of an included module: ("", "") for a Rails framework module, None when
+        it is not in the scanned files. Looked up like Ruby constants: inside the including
+        class or module first (application_controller/localize.rb for `include Localize` in
+        ApplicationController), then app/controllers/concerns, app/controllers, app/helpers,
+        app/models/concerns and lib."""
+        key = (name, nesting)
+        if key not in self._module_memo:
+            self._module_memo[key] = self._find_module(name, nesting)
+        return self._module_memo[key]
+
+    def _find_module(self, name: str, nesting: str) -> Optional[Tuple[str, str]]:
+        parts = [_snake(x) for x in name.lstrip(":").split("::") if x]
+        if not parts:
+            return None
+        if parts[0] in _RB_FRAMEWORK_NS:
+            return "", ""
+        rel = "/".join(parts)
+        cands: List[str] = []
+        if not name.startswith("::"):
+            nest = nesting.split("/") if nesting else []
+            for k in range(len(nest), 0, -1):
+                cands.append("app/controllers/%s/%s.rb" % ("/".join(nest[:k]), rel))
+        cands += ["app/controllers/concerns/%s.rb" % rel, "app/controllers/%s.rb" % rel,
+                  "app/helpers/%s.rb" % rel, "app/models/concerns/%s.rb" % rel,
+                  "lib/%s.rb" % rel]
+        for c in cands:
+            text = self._root_text(c)
+            if text:
+                return c[len("app/controllers/"):-3] if c.startswith("app/controllers/") \
+                    else c[:-3], text
+        return None
+
+    def _include_names(self, text: str) -> List[Tuple[int, List[str]]]:
+        """(position, module names) of each `include A` / `include A, B` line."""
+        return [(m.start(), [n.strip() for n in m.group(1).split(",")])
+                for m in _RB_INCLUDE_LINE_RE.finditer(text)]
+
+    def _includes(self, text: str, nesting: str) -> List[Tuple[int, str]]:
+        """(position, text) of the included modules that are in the scanned files."""
+        out: List[Tuple[int, str]] = []
+        for pos, names in self._include_names(text):  # `include Authentication` (Rails 8)
+            for name in names:
+                mod = self._module(name, nesting) if re.match(r"^[\w:]+$", name) else None
+                if mod and mod[1]:
+                    out.append((pos, mod[1]))
+        return out
+
+    def _all_events(self, controller: str) -> List[Tuple[int, bool, str]]:
+        """Auth filter events of one controller file and its included concerns (cached)."""
+        hit = self._events_memo.get(controller)
+        if hit is None:
+            text = self._text(controller + "_controller.rb")
+            hit = self._events(text)
+            for pos, mod in self._includes(text, controller + "_controller"):
+                hit += self._events(mod, pos)
+            hit.sort(key=lambda e: e[0])
+            self._events_memo[controller] = hit
+        return hit
+
+    def _parent(self, controller: str) -> Optional[str]:
+        """Parent controller path when it is scanned, "" for a framework base (or no class
+        header), None for a parent that is not in the scanned files (cached)."""
+        if controller in self._parent_memo:
+            return self._parent_memo[controller]
         text = self._text(controller + "_controller.rb")
-        if not text or depth > 4:
-            return False
-        auth = False
         cm = self._CLASS_RE.search(text)
         base = cm.group(2) if cm else ""
-        if cm and base.lstrip(":") not in ("ActionController::Base", "ActionController::API"):
+        res: Optional[str] = ""
+        if cm and base.lstrip(":") not in _RB_FRAMEWORK_BASES:
+            res = None
             parent = "/".join(_snake(p) for p in base.lstrip(":").split("::"))
             if parent.endswith("_controller"):
                 # Ruby constant lookup: inside `module Admin`, BaseController is tried as
@@ -841,19 +982,78 @@ class _RailsAuth:
                 mods = [] if base.startswith("::") else self._modules(text[:cm.start()])
                 for k in range(len(mods), -1, -1):
                     cand = "/".join(mods[:k] + [parent[:-len("_controller")]])
-                    if self._text(cand + "_controller.rb"):
-                        auth = self.action(cand, action, depth + 1)
+                    if cand != controller and self._text(cand + "_controller.rb"):
+                        res = cand
                         break
-        events = self._events(text)
-        for im in self._INCLUDE_RE.finditer(text):  # `include Authentication` (Rails 8 concern)
-            rel = "/".join(_snake(p) for p in im.group(1).lstrip(":").split("::"))
-            concern = self._text("concerns/%s.rb" % rel)
-            if concern:
-                events += self._events(concern, im.start())
-        for _, add, opts in sorted(events, key=lambda e: e[0]):
+        self._parent_memo[controller] = res
+        return res
+
+    def action(self, controller: str, action: str, depth: int = 0) -> bool:
+        text = self._text(controller + "_controller.rb")
+        if not text or depth > 4:
+            return False
+        parent = self._parent(controller)
+        auth = self.action(parent, action, depth + 1) if parent else False
+        for _, add, opts in self._all_events(controller):
             if _rb_wanted(action, opts):
                 auth = add
         return auth
+
+    def defines(self, controller: str, action: str, depth: int = 0) -> Optional[bool]:
+        """Whether the controller (its parents and included modules found under
+        app/controllers) defines `def action`: None when that cannot be known (controller or a
+        parent not scanned, metaprogramming such as method_missing or inherit_resources)."""
+        text = self._text(controller + "_controller.rb")
+        if not text or depth > 4:
+            return None
+        if depth == 0 and not self._facts(controller + "_controller", text)[0]:
+            return None  # a controller with no methods at all (a stub)
+        own = self._defines_in(text, controller + "_controller", action, 0)
+        if own is not False:
+            return own
+        parent = self._parent(controller)
+        if parent is None:
+            return None
+        return self.defines(parent, action, depth + 1) if parent else False
+
+    def _facts(self, key: str, text: str) -> Tuple[Set[str], bool, List[List[str]]]:
+        """(method names defined, metaprogramming seen, include name lists) of one file, parsed
+        once (key: its path below app/controllers or the Rails root, without .rb). Any
+        `def action` counts, also one under `private` (Rails would not route to it): the safe
+        direction, the route is kept."""
+        hit = self._facts_memo.get(key)
+        if hit is None:
+            defs = set(re.findall(r"^[ \t]*def\s+(?:self\.)?(\w+)", text, re.M))
+            hit = (defs, bool(_RB_META_RE.search(text)),
+                   [names for _, names in self._include_names(text)])
+            self._facts_memo[key] = hit
+        return hit
+
+    def _defines_in(self, text: str, nesting: str, action: str, depth: int) -> Optional[bool]:
+        """True when text or a module it includes (followed 3 levels deep) defines the action;
+        None when that cannot be known (metaprogramming, an include that is not scanned, an
+        include line naming several modules, deeper includes); else False."""
+        defs, meta, includes = self._facts(nesting, text)
+        if action in defs:
+            return True
+        if meta:
+            return None
+        unknown = False
+        for names in includes:
+            if len(names) != 1 or not re.match(r"^[\w:]+$", names[0]):
+                unknown = True
+                continue
+            mod = self._module(names[0], nesting)
+            if mod is None or (mod[1] and depth >= 3):
+                unknown = True
+                continue
+            if not mod[1]:
+                continue  # a Rails framework module
+            got = self._defines_in(mod[1], mod[0], action, depth + 1)
+            if got:
+                return True
+            unknown = unknown or got is None
+        return None if unknown else False
 
 
 def _rails_controllers(fi: FileInfo, files: Optional[List[FileInfo]]) -> Dict[str, FileInfo]:
@@ -864,6 +1064,21 @@ def _rails_controllers(fi: FileInfo, files: Optional[List[FileInfo]]) -> Dict[st
     pre = folder + "/"
     return {f.rel[len(pre):]: f for f in _policy_files(fi, files, folder)
             if f.rel.startswith(pre)}
+
+
+def _rails_root_files(fi: FileInfo, files: Optional[List[FileInfo]]) -> Dict[str, FileInfo]:
+    """Walked .rb files under <app root>/app and <app root>/lib (included modules), keyed by
+    their path below the Rails root."""
+    parts = fi.rel.split("/")
+    idx = len(parts) - 1 - parts[::-1].index("config")
+    root = "/".join(parts[:idx])
+    pre = root + "/" if root else ""
+    out: Dict[str, FileInfo] = {}
+    for sub in ("app", "lib"):
+        for f in _policy_files(fi, files, pre + sub):
+            if f.ext == ".rb" and f.rel.startswith(pre + sub + "/"):
+                out[f.rel[len(pre):]] = f
+    return out
 
 
 def _rb_opens(s: str) -> bool:
@@ -917,7 +1132,7 @@ def _rb_expand_concerns(stmts: List[Tuple[int, str]]) -> List[Tuple[int, str]]:
 
 
 def _rails_routes(fi: FileInfo, code: str, files: Optional[List[FileInfo]] = None) -> List[dict]:
-    resolver = _RailsAuth(_rails_controllers(fi, files))
+    resolver = _RailsAuth(_rails_controllers(fi, files), _rails_root_files(fi, files))
     out: List[dict] = []
     # frame: (path prefix, controller module, block auth, resource name, resource kind)
     stack: List[Tuple[str, str, bool, str, str]] = []
@@ -925,9 +1140,18 @@ def _rails_routes(fi: FileInfo, code: str, files: Optional[List[FileInfo]] = Non
     def cur() -> Tuple[str, str, bool, str, str]:
         return stack[-1] if stack else ("", "", False, "", "")
 
-    def add(meth: str, path: str, line: int, controller: str, action: str) -> None:
+    def add(meth: str, path: str, line: int, controller: str, action: str,
+            generated: bool = False) -> None:
+        if generated and meth != "GET" and controller and \
+                resolver.defines(controller, action) is False:
+            # A resources write route whose scanned controller has no such action (Rails
+            # answers 404). GET routes are kept: Rails renders a template with no action method.
+            return
         auth = cur()[2] or (bool(controller) and resolver.action(controller, action))
-        out.append(_route(meth, path, fi, line, "rails", auth))
+        found = bool(controller) and resolver.found(controller)
+        extra = {"controller": controller, "action": action, "found": found,
+                 "missing_parent": found and resolver.missing_parent(controller)}
+        out.append(_route(meth, path, fi, line, "rails", auth, extra))
 
     stmts: List[Tuple[int, str]] = []
     for idx, raw in enumerate(code.split("\n")):
@@ -967,13 +1191,14 @@ def _rails_routes(fi: FileInfo, code: str, files: Optional[List[FileInfo]] = Non
                 if m.group(1) == "resources":
                     for action, meth, member in _RESOURCES_ACTIONS:
                         if _rb_wanted(action, opts):
-                            add(meth, _join(base, ":id") if member else base, line, ctrl, action)
+                            add(meth, _join(base, ":id") if member else base, line, ctrl, action,
+                                True)
                     single = name[:-1] if name.endswith("s") else name
                     frame = (_join(base, ":%s_id" % single), module, block_auth, name, ctrl)
                 else:
                     for action, meth in _RESOURCE_ACTIONS:
                         if _rb_wanted(action, opts):
-                            add(meth, base, line, ctrl, action)
+                            add(meth, base, line, ctrl, action, True)
                     frame = (base, module, block_auth, "", ctrl)
         elif head.startswith(("member", "collection")) and res_kind:
             if res:  # plural resources: the frame prefix ends in /:<name>_id
@@ -1041,9 +1266,11 @@ _PHP_ATTRS = {"middleware", "prefix", "name", "controller", "domain", "where", "
 _PHP_CHAINED_VERB_RE = re.compile(
     r"->\s*(get|post|put|patch|delete|options|any|match|resources|resource|apiResources"
     r"|apiResource)\s*\(")
-# 'auth' / 'auth:sanctum' middleware names, or the Authenticate middleware class itself.
+# 'auth' / 'auth:sanctum' / 'auth.api' middleware names, or the Authenticate middleware class
+# itself. Optional auth ('auth.api:optional', 'auth:optional') lets anonymous callers through.
 _PHP_AUTH_RE = re.compile(
-    r"['\"]auth(?:[:.][\w.,:-]*)?['\"]|\bAuthenticate(?:WithBasicAuth)?::class\b")
+    r"['\"]auth(?![\w.,:-]*optional)(?:[:.][\w.,:-]*)?['\"]"
+    r"|\bAuthenticate(?:WithBasicAuth)?::class\b")
 _PHP_STR_RE = re.compile(r"\s*['\"]([^'\"]*)['\"]")
 # A group closure: `function () {` (block body) or `fn () =>` (arrow body, ends with the call).
 _PHP_CLOSURE_RE = re.compile(
@@ -1058,9 +1285,12 @@ _PHP_RESOURCE = [("index", "GET", ""), ("store", "POST", ""), ("show", "GET", "/
 _PHP_RESOURCE_WEB = [("create", "GET", "/create"), ("edit", "GET", "/{id}/edit")]
 
 
-def _php_code(text: str) -> str:
-    """Comment-stripped PHP, with whole-line `#` comments blanked too (`#[...]` attributes kept)."""
-    code = strip_comments(text, "PHP")
+def _php_code(text: str, cache: Optional[FileCache] = None,
+              fi: Optional[FileInfo] = None) -> str:
+    """Comment-stripped PHP, with whole-line `#` comments blanked too (`#[...]` attributes kept).
+    With the scan's `cache` and the file `fi` whose cached text `text` is, the strip is shared."""
+    code = (cache.code(fi, "PHP") if cache is not None and fi is not None
+            else strip_comments(text, "PHP"))
     return re.sub(r"(?m)^([ \t]*)#(?!\[)[^\n]*", lambda m: m.group(1), code)
 
 
@@ -1072,9 +1302,17 @@ def _php_middleware_auth(chain: str) -> bool:
     return False
 
 
-def _php_groups(code: str) -> List[Tuple[int, int, str, bool]]:
-    """(closure start, closure end, prefix, auth) of every Route group closure."""
-    spans: List[Tuple[int, int, str, bool]] = []
+_PhpGroup = Tuple[int, int, str, bool, str, str]
+_PHP_NS_RE = re.compile(r"(?:->|::)\s*namespace\s*\(\s*['\"]([\w\\]*)['\"]"
+                        r"|['\"]namespace['\"]\s*=>\s*['\"]([\w\\]*)['\"]")
+_PHP_CTRL_RE = re.compile(r"(?:->|::)\s*controller\s*\(\s*([\w\\]+)::class"
+                          r"|['\"]controller['\"]\s*=>\s*([\w\\]+)::class")
+
+
+def _php_groups(code: str) -> List[_PhpGroup]:
+    """(closure start, closure end, prefix, auth, namespace, controller) of every Route group
+    closure."""
+    spans: List[_PhpGroup] = []
     for m in _PHP_ROUTE_RE.finditer(code):
         open_idx = m.end() - 1
         close = _match_close(code, open_idx)
@@ -1110,8 +1348,37 @@ def _php_groups(code: str) -> List[Tuple[int, int, str, bool]]:
         mw = re.search(r"['\"]middleware['\"]\s*=>\s*(\[[^\]]*\]|['\"][^'\"]*['\"])", attrs)
         if mw and _PHP_AUTH_RE.search(mw.group(1)):
             auth = True
-        spans.append((brace, body_end, prefix, auth))
+        nm = _PHP_NS_RE.search(attrs)
+        cm = _PHP_CTRL_RE.search(attrs)
+        spans.append((brace, body_end, prefix, auth, (nm.group(1) or nm.group(2)) if nm else "",
+                      (cm.group(1) or cm.group(2)) if cm else ""))
     return spans
+
+
+def _php_uses(code: str) -> Dict[str, str]:
+    """Short class name -> fully qualified name from `use A\\B\\C;` / `use A\\B as C;`."""
+    out: Dict[str, str] = {}
+    for m in re.finditer(r"(?m)^[ \t]*use\s+([\w\\]+)(?:\s+as\s+(\w+))?\s*;", code):
+        out[m.group(2) or m.group(1).rsplit("\\", 1)[-1]] = m.group(1)
+    return out
+
+
+def _php_handler(expr: str, group_ctrl: str) -> Tuple[str, str]:
+    """(controller, action) of a route action argument; ("", "") for a closure or unknown."""
+    e = expr.strip()
+    m = (re.match(r"['\"]([\w\\]+)@(\w+)['\"]", e)
+         or re.match(r"\[\s*([\w\\]+)::class\s*,\s*['\"](\w+)['\"]", e)
+         or re.match(r"\[\s*['\"]([\w\\]+)['\"]\s*,\s*['\"](\w+)['\"]", e)
+         or re.search(r"['\"]uses['\"]\s*=>\s*['\"]([\w\\]+)@(\w+)['\"]", e))
+    if m:
+        return m.group(1), m.group(2)
+    m = re.match(r"([\w\\]+)::class\b", e)
+    if m:
+        return m.group(1), "__invoke"
+    m = re.match(r"['\"](\w+)['\"]$", e)
+    if m and group_ctrl:
+        return group_ctrl, m.group(1)
+    return "", ""
 
 
 def _laravel_routes(fi: FileInfo, code: str) -> List[dict]:
@@ -1143,8 +1410,18 @@ def _laravel_routes(fi: FileInfo, code: str) -> List[dict]:
             prefix.append(pm.group(1))
         auth = any(s[3] for s in inside) or _php_middleware_auth(chain)
         wm = re.search(r"->\s*withoutMiddleware\s*\(([^)]*)\)", chain)
-        if wm and _PHP_AUTH_RE.search(wm.group(1)):
+        without = bool(wm and _PHP_AUTH_RE.search(wm.group(1)))
+        if without:
             auth = False
+        namespace = "\\".join(s[4] for s in inside if s[4])
+        cm = _PHP_CTRL_RE.search(lead)
+        group_ctrl = (cm.group(1) or cm.group(2)) if cm else next(
+            (s[5] for s in reversed(inside) if s[5]), "")
+
+        def extra(ctrl: str, action: str) -> dict:
+            return {"controller": ctrl, "action": action, "namespace": namespace,
+                    "without_auth": without}
+
         line = line_of(m.start())
         if name in _PHP_VERBS or name == "match":
             if name == "match":
@@ -1158,16 +1435,23 @@ def _laravel_routes(fi: FileInfo, code: str) -> List[dict]:
                 sm = _PHP_STR_RE.match(args)
             if not sm:
                 continue
+            rest = _split_top(args[sm.end():].lstrip()[1:]) if \
+                args[sm.end():].lstrip().startswith(",") else []
+            ctrl, action = _php_handler(rest[0], group_ctrl) if rest else ("", "")
             for meth in methods:
-                out.append(_route(meth, _join(*(prefix + [sm.group(1)])), fi, line, "laravel", auth))
+                out.append(_route(meth, _join(*(prefix + [sm.group(1)])), fi, line, "laravel", auth,
+                                  extra(ctrl, action)))
             continue
         if name in ("resources", "apiResources"):  # Route::apiResources(['photos' => C::class])
             am = re.match(r"\s*\[", args)
-            names = re.findall(r"['\"]([\w.-]+)['\"]\s*=>",
+            pairs = re.findall(r"['\"]([\w.-]+)['\"]\s*=>\s*(?:['\"]([\w\\]+)['\"]|([\w\\]+)::class)?",
                                args[am.end():_match_close(args, am.end() - 1)]) if am else []
+            names = [(n, a or b) for n, a, b in pairs]
         else:
             sm = _PHP_STR_RE.match(args)
-            names = [sm.group(1)] if sm else []
+            cm2 = re.match(r"\s*,\s*(?:['\"]([\w\\]+)['\"]|([\w\\]+)::class)",
+                           args[sm.end():]) if sm else None
+            names = [(sm.group(1), (cm2.group(1) or cm2.group(2)) if cm2 else "")] if sm else []
         if not names:
             continue
         actions = _PHP_RESOURCE + (_PHP_RESOURCE_WEB if name in ("resource", "resources") else [])
@@ -1182,14 +1466,14 @@ def _laravel_routes(fi: FileInfo, code: str) -> List[dict]:
             keep = found if keep is None else keep & found
         if opt_exc:
             drop |= set(re.findall(r"\w+", opt_exc.group(1)))
-        for res_name in names:
+        for res_name, res_ctrl in names:
             parts = res_name.split(".")
             base = "/".join(p + "/{%s}" % p.rstrip("s") for p in parts[:-1]) + "/" + parts[-1]
             for action, meth, suffix in actions:
                 if (keep is not None and action not in keep) or action in drop:
                     continue
                 out.append(_route(meth, _join(*(prefix + [base + suffix])), fi, line, "laravel",
-                                  auth))
+                                  auth, extra(res_ctrl, action)))
     for m in (_PHP_HEALTH_RE.finditer(code) if "withRouting" in code else ()):
         out.append(_route("GET", _join(m.group(1)), fi, line_of(m.start()), "laravel", False))
     return out
@@ -1199,8 +1483,8 @@ def _laravel_routes(fi: FileInfo, code: str) -> List[dict]:
 _RAILS_ROUTES_RE = re.compile(r"(?:^|/)config/routes(?:/[\w-]+)?\.rb$")
 
 
-def find_framework_routes(fi: FileInfo, text: str,
-                          files: Optional[List[FileInfo]] = None) -> List[dict]:
+def find_framework_routes(fi: FileInfo, text: str, files: Optional[List[FileInfo]] = None,
+                          cache: Optional[FileCache] = None) -> List[dict]:
     """Routes of one Java/Kotlin (Spring), C# (ASP.NET Core), Ruby (Rails config/routes.rb) or PHP
     (Laravel) file, in the routes.find_routes dict shape.
 
@@ -1210,50 +1494,91 @@ def find_framework_routes(fi: FileInfo, text: str,
 
     False-positive guards: comments are stripped before matching; Spring @FeignClient /
     @HttpExchange interfaces are HTTP clients and skipped; only config/routes.rb (and
-    config/routes/*.rb) is read for Rails. Missed: Spring WebFlux RouterFunction routes, ASP.NET
-    conventional routing (MapControllerRoute), auth applied by a global policy or security filter
-    chain (lowers confidence in route_signals instead), Laravel `$this->middleware('auth')` in a
-    controller constructor, and prefixes applied in another file (RouteServiceProvider, MapGroup
-    passed between files).
+    config/routes/*.rb) is read for Rails; a Rails `resources` route whose scanned controller
+    (with its scanned parents and included modules) defines no such action is not listed.
+    Missed: Spring WebFlux RouterFunction routes, ASP.NET conventional routing
+    (MapControllerRoute) and prefixes applied in another file (RouteServiceProvider, MapGroup
+    passed between files). `auth_detected` covers auth at the route and its controller
+    (Spring/ASP.NET class attributes, Rails filters); auth applied elsewhere (Spring Security
+    filter chains, ASP.NET Core global policies, Laravel controller middleware and route-file
+    groups) is resolved by the auth adapters (dfscan/auth/). `cache` is the scan's file cache:
+    when `text` is the file's cached text, its comment-stripped forms come from there.
     """
+    return [{k: v for k, v in r.items() if k != _EXTRA}
+            for r in route_details(fi, text, files, cache)]
+
+
+# route_details results of the current scan (the `files` list it was given), keyed by file
+# path and checked against the text's length and hash, so the auth adapters reuse the parse of
+# the route inventory. Only results are held (no file text); a new file list starts afresh.
+_details_files: Optional[List[FileInfo]] = None
+_details_cache: Dict[str, Tuple[int, int, List[dict]]] = {}
+
+
+def route_details(fi: FileInfo, text: str, files: Optional[List[FileInfo]] = None,
+                  cache: Optional[FileCache] = None) -> List[dict]:
+    """find_framework_routes with each route's adapter details under the "_extra" key
+    (controller and action, [AllowAnonymous], controller vs minimal API ...). Callers must not
+    modify the returned dicts (they are cached for the scan)."""
+    global _details_files, _details_cache
+    if files is None:
+        return _route_details(fi, text, files, cache)
+    if files is not _details_files:
+        _details_files, _details_cache = files, {}
+    hit = _details_cache.get(fi.abs)
+    if hit is not None and hit[0] == len(text) and hit[1] == hash(text):
+        return hit[2]
+    res = _route_details(fi, text, files, cache)
+    _details_cache[fi.abs] = (len(text), hash(text), res)
+    return res
+
+
+def _cached(fi: FileInfo, text: str, cache: Optional[FileCache]) -> Optional[FileCache]:
+    """`cache` when `text` is the file's text as the cache holds it, else None."""
+    if cache is None:
+        return None
+    held = cache.text(fi)
+    return cache if text is held or text == held else None
+
+
+def _route_details(fi: FileInfo, text: str, files: Optional[List[FileInfo]],
+                   cache: Optional[FileCache] = None) -> List[dict]:
     ext = fi.ext
     if ext in (".java", ".kt"):
         if "Mapping" not in text:
             return []
-        return _spring_routes(fi, strip_comments(text, fi.lang or "Java"))
+        c = _cached(fi, text, cache)
+        return _spring_routes(fi, c.code(fi, fi.lang or "Java") if c is not None
+                              else strip_comments(text, fi.lang or "Java"))
     if ext == ".cs":
         if not re.search(r"Http(?:Get|Post|Put|Patch|Delete)|\.Map(?:Get|Post|Put|Patch|Delete"
                          r"|Methods|Group|HealthChecks)\b|\bRoute\(|\bAcceptVerbs\b", text):
             return []
-        code = strip_comments(text, "C#")
+        c = _cached(fi, text, cache)
+        code = c.code(fi, "C#") if c is not None else strip_comments(text, "C#")
         return _aspnet_controller_routes(fi, code, files) + _aspnet_minimal_routes(fi, code)
     if ext == ".rb":
         if not _RAILS_ROUTES_RE.search(fi.rel):
             return []
-        return _rails_routes(fi, strip_comments(text, "Ruby"), files)
+        return _rails_routes(fi, strip_comments(_rb_text(text), "Ruby"), files)
     if ext == ".php":
         if "Route::" not in text and "health" not in text:
             return []
-        return _laravel_routes(fi, _php_code(text))
+        c = _cached(fi, text, cache)
+        code = (c.derived(fi, "php_code", lambda: _php_code(text, c, fi)) if c is not None
+                else _php_code(text))
+        return _laravel_routes(fi, code)  # type: ignore[arg-type]
     return []
 
 
-# ---------------------------------------------------------------- global auth policies
-_GLOBAL_AUTH_RES = {
-    ".java": re.compile(r"\.anyRequest\(\)\s*\.\s*authenticated\(\)|anyRequest\(\)\s*\.\s*hasRole"
-                        r"|authorizeHttpRequests|authorizeRequests"),
-    ".cs": re.compile(r"FallbackPolicy|MapControllers\(\)\s*\.\s*RequireAuthorization\(|"
-                      r"AuthorizeFilter\(|RequireAuthenticatedUser\(\)"),
-}
-_GLOBAL_AUTH_RES[".kt"] = re.compile(_GLOBAL_AUTH_RES[".java"].pattern + r"|authorize\s*\(\s*anyRequest")
-
-
-def global_auth_policy(fi: FileInfo, text: str) -> bool:
-    """A Spring Security filter chain (authorizeHttpRequests / anyRequest().authenticated()) or an
-    ASP.NET Core global policy (FallbackPolicy, RequireAuthenticatedUser, global AuthorizeFilter,
-    MapControllers().RequireAuthorization()) in this file. Which routes it covers is not resolved
-    (permitAll() matchers are not read)."""
-    rx = _GLOBAL_AUTH_RES.get(fi.ext)
-    if rx is None:
-        return False
-    return bool(rx.search(strip_comments(text, fi.lang or "Java")))
+def clear_scan_memos() -> None:
+    """Drop every module-level memo of an earlier scan (report.scan calls this first): the file-head
+    and C# class-table caches, the per-scan C# base-class table, the route_details results and the
+    bracket-matching memo. Without it they would hold the previous scan's FileInfo list and parse
+    results until the next scan, and cross-scan behaviour would depend on list identity."""
+    global _cs_scan_files, _cs_scan_table, _details_files, _details_cache, _close_text, _close_cache
+    _READ_CACHE.clear()
+    _CS_TABLE_CACHE.clear()
+    _cs_scan_files, _cs_scan_table = None, {}
+    _details_files, _details_cache = None, {}
+    _close_text, _close_cache = None, {}

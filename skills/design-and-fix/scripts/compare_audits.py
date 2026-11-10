@@ -67,15 +67,21 @@ Markdown output (the format templates/*/ "Change Since Last Audit" copies):
 
     ### Score Trend
 
+    Score +0.8 (6.1 -> 6.9): fixed SEC-001 (Critical), SEC-002 (High); new MNT-004 (Low).
+
     | Date | Overall | Band | Fixed | New |
     |---|---|---|---|---|
     | <YYYY-MM-DD> | <X.X> | <Band> | <IDs or —> | <IDs or —> |
 
-(The arrow in the real output is the Unicode right arrow.) Empty bullets are omitted. The trend lists
+(The arrow in the real output is the Unicode right arrow.) Empty bullets are omitted. The score line
+(explain_score_change) names the fixed issues with their old severity, the new issues with their
+severity, the severity changes and the status moves into or out of the unscored set
+(`REL-002 (High -> informational)`); without a trend table it follows the bullets. The trend lists
 the last 10 runs, oldest first, current run last; Fixed/New diff each run's issue IDs against the
 run before it. JSON output carries the same data (new, resolved, unchanged, changed, moved, id_map,
-previous, current, trend). Exit codes: 0 ok, 2 usage error (missing folder, or no audit file in
-the old folder).
+previous, current, trend, score_change); every entry carries `severity` (the old severity for
+Fixed, the new one otherwise). Exit codes: 0 ok, 2 usage error (missing folder, or no audit file
+in the old folder).
 """
 from __future__ import annotations
 
@@ -108,6 +114,7 @@ _SCORE_RE = re.compile(r"(Healthy|Stable with risks|Fragile|Unsafe|[A-Za-z]+)"
 _DATE_RE = re.compile(r"\b(\d{4}-\d{2}-\d{2})(?=T|\b)")
 _RUN_DIR_RE = re.compile(r"^(\d{4}-\d{2}-\d{2})(?:-(\d+))?$")
 RETIRED = "not-reproducible"
+INFORMATIONAL = "informational"   # not scored: left out of the score line
 _HEADING_RE = re.compile(r"^#{1,6}\s+(.*?)\s*#*\s*$")
 _REV_RE = re.compile(r"\brev\s+(\S+)")
 _META_RE = re.compile(r"^>\s*([A-Za-z][A-Za-z0-9 _/-]*?):\s*(.*?)\s*$")
@@ -375,8 +382,10 @@ def _first_path(issue: Issue) -> str:
     return issue.evidence[0][0] if issue.evidence else "?"
 
 
-def _entry(iid: str, old_id: Optional[str], uncertain: bool, reason: str, new_id: Optional[str] = None) -> dict:
-    return {"id": iid, "old_id": old_id, "new_id": new_id, "uncertain": uncertain, "reason": reason}
+def _entry(iid: str, old_id: Optional[str], uncertain: bool, reason: str,
+           new_id: Optional[str] = None, severity: str = "", status: str = "") -> dict:
+    return {"id": iid, "old_id": old_id, "new_id": new_id, "uncertain": uncertain,
+            "reason": reason, "severity": severity, "status": status}
 
 
 def compare(old_dir: str, new_dir: str, repo_root: str, old_repo_root: Optional[str] = None) -> Comparison:
@@ -474,7 +483,8 @@ def compare(old_dir: str, new_dir: str, repo_root: str, old_repo_root: Optional[
             kind, uncertain, reason = kinds[o]
             n = matched_old[o]
             new_id = new_issues[n].id
-            getattr(result, kind).append(_entry(oi.id, oi.id, uncertain, reason, new_id))
+            getattr(result, kind).append(_entry(oi.id, oi.id, uncertain, reason, new_id,
+                                                new_issues[n].severity, new_issues[n].status))
             if new_id != oi.id:
                 result.id_map[oi.id] = new_id
             continue
@@ -487,7 +497,8 @@ def compare(old_dir: str, new_dir: str, repo_root: str, old_repo_root: Optional[
             uncertain, reason = True, "evidence line %s:%d cannot be resolved" % oi.evidence[0]
         else:
             uncertain, reason = False, "not reported in the new audit"
-        result.resolved.append(_entry(oi.id, oi.id, uncertain, reason))
+        result.resolved.append(_entry(oi.id, oi.id, uncertain, reason, severity=oi.severity,
+                                      status=oi.status))
 
     for n, ni in enumerate(new_issues):
         if n in used_new:
@@ -496,8 +507,17 @@ def compare(old_dir: str, new_dir: str, repo_root: str, old_repo_root: Optional[
             uncertain, reason = True, "evidence cannot be resolved in the repo"
         else:
             uncertain, reason = False, "no matching issue in the old audit"
-        result.new.append(_entry(ni.id, None, uncertain, reason, ni.id))
+        result.new.append(_entry(ni.id, None, uncertain, reason, ni.id, ni.severity,
+                                 ni.status))
     return result
+
+
+# --- public helpers ------------------------------------------------------------
+# Stable names used by evals/ (verify_precision.py, report_quality.py): read_text, split_row,
+# clean_cell, parse_issues and FUZZY_TITLE_MIN. Keep their names and signatures.
+read_text = _read
+split_row = _split_row
+clean_cell = _clean
 
 
 # --- trend -------------------------------------------------------------------
@@ -563,6 +583,80 @@ def _ids_text(entries: List[dict], with_reason: bool = False) -> str:
     return ", ".join(parts)
 
 
+SCORE_LINE_MAX_IDS = 6   # per group in the score line; the rest becomes "+N more"
+
+
+def _capped(items: List[str]) -> str:
+    extra = len(items) - SCORE_LINE_MAX_IDS
+    if extra > 0:
+        items = items[:SCORE_LINE_MAX_IDS] + ["+%d more" % extra]
+    return ", ".join(items)
+
+
+def _marked(iid: str, detail: str, uncertain: bool) -> str:
+    return "%s (%s%s)" % (iid, detail, "; uncertain" if uncertain else "")
+
+
+def _scored(entry: dict) -> bool:
+    """informational (and not-reproducible) issues do not move the score."""
+    return entry.get("status", "").strip().lower() not in (INFORMATIONAL, RETIRED)
+
+
+def _severity_change(entry: dict) -> Optional[str]:
+    for part in entry.get("reason", "").split("; "):
+        if part.startswith("severity "):
+            return part
+    return None
+
+
+def _status_move(entry: dict) -> Optional[str]:
+    """`High → informational` when a Changed/moved issue left the scored set, or
+    `informational → High` when it entered it (a status move into or out of informational /
+    not-reproducible changes the score as much as a fix or a new issue)."""
+    unscored = (INFORMATIONAL, RETIRED)
+    for part in entry.get("reason", "").split("; "):
+        if not part.startswith("status ") or ARROW not in part:
+            continue
+        old, new = [x.strip().lower() for x in part[len("status "):].split(ARROW, 1)]
+        if (old in unscored) == (new in unscored):
+            return None
+        sev = entry.get("severity") or "?"
+        change = _severity_change(entry)
+        if change and new in unscored:   # name the severity it was scored at
+            sev = change[len("severity "):].split(ARROW, 1)[0].strip() or sev
+        return "%s %s %s" % (sev, ARROW, new) if new in unscored else "%s %s %s" % (old, ARROW, sev)
+    return None
+
+
+def explain_score_change(cmp: Comparison) -> str:
+    """One line explaining the score change from the issues that moved, for example
+    `Score +0.8 (6.1 → 6.9): fixed SEC-001 (Critical), SEC-002 (High); new MNT-004 (Low).`"""
+    old, new = cmp.previous.get("overall"), cmp.current.get("overall")
+    if old is None or new is None:
+        side = "previous" if old is None else "current"
+        head = "Score change unknown (%s score not found)" % side
+    else:
+        head = "Score %+.1f (%.1f %s %.1f)" % (round(new - old, 1) + 0.0, old, ARROW, new)
+    parts = []
+    for label, entries in (("fixed", cmp.resolved), ("new", cmp.new)):
+        movers = [_marked(e["id"], e.get("severity") or "?", e.get("uncertain", False))
+                  for e in sorted(entries, key=lambda x: x["id"]) if _scored(e)]
+        if movers:
+            parts.append("%s %s" % (label, _capped(movers)))
+    changed = []
+    for e in sorted(cmp.changed + cmp.moved, key=lambda x: x["id"]):
+        move = _status_move(e)
+        if move:
+            changed.append(_marked(e["id"], move, e.get("uncertain", False)))
+            continue
+        change = _severity_change(e)
+        if change and _scored(e):
+            changed.append(_marked(e["id"], change, e.get("uncertain", False)))
+    if changed:
+        parts.append("changed " + _capped(changed))
+    return "%s: %s." % (head, "; ".join(parts) if parts else "no issues fixed or new")
+
+
 def render_markdown(cmp: Comparison, rows: Optional[List[dict]] = None) -> str:
     out = ["## Change Since Last Audit", "",
            "Previous: %s %s Current: %s" % (_score_text(cmp.previous), ARROW, _score_text(cmp.current))]
@@ -582,8 +676,12 @@ def render_markdown(cmp: Comparison, rows: Optional[List[dict]] = None) -> str:
             out.append("- %s: %s" % (name, text))
     if not any(text for _, text in bullets):
         out.append("- No issues in either audit.")
-    if rows:
-        out += ["", "### Score Trend", "", "| Date | Overall | Band | Fixed | New |", "|---|---|---|---|---|"]
+    explanation = explain_score_change(cmp)
+    if not rows:
+        out += ["", explanation]
+    else:
+        out += ["", "### Score Trend", "", explanation, "",
+                "| Date | Overall | Band | Fixed | New |", "|---|---|---|---|---|"]
         for r in rows:
             out.append("| %s | %s | %s | %s | %s |" % (
                 r["date"], "%.1f" % r["overall"] if r["overall"] is not None else "—",
@@ -625,6 +723,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     if args.format == "json":
         data = cmp.to_dict()
         data["trend"] = rows or []
+        data["score_change"] = explain_score_change(cmp)
         text = json.dumps(data, indent=2, ensure_ascii=False) + "\n"
     else:
         text = render_markdown(cmp, rows)

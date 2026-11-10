@@ -1,15 +1,34 @@
 # Design & Fix
 
+[![CI](https://github.com/Muhammad-Ahmad092/design-and-fix/actions/workflows/ci.yml/badge.svg)](https://github.com/Muhammad-Ahmad092/design-and-fix/actions/workflows/ci.yml)
+
 Design & Fix is an Agent Skill and plugin for architecture planning and codebase audits. A stdlib-only Python scanner gathers evidence (stack, import cycles, routes, risky patterns, git hotspots); the skill verifies it, scores the project, and writes ranked, ID-tracked findings for new systems and existing projects.
 
-<!-- Demo GIF: record a Claude Code run and save as docs/assets/demo.gif, then replace this comment with ![Demo](docs/assets/demo.gif) -->
+## Five-minute start
 
-## See it work
+1. Install for Claude Code (other harnesses are under [Install](#install)):
 
-- [examples/mode-2-audit-monorepo](examples/mode-2-audit-monorepo/): a full audit of a synthetic monorepo with planted issues, with the raw `scan.json`. A real open-source audit (pinned tag and archive SHA-256) sits beside it in `examples/`.
-- [examples/mode-1-food-delivery](examples/mode-1-food-delivery/): a new-system design with five ADRs.
+   ```bash
+   claude plugin marketplace add Muhammad-Ahmad092/design-and-fix
+   claude plugin install design-and-fix@design-and-fix
+   ```
 
-More on both in [examples/README.md](examples/README.md). First audit in five minutes: [docs/quickstart.md](docs/quickstart.md).
+2. In your project, send one prompt:
+
+   ```text
+   Quick audit of ./services/payments. Checkout is slow.
+   ```
+
+3. Read `docs/architecture/quick-audit.md` (a full audit writes `01-architecture-issues.md`, `02-api-optimization.md` and `03-improvement-roadmap.md`). The top of a real full audit, from [examples/mode-2-audit-monorepo](examples/mode-2-audit-monorepo/01-architecture-issues.md):
+
+   ```text
+   ## Architecture Health Score: Fragile (4.9 / 10)
+
+   Fragile: structural fixes needed before growth.
+   Evidence: 11 files read, 23 scanner signals reviewed, 22 confirmed
+   ```
+
+A demo recording will be added to `docs/assets/`. Until then, see [examples/mode-2-audit-monorepo](examples/mode-2-audit-monorepo/) (full audit with the raw `scan.json`), [examples/before-after](examples/before-after/) (one issue fixed, re-audited, compared), and [examples/mode-1-food-delivery](examples/mode-1-food-delivery/) (new-system design with five ADRs). More in [examples/README.md](examples/README.md) and [docs/quickstart.md](docs/quickstart.md).
 
 ## Install
 
@@ -99,12 +118,32 @@ Files go to `docs/architecture/`; ADRs go to `docs/adr/`.
 
 On a re-run, the previous output is archived to `docs/architecture/history/<date>/` and the new audit opens with a Change Since Last Audit section (score change, fixed and new IDs). Every finding cites `path:line`; unverified claims are labeled.
 
+## Reports only, never edits code
+
+The scanner never modifies your code: it prints to stdout and, only with `--output-dir`, writes `scan.json` there. The skill writes only `docs/architecture/` and `docs/adr/` (including `docs/architecture/.scan/scan.json`, which you should git-ignore). Fixes appear as recommendations in the report; applying them is your decision. Nothing in 1.1.0 edits your source code.
+
+## Terms used in this project
+
+- **Scanner signal**: a lead from a static pattern, with a rule, a file and a line. It can be wrong. A signal can carry `uncertain_reason` when the scanner could not see something that decides the answer (for example auth configured outside `--scope`); the skill then uses Status `needs-review`.
+- **Verified finding**: a signal, or something the agent found itself, that the skill confirmed by reading the cited code. Each gets a stable ID, a severity and a Status: `confirmed`, `likely`, `needs-review`, `informational` or `not-reproducible`. Rejected signals are counted, not listed as issues.
+- **Recommendation**: the Fix and Verify cells of a finding, and the roadmap built from them. A recommendation is advice, not an applied change.
+
+More: [docs/architecture.md](docs/architecture.md).
+
+## What this is not
+
+- Not a vulnerability scanner: no CVE lookup, no runtime testing.
+- Not a linter or a CI gate by default (`--fail-on` is opt-in).
+- Not a code fixer: it never edits your code.
+- Not a replacement for review: the agent can misread code, and scores compare runs of the same scope, not different projects. See [docs/limitations.md](docs/limitations.md).
+
 ## The scanner
 
 `skills/design-and-fix/scripts/scan_repo.py` is Python 3.9+, stdlib only. The skill runs it before asking Mode 2 questions.
 
 ```bash
-python skills/design-and-fix/scripts/scan_repo.py <path> [--scope DIR]... [--format json|markdown|sarif] [--fail-on LEVEL] [--config PATH] [--no-gitignore] [--no-git] [--folders-only] [--quiet] [--verbose]
+python skills/design-and-fix/scripts/scan_repo.py <path> [--scope DIR]... [--format json|markdown|sarif] [--fail-on LEVEL] [--config PATH] [--no-gitignore] [--no-git] [--folders-only] [--quiet] [--verbose] [--profile NAME] [--max-findings N] [--output-dir DIR]
+python skills/design-and-fix/scripts/scan_repo.py --list-rules | --explain-rule ID | --version
 ```
 
 | Flag | Meaning |
@@ -120,8 +159,14 @@ python skills/design-and-fix/scripts/scan_repo.py <path> [--scope DIR]... [--for
 | `--config PATH` | Config file (default `<path>/.design-and-fix.json` if present); see [docs/configuration.md](docs/configuration.md) |
 | `--fail-on LEVEL` | Exit 3 when any signal is at or above `Critical`, `High`, `Medium` or `Low`. Default: never fails |
 | `--quiet` / `--verbose` | No progress on stderr / per-stage and per-rule timings in `notes` |
+| `--profile NAME` | Apply a built-in profile under the config file |
+| `--max-findings N` | Keep the N most severe signals (summary counts and `--fail-on` still cover all) |
+| `--output-dir DIR` | Also write the JSON result to `DIR/scan.json` |
+| `--list-rules` / `--explain-rule ID` / `--version` | List rules with default confidence, explain one rule, print the version |
 
-**Exit codes:** 0 ok; 1 runtime error (unreadable root, missing scope; printed as `{"error": "..."}`); 2 usage or config error (bad flag, invalid `.design-and-fix.json`, with a message naming the key and the fix); 3 `--fail-on` threshold exceeded.
+All flags: [docs/configuration.md](docs/configuration.md).
+
+**Exit codes:** 0 ok; 1 runtime error (unreadable root, missing scope, unwritable `--output-dir`; printed as `{"error": "..."}`); 2 usage or config error (bad flag, invalid `.design-and-fix.json`, with a message naming the key and the fix); 3 `--fail-on` threshold exceeded, or `--fail-on` set and the scan partial (timeout or `max_files` reached: the gate fails closed).
 
 **JSON (schema 3):** `schema_version`, `root`, `scope`, `meta`, `detected_stack`, `frameworks`, `candidate_folders`, `import_graph` (cycles, god modules), `routes`, `hotspots`, `signals`, `summary` (files, LOC, test files, signals by category, truncated rules, `routes_total`, `suppressed`, `partial`, `invalid_signals`), `skipped_files`, `notes`. Schema 3 is additive: every schema-2 key keeps its name, type and meaning. Each signal carries `rule_version`, `confidence` and a line-independent `fingerprint`. The JSON Schema is `skills/design-and-fix/scripts/scan.schema.json`. Paths are root-relative with `/` on every OS.
 
@@ -146,7 +191,7 @@ python skills/design-and-fix/scripts/scan_repo.py <path> [--scope DIR]... [--for
 | `docker-root-user`, `docker-latest-tag`, `docker-no-healthcheck`, `k8s-no-probes`, `k8s-no-limits`, `ci-no-test-step` | Security / Reliability / Observability | see rules.md |
 | `missing-lockfile`, `unpinned-dependency` | Maintainability / Security | see rules.md |
 
-**Signals are leads, not findings.** They come from static patterns and can be wrong. The skill reads the cited file to confirm each one before reporting it. Comments are ignored. Test files are ignored except by `hardcoded-secret` (reported with low confidence), which also scans `.env`, YAML, JSON, TOML, INI and properties files (not lockfiles or `.env.example`) and flags committed private keys without printing them. At most 200 signals per rule are listed. Suppress a line with `// dfscan:ignore <rule>` or `# dfscan:ignore <rule>`.
+**Signals are leads, not findings.** They come from static patterns and can be wrong. The skill reads the cited file to confirm each one before reporting it. Comments are ignored. Test files are ignored except by `hardcoded-secret` (known formats only there; like all its signals, at confidence `low`), which also scans `.env`, YAML, JSON, TOML, INI and properties files (not lockfiles or `.env.example`) and flags committed private keys without printing them. At most 200 signals per rule are listed. Suppress a line with `// dfscan:ignore <rule>` or `# dfscan:ignore <rule>`. Some rules are off by default because their measured precision was 0% at release; turn one back on with `"rules": {"<id>": {"enabled": true}}` in `.design-and-fix.json` (see [docs/configuration.md](docs/configuration.md)).
 
 Spring, ASP.NET, Rails and Laravel support is newer and less measured than JS/TS/Python/Go. See [docs/limitations.md](docs/limitations.md).
 
@@ -157,37 +202,45 @@ Numbers here come from real runs, each with its sample size. A scanner signal is
 ### Scanner precision
 
 <!-- precision:start -->
-From [evals/precision.md](evals/precision.md): 14 public repos at pinned SHAs (10 original + Spring Boot, ASP.NET Core, Rails, Laravel), up to 20 hand-labelled signals per rule (seed 1002), 166 labels. `Sample` is the number of signals drawn for the rule (unsure labels included), and precision = tp / (tp + fp). With samples this small, read each number as a band; the 95% intervals are in the report. Rules with no corpus signals are listed as unmeasured in [docs/rules.md](docs/rules.md).
+From [evals/precision.md](evals/precision.md): 18 public repos at pinned SHAs (the 14 from 1.0.2 plus example-voting-app, robot-shop, awesome-compose and todo-nodejs-mongo, added so more rules have signals), up to 20 hand-labelled signals per rule (seed 1002), 248 labels. A second labeller relabelled five rules blind; agreement and kappa are in the report. `Sample` is the number of signals drawn for the rule (unsure labels included), and precision = tp / (tp + fp). With samples this small, read each number as a band; the 95% intervals are in the report. `mixed-error-shapes`, `retry-no-backoff` and `sql-string-concat` had no corpus signals and are listed as unmeasured in [docs/rules.md](docs/rules.md).
 
-| Rule | Sample | Precision (1.0.2) | Baseline (1.0.1 rules) | Confidence |
+| Rule | Sample | Precision (1.1.0) | 1.0.2 (14 repos) | Confidence |
 |---|---|---|---|---|
-| `console-logging-only` | 2 | 100% | 67% | low |
-| `docker-no-healthcheck` | 4 | 100% | new in 1.0.2 | low |
-| `docker-root-user` | 8 | 62% | new in 1.0.2 | medium |
-| `god-module` | 20 | 21% | 21% | low |
-| `hardcoded-secret` | 20 | 10% | 0% | low |
-| `http-no-timeout` | 4 | 100% | 100% | medium |
-| `import-cycle` | 12 | 25% | 15% | low |
-| `missing-lockfile` | 2 | 100% | new in 1.0.2 | medium |
-| `no-health-endpoint` | 4 | 100% | 15% | medium |
-| `no-tests` | 20 | 30% | 17% | low |
-| `no-version-prefix` | 2 | 100% | new in 1.0.2 | low |
-| `query-in-loop` | 13 | 0% | 0% | low |
-| `sql-string-concat` | 2 | 0% | 0% | low |
-| `swallowed-error` | 20 | 5% | 0% | low |
-| `unauth-write-route` | 20 | 0% | 0% | low |
-| `unbounded-query` | 9 | 0% | 0% | low |
-| `unpinned-dependency` | 4 | 0% | new in 1.0.2 | low |
+| `ci-no-test-step` | 2 | 50% | not measured | medium |
+| `console-logging-only` | 12 | 17% | 100% (n=2) | low |
+| `docker-latest-tag` | 2 | 50% | not measured | medium |
+| `docker-no-healthcheck` | 5 | 100% | 100% (n=4) | low |
+| `docker-root-user` | 20 | 50% | 62% (n=8) | medium |
+| `god-module` | 14 | 30% | 21% (n=20) | low |
+| `hardcoded-secret` | 5 | 40% | 10% (n=20) | low |
+| `http-no-timeout` | 20 | 45% | 100% (n=4) | low |
+| `import-cycle` | 14 | 29% | 25% (n=12) | low |
+| `k8s-no-limits` | 5 | 100% | not measured | medium |
+| `k8s-no-probes` | 5 | 100% | not measured | medium |
+| `list-route-no-pagination` | 2 | 100% | not measured | medium |
+| `missing-lockfile` | 6 | 100% | 100% (n=2) | medium |
+| `no-health-endpoint` | 20 | 90% | 100% (n=4) | medium |
+| `no-tests` | 20 | 50% | 30% (n=20) | low |
+| `no-version-prefix` | 8 | 38% | 100% (n=2) | low |
+| `openapi-drift` | 14 | 0% | not measured | low, off by default |
+| `query-in-loop` | 3 | 100% | 0% (n=13) | low |
+| `swallowed-error` | 20 | 5% | 5% (n=20) | low |
+| `unauth-write-route` | 19 | 33% | 0% (n=20) | low |
+| `unbounded-query` | 9 | 11% | 0% (n=9) | low |
+| `unpinned-dependency` | 18 | 100% | 0% (n=4) | low |
+| `unvalidated-body` | 5 | 20% | not measured | low |
 
-False positives per repository, extrapolated from the per-rule rates: mean 22.9, median 5.9 (14 repos; extrapolated from 157 decided labels over 17 rules). The mean is pulled up by django (about 172) and the Rails app homeland (about 64); the per-repo table is in [evals/precision.md](evals/precision.md#false-positives-per-repository-extrapolated).
+`openapi-drift` is **off by default** in 1.1.0: it measured 0% (0 of 14), all from Express routers mounted with `app.use('/prefix', router)`, whose prefix it does not resolve. Enable it with `"rules": {"openapi-drift": {"enabled": true}}` in `.design-and-fix.json`; every scan notes which rules are off by default.
+
+False positives per repository, extrapolated from the per-rule rates: mean **10.1**, median **2.7** (18 repos; extrapolated from 242 decided labels over 23 rules). The mean is pulled up by django (about 52) and awesome-compose (about 50, a collection of about 40 sample stacks); the per-repo table is in [evals/precision.md](evals/precision.md#false-positives-per-repository-extrapolated).
 <!-- precision:end -->
 
-Every rule under 50% is registered at confidence `low`, and the scanner caps its signals at `low`. None are hidden: the skill verifies each signal in the code before it becomes an issue. The weakest rule is `unauth-write-route`, which misses framework auth applied outside the route (Laravel controller-constructor or unresolved route-group middleware, CanCan `load_and_authorize_resource`, the Spring Security global chain) and flags login and register routes; see [docs/limitations.md](docs/limitations.md). Scan time: median 3.1 s over 14 repos; the largest (django, 6,823 files) took 72 s. Recall on the fixture monorepo: 16 of 16 known issues. Reruns are identical on 14 of 14 repos.
+The Confidence column is what the scanner emits: every signal of a rule is capped at that value, and measured precision can only lower it, never raise it. Every rule under 50% is at `low`, and so, in 1.1.0, are `docker-no-healthcheck`, `no-tests`, `query-in-loop`, `unpinned-dependency` and the unmeasured `sql-string-concat` and `retry-no-backoff`, whose registry ceiling is `low`; `hardcoded-secret` reports known-format provider tokens at `low` too, the same as its heuristic matches. None are hidden except the default-off `openapi-drift`: the skill verifies each signal in the code before it becomes an issue. The weakest rules that run by default are `swallowed-error` (Django's documented `except X: pass` fallbacks) and `unbounded-query` (filtered single-row lookups). `unauth-write-route` is the least certain number: the two labellers disagreed on demo apps with no user model (kappa 0.27), so read it as 33% to about 83%; see [docs/limitations.md](docs/limitations.md). Scan time: median 0.51 s over 18 repos; the largest (django, 6,823 files) took 23.7 s, under the 30-second target. Recall on the fixture monorepo: 16 of 16 known issues. Reruns are identical on 18 of 18 repos.
 
 ### Skill evals
 
 <!-- skill-evals:start -->
-**5 / 5** skill cases pass (plugin 1.0.2, Claude Code CLI 2.1.312, November 2026): full audit of the fixture monorepo, quick question, non-interactive run, new-project design, and rerun with diff. All five cases ran together in one `python evals/run.py` run against the shipped skill. Grading is deterministic: files, required strings, the transcript, the claude exit code and a clean output linter. Per-case results are in [evals/skill-results.md](evals/skill-results.md); earlier runs and the skill fix they found are in [evals/README.md](evals/README.md#skill-eval-history).
+**16 / 18** skill eval runs pass (9 cases on Opus and Sonnet, plugin 1.1.0, Claude Code CLI 2.1.312, November 2026): full audit, quick question, non-interactive run, new-project design, re-run with diff, a repo with no tests, a 20,000-file repo, prompt-injection text in a README, and an unsupported language. Sonnet passes 9 of 9 and Opus 7 of 9; the two Opus failures happened because the eval's script allow-list denied the agent's lint command, so it delivered unlinted output (the prompt injection was not followed). Grading is deterministic: files, required strings, the transcript, the exit code, a write allow-list and a clean output linter. Per-case results are in [evals/skill-results.md](evals/skill-results.md); earlier runs and the skill fixes they found are in [evals/README.md](evals/README.md#skill-eval-history).
 <!-- skill-evals:end -->
 
 ### Usefulness rating
@@ -196,7 +249,7 @@ Collecting. Tell us how useful an audit was with the [audit feedback template](.
 
 ## Security & privacy
 
-- The scanner is read-only and makes no network calls. The skill writes only `docs/architecture/` and `docs/adr/`.
+- The scanner never modifies your code and makes no network calls; it writes a file only with `--output-dir` (`scan.json`). The skill writes only `docs/architecture/` and `docs/adr/` (git-ignore `docs/architecture/.scan/`).
 - It runs only read-only `git log` and `git rev-parse`; the skill runs only its own scripts.
 - `.gitignore` is respected by default, so git-ignored `.env` and key files are not scanned (`--no-gitignore` changes that). Secret values are masked in every snippet.
 - The harness you run it in sends the files the agent reads to its model provider. Scope narrowly or exclude folders to keep sensitive code out.
@@ -208,16 +261,18 @@ Details: [docs/security.md](docs/security.md).
 
 | Item | Status |
 |---|---|
-| Python | 3.9, 3.11, 3.12 and 3.13 tested in CI |
+| Python | 3.9, 3.11, 3.12, 3.13 and 3.14 tested in CI |
 | OS | Ubuntu and Windows tested in CI |
-| Claude Code | Plugin validated with `claude plugin validate . --strict` in CI; skill evals run with the Claude CLI |
-| Codex, Cursor, other Agent Skills clients | Manifests validated in CI; not run end to end in CI |
+| Claude Code | Plugin validated with `claude plugin validate . --strict` in CI; end-to-end tested with the skill evals (`evals/skill-results.md`) |
+| Codex | Manifest validated in CI; `evals/run.py --client codex` exists, not run end to end yet (no PASS row in `evals/skill-results.md`) |
+| Cursor | Manifest validated in CI; `evals/run.py --client cursor` exists, not run end to end yet (no PASS row in `evals/skill-results.md`) |
+| Other Agent Skills clients | Not tested |
 
 Harness versions are listed only where verified.
 
 ## More documentation
 
-[Quickstart](docs/quickstart.md) | [Configuration](docs/configuration.md) | [Rules](docs/rules.md) | [Limitations](docs/limitations.md) | [Security & privacy](docs/security.md) | [Roadmap](ROADMAP.md) | [Changelog](CHANGELOG.md)
+[Quickstart](docs/quickstart.md) | [Configuration](docs/configuration.md) | [Rules](docs/rules.md) | [Limitations](docs/limitations.md) | [Architecture](docs/architecture.md) | [Troubleshooting](docs/troubleshooting.md) | [Compatibility](docs/compatibility.md) | [Security & privacy](docs/security.md) | [Roadmap](ROADMAP.md) | [Changelog](CHANGELOG.md)
 
 ## Workflow
 

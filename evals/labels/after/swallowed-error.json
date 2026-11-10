@@ -1,129 +1,156 @@
 [
   {
-    "repo": "create-t3-turbo",
-    "file": "packages/ui/src/theme.tsx",
-    "line": 36,
-    "snippet": "} catch {",
-    "fingerprint": "9f4e2b407c807b9c",
+    "repo": "django",
+    "file": "django/contrib/gis/db/models/fields.py",
+    "line": 181,
+    "snippet": "except GDALException:",
+    "fingerprint": "5346c22b68985de9",
     "label": "fp",
-    "note": "best-effort localStorage write, commented"
+    "note": "GDALRaster conversion failure falls through to return None as documented in to_python-style helper"
   },
   {
     "repo": "django",
-    "file": "django/contrib/contenttypes/fields.py",
-    "line": 619,
-    "snippet": "except (AttributeError, KeyError):",
-    "fingerprint": "e5adcf8217594362",
+    "file": "django/contrib/gis/gdal/layer.py",
+    "line": 86,
+    "snippet": "except GDALException:",
+    "fingerprint": "2abe940acd6705eb",
     "label": "fp",
-    "note": "cache-clear idiom, commented, nothing to clear"
+    "note": "random-read failure falls through to sequential scan in layer.py __getitem__ fallback"
   },
   {
     "repo": "django",
-    "file": "django/contrib/gis/utils/__init__.py",
-    "line": 24,
-    "snippet": "except ImproperlyConfigured:",
-    "fingerprint": "d3da289bd568f91f",
+    "file": "django/contrib/postgres/aggregates/mixins.py",
+    "line": 39,
+    "snippet": "except FullResultSet:",
+    "fingerprint": "46397581b05f5098",
     "label": "fp",
-    "note": "optional GIS import guarded by ImproperlyConfigured, deliberate"
+    "note": "FullResultSet is control flow: filter matches everything, no params needed"
   },
   {
     "repo": "django",
-    "file": "django/contrib/postgres/forms/array.py",
-    "line": 108,
-    "snippet": "except ValidationError:",
-    "fingerprint": "e6027952c64987c5",
-    "label": "fp",
-    "note": "has_changed try/except/else control flow"
+    "file": "django/contrib/sessions/backends/file.py",
+    "line": 183,
+    "snippet": "except (EOFError, OSError):",
+    "fingerprint": "87e90921e9d6a474",
+    "label": "unsure",
+    "note": "file.py session save() drops EOFError/OSError with no log; could lose a session write, but Django's deliberate best-effort"
   },
   {
     "repo": "django",
-    "file": "django/contrib/staticfiles/checks.py",
-    "line": 17,
-    "snippet": "except NotImplementedError:",
-    "fingerprint": "1f177eb6d1e64aed",
+    "file": "django/core/files/base.py",
+    "line": 38,
+    "snippet": "except (OSError, TypeError):",
+    "fingerprint": "37cbbe6960c938f3",
     "label": "fp",
-    "note": "finder without check() support skipped, else branch"
+    "note": "size falls back to seek/tell measurement in base.py File.size"
   },
   {
     "repo": "django",
-    "file": "django/core/files/storage/filesystem.py",
-    "line": 177,
+    "file": "django/core/files/base.py",
+    "line": 56,
+    "snippet": "except (AttributeError, UnsupportedOperation):",
+    "fingerprint": "ad95f68079e5e23f",
+    "label": "fp",
+    "note": "seek(0) on non-seekable file is expected, chunks() just reads from current position"
+  },
+  {
+    "repo": "django",
+    "file": "django/core/files/move.py",
+    "line": 79,
     "snippet": "except PermissionError:",
-    "fingerprint": "5a8c04b844181f98",
+    "fingerprint": "389a43ceb5f34026",
     "label": "fp",
-    "note": "best-effort chown, PermissionError expected"
+    "note": "commented: CIFS/SELinux copymode failure intentionally ignored in move.py"
   },
   {
     "repo": "django",
-    "file": "django/core/files/temp.py",
-    "line": 62,
-    "snippet": "except OSError:",
-    "fingerprint": "499cae2df49065a0",
+    "file": "django/core/files/uploadhandler.py",
+    "line": 189,
+    "snippet": "except FileNotFoundError:",
+    "fingerprint": "3e4587c2e002cc8b",
     "label": "fp",
-    "note": "best-effort cleanup close/unlink in temp file"
+    "note": "upload_interrupted cleanup: temp file already gone is fine"
   },
   {
     "repo": "django",
-    "file": "django/core/handlers/asgi.py",
-    "line": 209,
-    "snippet": "except RequestAborted:",
-    "fingerprint": "1e24a535fdb7dfeb",
+    "file": "django/core/management/commands/compilemessages.py",
+    "line": 160,
+    "snippet": "except FileNotFoundError:",
+    "fingerprint": "9eebf9dd028aff23",
     "label": "fp",
-    "note": "commented: ignore client disconnects"
+    "note": "missing .mo file means needs compiling; control flow in compilemessages.py"
   },
   {
     "repo": "django",
-    "file": "django/core/management/commands/shell.py",
-    "line": 87,
-    "snippet": "except AttributeError:",
-    "fingerprint": "100d8058d7a6f6a1",
+    "file": "django/db/backends/ddl_references.py",
+    "line": 139,
+    "snippet": "except IndexError:",
+    "fingerprint": "b42874e05a6d959a",
     "label": "fp",
-    "note": "commented: missing interactivehook ignored, matches CPython"
+    "note": "IndexError means no suffix for column; optional suffix in ddl_references.py"
   },
   {
     "repo": "django",
-    "file": "django/db/backends/sqlite3/schema.py",
-    "line": 53,
-    "snippet": "except sqlite3.ProgrammingError:",
-    "fingerprint": "899d40c5f13ac0df",
-    "label": "fp",
-    "note": "best-effort sqlite adapt, falls through to manual quoting"
-  },
-  {
-    "repo": "django",
-    "file": "django/db/models/fields/__init__.py",
-    "line": 2289,
-    "snippet": "except exceptions.ValidationError:",
-    "fingerprint": "bcb89c051c1432ce",
-    "label": "fp",
-    "note": "invalid IPv6 falls back to str(value), deliberate"
-  },
-  {
-    "repo": "django",
-    "file": "django/db/models/query.py",
-    "line": 2177,
+    "file": "django/db/migrations/writer.py",
+    "line": 232,
     "snippet": "except ValueError:",
-    "fingerprint": "8b1ff2d15deaa58d",
+    "fingerprint": "ed6cd6d72239c8a7",
     "label": "fp",
-    "note": "ignore translations for nonexistent columns, else branch"
+    "note": "module_dir ValueError falls through to next lookup strategy in writer.py"
   },
   {
     "repo": "django",
-    "file": "django/db/utils.py",
-    "line": 244,
+    "file": "django/db/models/options.py",
+    "line": 354,
     "snippet": "except AttributeError:",
-    "fingerprint": "1e62d1c783b6aa53",
+    "fingerprint": "2664f4b272e5c4c8",
     "label": "fp",
-    "note": "commented: router lacks method, skip to next"
+    "note": "related model without _meta cache hook, expected AttributeError and proceeds to _expire_cache"
   },
   {
     "repo": "django",
-    "file": "django/utils/translation/__init__.py",
-    "line": 154,
-    "snippet": "except TypeError:",
-    "fingerprint": "a406732c917ca5c5",
+    "file": "django/forms/formsets.py",
+    "line": 237,
+    "snippet": "except IndexError:",
+    "fingerprint": "444b5695666229a4",
     "label": "fp",
-    "note": "commented: string has no placeholder"
+    "note": "IndexError means no initial for extra form; default left unset in formsets.py"
+  },
+  {
+    "repo": "django",
+    "file": "django/forms/widgets.py",
+    "line": 734,
+    "snippet": "except AttributeError:",
+    "fingerprint": "a880754c69701a6b",
+    "label": "fp",
+    "note": "data without getlist falls back to data.get; duck typing in widgets.py"
+  },
+  {
+    "repo": "django",
+    "file": "django/utils/autoreload.py",
+    "line": 675,
+    "snippet": "except KeyboardInterrupt:",
+    "fingerprint": "66e6191b8d956dde",
+    "label": "fp",
+    "note": "Ctrl-C on dev autoreloader runserver exits cleanly in autoreload.run_with_reloader"
+  },
+  {
+    "repo": "django",
+    "file": "django/utils/http.py",
+    "line": 143,
+    "snippet": "except Exception:",
+    "fingerprint": "bf287eff7ae04fd1",
+    "label": "fp",
+    "note": "parse_http_date_safe documented to return None on invalid input"
+  },
+  {
+    "repo": "django",
+    "file": "django/utils/text.py",
+    "line": 130,
+    "snippet": "except ValueError:",
+    "fingerprint": "a8a5586f6f2daf9b",
+    "label": "fp",
+    "note": "removing a tag not in the open-tag list is expected for malformed HTML in text.py"
   },
   {
     "repo": "flask",
@@ -133,15 +160,6 @@
     "fingerprint": "0364dffb563965ac",
     "label": "fp",
     "note": "unknown sort key keeps default order, CLI listing"
-  },
-  {
-    "repo": "flask",
-    "file": "src/flask/config.py",
-    "line": 163,
-    "snippet": "except Exception:",
-    "fingerprint": "60b128cef0ddaa47",
-    "label": "fp",
-    "note": "commented intentional fallback to string"
   },
   {
     "repo": "homeland",
@@ -160,23 +178,5 @@
     "fingerprint": "d7b95b0b7483a440",
     "label": "tp",
     "note": "plugin require failure (LoadError) silently dropped with no log or comment; broken plugin vanishes unnoticed"
-  },
-  {
-    "repo": "itsdangerous",
-    "file": "src/itsdangerous/timed.py",
-    "line": 114,
-    "snippet": "except Exception:",
-    "fingerprint": "0e17856340202f58",
-    "label": "fp",
-    "note": "decode failure handled, BadTimeSignature raised below"
-  },
-  {
-    "repo": "laravel-realworld",
-    "file": "resources/assets/js/bootstrap.js",
-    "line": 14,
-    "snippet": "} catch (e) {}",
-    "fingerprint": "c832935106c61d80",
-    "label": "fp",
-    "note": "stock Laravel scaffold frontend bootstrap, optional jquery/bootstrap require"
   }
 ]

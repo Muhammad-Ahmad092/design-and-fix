@@ -1,0 +1,47 @@
+[
+  {
+    "repo": "example-voting-app",
+    "file": "k8s-specifications/db-deployment.yaml",
+    "line": 18,
+    "snippet": "container postgres has no readiness/liveness probe",
+    "fingerprint": "022f6a36905e8a1d",
+    "label": "tp",
+    "note": "postgres declares a port, no probes; README does not mark it demo-only-datastore; low impact"
+  },
+  {
+    "repo": "example-voting-app",
+    "file": "k8s-specifications/redis-deployment.yaml",
+    "line": 18,
+    "snippet": "container redis has no readiness/liveness probe",
+    "fingerprint": "44e4caff952a6571",
+    "label": "tp",
+    "note": "redis declares a port, no probes; README does not say not for production; low impact"
+  },
+  {
+    "repo": "example-voting-app",
+    "file": "k8s-specifications/result-deployment.yaml",
+    "line": 18,
+    "snippet": "container result has no readiness/liveness probe",
+    "fingerprint": "186a81a29d72689b",
+    "label": "tp",
+    "note": "result web service declares port, no probes"
+  },
+  {
+    "repo": "example-voting-app",
+    "file": "k8s-specifications/vote-deployment.yaml",
+    "line": 18,
+    "snippet": "container vote has no readiness/liveness probe",
+    "fingerprint": "89b400b2702efcfa",
+    "label": "tp",
+    "note": "vote web service declares port, no probes"
+  },
+  {
+    "repo": "robot-shop",
+    "file": "K8s/Istio/payment-deployment-fix.yaml",
+    "line": 21,
+    "snippet": "container payment-fix has no readiness/liveness probe",
+    "fingerprint": "14b8d62c50cca6ea",
+    "label": "tp",
+    "note": "payment-fix canary (stage: test) serves 8080, no probes; Istio variant, low impact"
+  }
+]

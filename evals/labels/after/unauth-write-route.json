@@ -1,12 +1,39 @@
 [
   {
-    "repo": "aspnetcore-realworld",
-    "file": "src/Conduit/Features/Users/UsersController.cs",
-    "line": 12,
-    "snippet": "POST /users",
-    "fingerprint": "e456745fae328f5b",
+    "repo": "awesome-compose",
+    "file": "react-express-mongodb/backend/routes/index.js",
+    "line": 9,
+    "snippet": "POST /todos",
+    "fingerprint": "375af1d715d4a632",
     "label": "fp",
-    "note": "POST /users is the register endpoint (login/register are public by design)"
+    "note": "Sample in awesome-compose with no user model or auth anywhere (server.js only has cors/bodyParser); docs-style example"
+  },
+  {
+    "repo": "django-styleguide-example",
+    "file": "styleguide_example/users/urls.py",
+    "line": 7,
+    "snippet": "POST create/",
+    "fingerprint": "a195263c53cd2dae",
+    "label": "fp",
+    "note": "UserCreateApi is the public sign-up endpoint (creates user from email+password); public by design"
+  },
+  {
+    "repo": "django-styleguide-example",
+    "file": "styleguide_example/users/urls.py",
+    "line": 9,
+    "snippet": "POST <int:user_id>/update/",
+    "fingerprint": "cc566ac3eda6cb8f",
+    "label": "tp",
+    "note": "UserUpdateApi is a bare APIView (no ApiAuthMixin, DRF default auth classes empty); anyone can update any user by id; apis.py TODO admits auth missing"
+  },
+  {
+    "repo": "example-voting-app",
+    "file": "vote/app.py",
+    "line": 24,
+    "snippet": "POST /",
+    "fingerprint": "a30b1c25d1daf2d9",
+    "label": "fp",
+    "note": "Public anonymous vote form by design; voter identified only by cookie"
   },
   {
     "repo": "full-stack-fastapi-template",
@@ -19,164 +46,128 @@
   },
   {
     "repo": "golang-gin-realworld",
-    "file": "articles/routers.go",
-    "line": 15,
-    "snippet": "DELETE /:slug (auth middleware applied in hello.go)",
-    "fingerprint": "7e4c5dd139064c2c",
-    "label": "fp",
-    "note": "Auth via v1.Use(users.AuthMiddleware(true)) in hello.go"
-  },
-  {
-    "repo": "golang-gin-realworld",
-    "file": "articles/routers.go",
-    "line": 16,
-    "snippet": "POST /:slug/favorite (auth middleware applied in hello.go)",
-    "fingerprint": "fe52632f74660b95",
-    "label": "fp",
-    "note": "Auth via v1.Use(AuthMiddleware(true)) in hello.go"
-  },
-  {
-    "repo": "golang-gin-realworld",
-    "file": "articles/routers.go",
-    "line": 18,
-    "snippet": "POST /:slug/comments (auth middleware applied in hello.go)",
-    "fingerprint": "bc9aca8305648ded",
-    "label": "fp",
-    "note": "Auth via v1.Use(AuthMiddleware(true)) in hello.go"
-  },
-  {
-    "repo": "golang-gin-realworld",
     "file": "users/routers.go",
-    "line": 22,
-    "snippet": "POST /:username/follow (auth middleware applied in hello.go)",
-    "fingerprint": "9d703d5a5143a5db",
-    "label": "fp",
-    "note": "Mounted after v1.Use(AuthMiddleware(true)) in hello.go"
-  },
-  {
-    "repo": "golang-gin-realworld",
-    "file": "users/routers.go",
-    "line": 23,
-    "snippet": "DELETE /:username/follow (auth middleware applied in hello.go)",
-    "fingerprint": "65b646a9f566c6e2",
-    "label": "fp",
-    "note": "Mounted after v1.Use(AuthMiddleware(true)) in hello.go"
-  },
-  {
-    "repo": "homeland",
-    "file": "config/routes.rb",
-    "line": 127,
-    "snippet": "DELETE /plugins/:id",
-    "fingerprint": "1772c11bf96eb0b0",
-    "label": "fp",
-    "note": "Line is in the admin namespace; Admin::ApplicationController has authenticate_user! and require_admin"
-  },
-  {
-    "repo": "homeland",
-    "file": "config/routes.rb",
-    "line": 139,
-    "snippet": "POST /api/v3/nodes",
-    "fingerprint": "65df281f4f338f80",
-    "label": "fp",
-    "note": "api/v3 NodesController defines no create action (phantom resources route)"
-  },
-  {
-    "repo": "homeland",
-    "file": "config/routes.rb",
-    "line": 202,
+    "line": 11,
     "snippet": "POST /",
-    "fingerprint": "75ce7e8024a205b5",
+    "fingerprint": "e113f60281e6533e",
     "label": "fp",
-    "note": "UsersController defines no create action; sign-up is handled by Devise (phantom route)"
+    "note": "User registration is public by design (same as baseline)"
   },
   {
     "repo": "homeland",
     "file": "config/routes.rb",
-    "line": 221,
-    "snippet": "POST /:user_id/people/:id/accept",
-    "fingerprint": "ea0e5fe7fcbbc47c",
+    "line": 152,
+    "snippet": "POST /api/v3/topics/:id/replies",
+    "fingerprint": "d1e56b3c2f050cc2",
     "label": "fp",
-    "note": "accept is protected by CanCan load_and_authorize_resource in TeamUsersController"
+    "note": "TopicsController#replies is excluded from doorkeeper_authorize! but create_replies calls doorkeeper_authorize! first (topics_controller.rb:163)"
   },
   {
-    "repo": "laravel-realworld",
-    "file": "routes/api.php",
-    "line": 23,
-    "snippet": "POST /profiles/{user}/follow",
-    "fingerprint": "782f82ac770e3d23",
-    "label": "fp",
-    "note": "ProfileController constructor applies middleware('auth.api') except show"
+    "repo": "robot-shop",
+    "file": "cart/server.js",
+    "line": 101,
+    "snippet": "DELETE /cart/:id",
+    "fingerprint": "8dec5ff70f72b4e8",
+    "label": "tp",
+    "note": "Cart DELETE /cart/:id has no auth; anyone can delete any cart by id (demo app, low impact)"
   },
   {
-    "repo": "laravel-realworld",
-    "file": "routes/api.php",
-    "line": 24,
-    "snippet": "DELETE /profiles/{user}/follow",
-    "fingerprint": "91a3bc6c70571cfb",
-    "label": "fp",
-    "note": "ProfileController middleware auth.api except show"
+    "repo": "robot-shop",
+    "file": "cart/server.js",
+    "line": 269,
+    "snippet": "POST /shipping/:id",
+    "fingerprint": "dd54c31a60d98d24",
+    "label": "tp",
+    "note": "POST /shipping/:id modifies a cart by id with no auth (cart/server.js); demo app, low impact"
   },
   {
-    "repo": "laravel-realworld",
-    "file": "routes/api.php",
-    "line": 27,
-    "snippet": "POST /articles/{article}/favorite",
-    "fingerprint": "9c96197ac6de42cc",
-    "label": "fp",
-    "note": "FavoriteController middleware auth.api on all actions"
+    "repo": "robot-shop",
+    "file": "payment/payment.py",
+    "line": 54,
+    "snippet": "POST /pay/<id>",
+    "fingerprint": "39d5ced48993a4dc",
+    "label": "tp",
+    "note": "POST /pay/<id> has no auth or ownership check, anonymous allowed by design but id not verified; demo app, low impact"
   },
   {
-    "repo": "laravel-realworld",
-    "file": "routes/api.php",
-    "line": 30,
-    "snippet": "DELETE /articles/{id}",
-    "fingerprint": "2f9acf5423c23a66",
-    "label": "fp",
-    "note": "ArticleController constructor applies middleware('auth.api') except index/show"
+    "repo": "robot-shop",
+    "file": "shipping/src/main/java/com/instana/robotshop/shipping/Controller.java",
+    "line": 131,
+    "snippet": "POST /confirm/{id}",
+    "fingerprint": "4e54d393e35570db",
+    "label": "tp",
+    "note": "POST /confirm/{id} writes to a cart by id; no Spring Security in shipping pom or code; demo app, low impact"
   },
   {
-    "repo": "laravel-realworld",
-    "file": "routes/api.php",
+    "repo": "robot-shop",
+    "file": "user/server.js",
+    "line": 183,
+    "snippet": "POST /order/:id",
+    "fingerprint": "88ed2837c472e017",
+    "label": "tp",
+    "note": "POST /order/:id appends order history to any registered user name with no auth check (user/server.js); demo app"
+  },
+  {
+    "repo": "todo-nodejs-mongo",
+    "file": "src/api/src/routes/items.ts",
+    "line": 38,
+    "snippet": "POST /",
+    "fingerprint": "4247f4d6401aa431",
+    "label": "fp",
+    "note": "Sample todo API with no user or auth model (lists are unowned); demo, not a service needing auth (no auth in app.ts)"
+  },
+  {
+    "repo": "todo-nodejs-mongo",
+    "file": "src/api/src/routes/items.ts",
+    "line": 76,
+    "snippet": "PUT /:itemId",
+    "fingerprint": "51270e59d7a0029d",
+    "label": "fp",
+    "note": "Sample todo API with no user or auth model (lists are unowned); demo, not a service needing auth"
+  },
+  {
+    "repo": "todo-nodejs-mongo",
+    "file": "src/api/src/routes/items.ts",
+    "line": 98,
+    "snippet": "DELETE /:itemId",
+    "fingerprint": "e3730e9a8d952ea7",
+    "label": "fp",
+    "note": "Sample todo API with no user or auth model (lists are unowned); demo, not a service needing auth"
+  },
+  {
+    "repo": "todo-nodejs-mongo",
+    "file": "src/api/src/routes/items.ts",
+    "line": 137,
+    "snippet": "PUT /state/:state",
+    "fingerprint": "03a9e56e317a812f",
+    "label": "fp",
+    "note": "Sample todo API with no user or auth model (lists are unowned); demo, not a service needing auth"
+  },
+  {
+    "repo": "todo-nodejs-mongo",
+    "file": "src/api/src/routes/lists.ts",
     "line": 36,
-    "snippet": "DELETE /articles/{article}/comments/{id}",
-    "fingerprint": "00455239ff9e7f65",
+    "snippet": "POST /",
+    "fingerprint": "559311ddf9453009",
     "label": "fp",
-    "note": "Route not registered (comments resource only index/store/destroy); CommentController also uses auth.api"
+    "note": "Sample todo API with no user or auth model (lists are unowned); demo, not a service needing auth"
   },
   {
-    "repo": "spring-boot-realworld",
-    "file": "src/main/java/io/spring/api/ArticleFavoriteApi.java",
-    "line": 29,
-    "snippet": "POST /articles/{slug}/favorite (global auth policy in src/main/java/io/spring/api/security/WebSecurityConfig.java)",
-    "fingerprint": "2337daad2e737fc9",
+    "repo": "todo-nodejs-mongo",
+    "file": "src/api/src/routes/lists.ts",
+    "line": 71,
+    "snippet": "PUT /:listId",
+    "fingerprint": "0ce32b590ed1cd64",
     "label": "fp",
-    "note": "WebSecurityConfig: anyRequest().authenticated(); only POST /users,/users/login are permitAll"
+    "note": "Sample todo API with no user or auth model (lists are unowned); demo, not a service needing auth"
   },
   {
-    "repo": "spring-boot-realworld",
-    "file": "src/main/java/io/spring/api/CurrentUserApi.java",
-    "line": 40,
-    "snippet": "PUT /user (global auth policy in src/main/java/io/spring/api/security/WebSecurityConfig.java)",
-    "fingerprint": "0fe4d4f2ddd83bc8",
+    "repo": "todo-nodejs-mongo",
+    "file": "src/api/src/routes/lists.ts",
+    "line": 90,
+    "snippet": "DELETE /:listId",
+    "fingerprint": "6da38acf386e6c3a",
     "label": "fp",
-    "note": "WebSecurityConfig: anyRequest().authenticated()"
-  },
-  {
-    "repo": "spring-boot-realworld",
-    "file": "src/main/java/io/spring/api/ProfileApi.java",
-    "line": 51,
-    "snippet": "DELETE /profiles/{username}/follow (global auth policy in src/main/java/io/spring/api/security/WebSecurityConfig.java)",
-    "fingerprint": "f29f130a119618a0",
-    "label": "fp",
-    "note": "WebSecurityConfig requires authentication for all non-public routes"
-  },
-  {
-    "repo": "spring-boot-realworld",
-    "file": "src/main/java/io/spring/api/UsersApi.java",
-    "line": 39,
-    "snippet": "POST /users (global auth policy in src/main/java/io/spring/api/security/WebSecurityConfig.java)",
-    "fingerprint": "4ceadf78b8e27a51",
-    "label": "fp",
-    "note": "POST /users is registration, public by design"
+    "note": "Sample todo API with no user or auth model (lists are unowned); demo, not a service needing auth"
   }
 ]

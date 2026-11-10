@@ -101,7 +101,7 @@ def download(url: str, path: str, max_bytes: int = MAX_DOWNLOAD_BYTES) -> None:
     A partial `.part` file is removed on any failure."""
     check_url(url)
     tmp = path + ".part"
-    req = urllib.request.Request(url, headers={"User-Agent": "design-and-fix-corpus/1.0.2"})
+    req = urllib.request.Request(url, headers={"User-Agent": "design-and-fix-corpus/1.1.0"})
     try:
         with urllib.request.urlopen(req, timeout=TIMEOUT_SECONDS) as resp, open(tmp, "wb") as out:
             check_url(resp.geturl(), "download redirect")

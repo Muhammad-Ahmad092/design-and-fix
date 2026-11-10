@@ -34,5 +34,14 @@
     "fingerprint": "31c49933381caa20",
     "label": "tp",
     "note": "service image exposing 3000, no healthcheck anywhere"
+  },
+  {
+    "repo": "todo-nodejs-mongo",
+    "file": "src/web/Dockerfile",
+    "line": 18,
+    "snippet": "EXPOSE without HEALTHCHECK",
+    "fingerprint": "c483eebfc3cfb498",
+    "label": "tp",
+    "note": "web nginx image EXPOSE 80, no HEALTHCHECK in Dockerfile and no probes/health in azure.yaml or infra; low impact (static)"
   }
 ]

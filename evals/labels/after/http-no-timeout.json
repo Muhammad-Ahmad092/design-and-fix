@@ -1,5 +1,104 @@
 [
   {
+    "repo": "awesome-compose",
+    "file": "react-express-mongodb/frontend/src/serviceWorker.js",
+    "line": 103,
+    "snippet": "fetch(swUrl)",
+    "fingerprint": "a66df3e7a7d0bd98",
+    "label": "fp",
+    "note": "serviceWorker.js is the stock create-react-app scaffold (checkValidServiceWorker), browser-side"
+  },
+  {
+    "repo": "awesome-compose",
+    "file": "react-express-mysql/frontend/src/App.js",
+    "line": 8,
+    "snippet": "fetch(\"/api/\")",
+    "fingerprint": "d1c8aa4576205513",
+    "label": "fp",
+    "note": "Browser fetch of own /api in demo React App.js with .catch; not a server outbound call"
+  },
+  {
+    "repo": "awesome-compose",
+    "file": "react-express-mysql/frontend/src/serviceWorker.js",
+    "line": 103,
+    "snippet": "fetch(swUrl, {",
+    "fingerprint": "eac8c42d9e91ecf1",
+    "label": "fp",
+    "note": "serviceWorker.js is the stock create-react-app scaffold (checkValidServiceWorker), browser-side"
+  },
+  {
+    "repo": "awesome-compose",
+    "file": "react-java-mysql/frontend/src/App.tsx",
+    "line": 13,
+    "snippet": "fetch(\"/api\")",
+    "fingerprint": "6e488976469237da",
+    "label": "fp",
+    "note": "Browser fetch of own /api in demo App.tsx with .catch; not a server outbound call"
+  },
+  {
+    "repo": "awesome-compose",
+    "file": "react-java-mysql/frontend/src/serviceWorker.ts",
+    "line": 111,
+    "snippet": "fetch(swUrl, {",
+    "fingerprint": "23bfdc142e087a63",
+    "label": "fp",
+    "note": "serviceWorker.js is the stock create-react-app scaffold (checkValidServiceWorker), browser-side"
+  },
+  {
+    "repo": "awesome-compose",
+    "file": "react-rust-postgres/frontend/src/App.js",
+    "line": 8,
+    "snippet": "fetch(\"/api/users\")",
+    "fingerprint": "5032846f2affaa71",
+    "label": "fp",
+    "note": "Browser fetch of own /api/users in demo App.js with .catch; not a server outbound call"
+  },
+  {
+    "repo": "awesome-compose",
+    "file": "react-rust-postgres/frontend/src/serviceWorker.js",
+    "line": 103,
+    "snippet": "fetch(swUrl, {",
+    "fingerprint": "80156c12a8f37f0e",
+    "label": "fp",
+    "note": "serviceWorker.js is the stock create-react-app scaffold (checkValidServiceWorker), browser-side"
+  },
+  {
+    "repo": "awesome-compose",
+    "file": "wasmedge-mysql-nginx/frontend/js/app.js",
+    "line": 20,
+    "snippet": "fetch(\"http://localhost:8080/orders\")",
+    "fingerprint": "a471f32e96050f81",
+    "label": "fp",
+    "note": "Browser-side fetch in demo frontend app.js (fetchOrders), falls back to init() on error"
+  },
+  {
+    "repo": "awesome-compose",
+    "file": "wasmedge-mysql-nginx/frontend/js/app.js",
+    "line": 30,
+    "snippet": "fetch(\"http://localhost:8080/init\")",
+    "fingerprint": "f583a36e88d75882",
+    "label": "fp",
+    "note": "Browser-side fetch in demo frontend app.js to local backend"
+  },
+  {
+    "repo": "awesome-compose",
+    "file": "wasmedge-mysql-nginx/frontend/js/app.js",
+    "line": 92,
+    "snippet": "fetch(`http://localhost:8080/delete_order?id=${orderId}`)",
+    "fingerprint": "0f653f1df48c7572",
+    "label": "fp",
+    "note": "Browser-side fetch in demo frontend app.js to local backend"
+  },
+  {
+    "repo": "awesome-compose",
+    "file": "wasmedge-mysql-nginx/frontend/js/app.js",
+    "line": 113,
+    "snippet": "fetch(\"http://localhost:8080/create_order\", {",
+    "fingerprint": "458825d70747251e",
+    "label": "fp",
+    "note": "Browser-side fetch in demo frontend app.js to local backend"
+  },
+  {
     "repo": "create-t3-turbo",
     "file": "turbo/generators/config.ts",
     "line": 64,
@@ -34,5 +133,50 @@
     "fingerprint": "7b19cfa89e3e2743",
     "label": "tp",
     "note": "requests.get to Google userinfo with no timeout, sdk variant (baseline tp)"
+  },
+  {
+    "repo": "robot-shop",
+    "file": "payment/payment.py",
+    "line": 64,
+    "snippet": "req = requests.get('http://{user}:8080/check/{id}'.format(user=USER, id=id))",
+    "fingerprint": "8977623abd3783f3",
+    "label": "tp",
+    "note": "payment.py pay() requests.get to user service in request handler, no timeout (errors logged but hang possible)"
+  },
+  {
+    "repo": "robot-shop",
+    "file": "payment/payment.py",
+    "line": 84,
+    "snippet": "req = requests.get(PAYMENT_GATEWAY)",
+    "fingerprint": "356b8b01ac123d78",
+    "label": "tp",
+    "note": "payment.py pay() requests.get(PAYMENT_GATEWAY) in request handler, no timeout"
+  },
+  {
+    "repo": "robot-shop",
+    "file": "payment/payment.py",
+    "line": 106,
+    "snippet": "req = requests.post('http://{user}:8080/order/{id}'.format(user=USER, id=id),",
+    "fingerprint": "38494840028ea9e7",
+    "label": "tp",
+    "note": "payment.py pay() requests.post to user service in request handler, no timeout"
+  },
+  {
+    "repo": "robot-shop",
+    "file": "payment/payment.py",
+    "line": 116,
+    "snippet": "req = requests.delete('http://{cart}:8080/cart/{id}'.format(cart=CART, id=id));",
+    "fingerprint": "c3b1a11241124194",
+    "label": "tp",
+    "note": "payment.py pay() requests.delete to cart service in request handler, no timeout"
+  },
+  {
+    "repo": "robot-shop",
+    "file": "ratings/html/src/Service/CatalogueService.php",
+    "line": 35,
+    "snippet": "$data = curl_exec($curl);",
+    "fingerprint": "4e228b6096f02f38",
+    "label": "tp",
+    "note": "CatalogueService::checkSKU curl options only RETURNTRANSFER, no CURLOPT_TIMEOUT/CONNECTTIMEOUT on request path"
   }
 ]

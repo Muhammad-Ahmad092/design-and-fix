@@ -9,6 +9,123 @@
     "note": "ASP.NET service with 19 routes and no health/readiness route or health checks anywhere"
   },
   {
+    "repo": "awesome-compose",
+    "file": "fastapi/app/main.py",
+    "line": 3,
+    "snippet": "no health endpoint in service fastapi/app",
+    "fingerprint": "3c69fe67eea54244",
+    "label": "tp",
+    "note": "FastAPI service, no health route or check in app or compose"
+  },
+  {
+    "repo": "awesome-compose",
+    "file": "flask-redis/app.py",
+    "line": 4,
+    "snippet": "no health endpoint in service flask-redis",
+    "fingerprint": "dbfaea9c379275f9",
+    "label": "tp",
+    "note": "Flask service, no health route; only app routes in app.py"
+  },
+  {
+    "repo": "awesome-compose",
+    "file": "flask/app/app.py",
+    "line": 2,
+    "snippet": "no health endpoint in service flask/app",
+    "fingerprint": "15b2cd4488b7ddfd",
+    "label": "tp",
+    "note": "Flask service, no health route in app.py"
+  },
+  {
+    "repo": "awesome-compose",
+    "file": "nginx-aspnet-mysql/backend/Program.cs",
+    "line": 12,
+    "snippet": "no health endpoint in service nginx-aspnet-mysql/backend",
+    "fingerprint": "47b289cfe27bb47f",
+    "label": "tp",
+    "note": "ASP.NET backend, no health route or AddHealthChecks"
+  },
+  {
+    "repo": "awesome-compose",
+    "file": "nginx-flask-mongo/flask/server.py",
+    "line": 7,
+    "snippet": "no health endpoint in service nginx-flask-mongo/flask",
+    "fingerprint": "3716e3c4d0fdf6f4",
+    "label": "tp",
+    "note": "Flask service, no health route in server.py"
+  },
+  {
+    "repo": "awesome-compose",
+    "file": "nginx-flask-mysql/backend/hello.py",
+    "line": 51,
+    "snippet": "no health endpoint in service nginx-flask-mysql/backend",
+    "fingerprint": "0ee2843087f515c9",
+    "label": "tp",
+    "note": "Flask backend, no health route (only compose DB check, if any)"
+  },
+  {
+    "repo": "awesome-compose",
+    "file": "nginx-golang/backend/main.go",
+    "line": 37,
+    "snippet": "no health endpoint in service nginx-golang/backend",
+    "fingerprint": "7c2e3a2a02362dc7",
+    "label": "tp",
+    "note": "Go backend, no health route in main.go"
+  },
+  {
+    "repo": "awesome-compose",
+    "file": "nginx-nodejs-redis/web/server.js",
+    "line": 3,
+    "snippet": "no health endpoint in service nginx-nodejs-redis/web",
+    "fingerprint": "f85cccd633b24b32",
+    "label": "tp",
+    "note": "Express service, no health route in server.js"
+  },
+  {
+    "repo": "awesome-compose",
+    "file": "nginx-wsgi-flask/flask/app.py",
+    "line": 3,
+    "snippet": "no health endpoint in service nginx-wsgi-flask/flask",
+    "fingerprint": "de8b1243c26c117e",
+    "label": "fp",
+    "note": "app.py defines @app.route('/flask-health-check')"
+  },
+  {
+    "repo": "awesome-compose",
+    "file": "react-express-mongodb/backend/server.js",
+    "line": 13,
+    "snippet": "no health endpoint in service react-express-mongodb/backend",
+    "fingerprint": "24fd1b6d097b012a",
+    "label": "tp",
+    "note": "Express backend, no health route in routes/index.js or server.js"
+  },
+  {
+    "repo": "awesome-compose",
+    "file": "react-java-mysql/backend/src/main/java/com/company/project/controllers/HomeController.java",
+    "line": 16,
+    "snippet": "no health endpoint in service react-java-mysql/backend",
+    "fingerprint": "d837fc9626f26de1",
+    "label": "tp",
+    "note": "Spring backend, no actuator or health controller"
+  },
+  {
+    "repo": "awesome-compose",
+    "file": "spring-postgres/backend/src/main/java/com/company/project/controllers/HomeController.java",
+    "line": 16,
+    "snippet": "no health endpoint in service spring-postgres/backend",
+    "fingerprint": "a0854e620d090b74",
+    "label": "tp",
+    "note": "Spring backend, no actuator or health controller"
+  },
+  {
+    "repo": "awesome-compose",
+    "file": "traefik-golang/backend/main.go",
+    "line": 29,
+    "snippet": "no health endpoint in service traefik-golang/backend",
+    "fingerprint": "a9db9e14d039cbf7",
+    "label": "tp",
+    "note": "Go backend, no health route in main.go"
+  },
+  {
     "repo": "django-styleguide-example",
     "file": "config/urls.py",
     "line": 22,
@@ -16,6 +133,24 @@
     "fingerprint": "5803685372e6742e",
     "label": "tp",
     "note": "Django project has no app health/readiness endpoint (only compose healthcheck for DB); same as baseline"
+  },
+  {
+    "repo": "example-voting-app",
+    "file": "result/server.js",
+    "line": 5,
+    "snippet": "no health endpoint in service result",
+    "fingerprint": "fb86f964418902e8",
+    "label": "tp",
+    "note": "result service has no health route and no compose healthcheck for it (only vote, redis, db)"
+  },
+  {
+    "repo": "example-voting-app",
+    "file": "vote/app.py",
+    "line": 13,
+    "snippet": "no health endpoint in service vote",
+    "fingerprint": "4b5d9e12689c7226",
+    "label": "fp",
+    "note": "docker-compose.yml gives vote a healthcheck (curl -f http://localhost) that gates dependents; no dedicated route but a check exists"
   },
   {
     "repo": "nestjs-prisma-starter",
@@ -34,5 +169,14 @@
     "fingerprint": "0768a64080bde77a",
     "label": "tp",
     "note": "Express API with no health endpoint anywhere in src (baseline tp)"
+  },
+  {
+    "repo": "todo-nodejs-mongo",
+    "file": "src/api/src/app.ts",
+    "line": 45,
+    "snippet": "no health endpoint in service src/api/src",
+    "fingerprint": "9d9afa1099d5f055",
+    "label": "tp",
+    "note": "Express API, no health route or probe anywhere in the repo"
   }
 ]

@@ -1,33 +1,34 @@
 {
-  "scanner_version": "1.0.2",
+  "scanner_version": "1.1.0",
   "seed": 1002,
   "per_rule": 20,
+  "guide_version": "2",
   "rule_versions": {
     "ci-no-test-step": "1",
     "console-logging-only": "3",
     "docker-latest-tag": "1",
     "docker-no-healthcheck": "2",
     "docker-root-user": "2",
-    "god-module": "4",
-    "hardcoded-secret": "7",
-    "http-no-timeout": "2",
-    "import-cycle": "3",
+    "god-module": "5",
+    "hardcoded-secret": "9",
+    "http-no-timeout": "3",
+    "import-cycle": "4",
     "k8s-no-limits": "2",
     "k8s-no-probes": "2",
     "list-route-no-pagination": "1",
     "missing-lockfile": "2",
     "mixed-error-shapes": "1",
     "no-health-endpoint": "5",
-    "no-tests": "4",
-    "no-version-prefix": "2",
+    "no-tests": "6",
+    "no-version-prefix": "3",
     "openapi-drift": "2",
-    "query-in-loop": "4",
+    "query-in-loop": "5",
     "retry-no-backoff": "1",
-    "sql-string-concat": "4",
-    "swallowed-error": "5",
-    "unauth-write-route": "6",
-    "unbounded-query": "3",
-    "unpinned-dependency": "3",
+    "sql-string-concat": "6",
+    "swallowed-error": "7",
+    "unauth-write-route": "7",
+    "unbounded-query": "4",
+    "unpinned-dependency": "4",
     "unvalidated-body": "1"
   },
   "repos": {
@@ -38,7 +39,7 @@
       "files_scanned": 24,
       "signals": {
         "import-cycle": 1,
-        "swallowed-error": 2
+        "swallowed-error": 1
       }
     },
     "itsdangerous": {
@@ -46,9 +47,7 @@
       "sha256": "7b0c6d4186e963b88489b69603b7ab2bf7c8e9eb4135a7b13b5f21bd4b937f2b",
       "subdir": "src",
       "files_scanned": 8,
-      "signals": {
-        "swallowed-error": 1
-      }
+      "signals": {}
     },
     "full-stack-fastapi-template": {
       "url": "https://codeload.github.com/fastapi/full-stack-fastapi-template/tar.gz/refs/tags/0.10.0",
@@ -67,13 +66,12 @@
       "files_scanned": 199,
       "signals": {
         "docker-root-user": 2,
-        "hardcoded-secret": 4,
+        "hardcoded-secret": 2,
         "http-no-timeout": 3,
         "no-health-endpoint": 1,
         "no-tests": 6,
         "no-version-prefix": 1,
-        "query-in-loop": 1,
-        "unbounded-query": 1
+        "unauth-write-route": 2
       }
     },
     "node-express-boilerplate": {
@@ -83,9 +81,7 @@
       "files_scanned": 63,
       "signals": {
         "docker-no-healthcheck": 1,
-        "hardcoded-secret": 2,
-        "no-health-endpoint": 1,
-        "no-tests": 3
+        "no-health-endpoint": 1
       }
     },
     "nestjs-prisma-starter": {
@@ -110,7 +106,7 @@
         "console-logging-only": 1,
         "no-tests": 1,
         "no-version-prefix": 1,
-        "unauth-write-route": 11
+        "unauth-write-route": 1
       }
     },
     "create-t3-turbo": {
@@ -121,8 +117,7 @@
       "signals": {
         "console-logging-only": 1,
         "http-no-timeout": 1,
-        "no-tests": 10,
-        "swallowed-error": 1
+        "no-tests": 8
       }
     },
     "chi": {
@@ -140,15 +135,10 @@
       "subdir": "",
       "files_scanned": 2904,
       "signals": {
-        "god-module": 27,
-        "hardcoded-secret": 8,
+        "god-module": 14,
         "import-cycle": 10,
         "missing-lockfile": 1,
-        "query-in-loop": 12,
-        "sql-string-concat": 1,
-        "swallowed-error": 117,
-        "unbounded-query": 8,
-        "unpinned-dependency": 4
+        "swallowed-error": 37
       }
     },
     "spring-boot-realworld": {
@@ -157,8 +147,7 @@
       "subdir": "",
       "files_scanned": 122,
       "signals": {
-        "hardcoded-secret": 1,
-        "unauth-write-route": 11
+        "hardcoded-secret": 1
       }
     },
     "aspnetcore-realworld": {
@@ -169,8 +158,7 @@
       "signals": {
         "docker-no-healthcheck": 1,
         "no-health-endpoint": 1,
-        "no-tests": 1,
-        "unauth-write-route": 1
+        "query-in-loop": 1
       }
     },
     "homeland": {
@@ -180,11 +168,8 @@
       "files_scanned": 430,
       "signals": {
         "docker-root-user": 1,
-        "hardcoded-secret": 4,
-        "no-tests": 8,
-        "sql-string-concat": 1,
         "swallowed-error": 2,
-        "unauth-write-route": 52
+        "unauth-write-route": 1
       }
     },
     "laravel-realworld": {
@@ -193,11 +178,82 @@
       "subdir": "",
       "files_scanned": 111,
       "signals": {
-        "hardcoded-secret": 5,
-        "missing-lockfile": 1,
-        "no-tests": 14,
-        "swallowed-error": 1,
-        "unauth-write-route": 12
+        "missing-lockfile": 1
+      }
+    },
+    "example-voting-app": {
+      "url": "https://codeload.github.com/dockersamples/example-voting-app/tar.gz/63e9150ca17af4ed05880d4245e486481f73fcb4",
+      "sha256": "f993741770ec58274d9d4d3d81b072887e5bc2af66bcafc474927d42a9dcfad4",
+      "subdir": "",
+      "files_scanned": 30,
+      "signals": {
+        "docker-root-user": 4,
+        "k8s-no-limits": 5,
+        "k8s-no-probes": 4,
+        "no-health-endpoint": 2,
+        "unauth-write-route": 1,
+        "unpinned-dependency": 3,
+        "unvalidated-body": 1
+      }
+    },
+    "robot-shop": {
+      "url": "https://codeload.github.com/instana/robot-shop/tar.gz/55292e2199f2fb00a165b1f7d3045fe7f8922038",
+      "sha256": "0e8238984252e46a024cc067637bbab294489a6ab90e74158ba34c80fde893a6",
+      "subdir": "",
+      "files_scanned": 108,
+      "signals": {
+        "console-logging-only": 1,
+        "docker-latest-tag": 2,
+        "docker-root-user": 12,
+        "hardcoded-secret": 1,
+        "http-no-timeout": 5,
+        "k8s-no-probes": 1,
+        "list-route-no-pagination": 2,
+        "missing-lockfile": 4,
+        "no-tests": 3,
+        "no-version-prefix": 4,
+        "unauth-write-route": 5,
+        "unbounded-query": 3,
+        "unpinned-dependency": 8
+      }
+    },
+    "awesome-compose": {
+      "url": "https://codeload.github.com/docker/awesome-compose/tar.gz/30f4b7f6a6c3b0c0ecf4d4efb0de203c48d11562",
+      "sha256": "a6af3a155b771d197481d52f1b372ad3eb30e30a70a56ffc04c55b0f6b750bc4",
+      "subdir": "",
+      "files_scanned": 250,
+      "signals": {
+        "ci-no-test-step": 1,
+        "console-logging-only": 9,
+        "docker-root-user": 33,
+        "http-no-timeout": 11,
+        "no-health-endpoint": 13,
+        "no-tests": 24,
+        "no-version-prefix": 1,
+        "unauth-write-route": 1,
+        "unbounded-query": 5,
+        "unpinned-dependency": 7,
+        "unvalidated-body": 1
+      }
+    },
+    "todo-nodejs-mongo": {
+      "url": "https://codeload.github.com/Azure-Samples/todo-nodejs-mongo/tar.gz/16695b06631a166eb5dc90ea2f0d52b917578013",
+      "sha256": "81e3edf2f9cf4d2ae27ccd739bdd73b03da65e223f8631256584493f8d3482ef",
+      "subdir": "",
+      "files_scanned": 76,
+      "signals": {
+        "ci-no-test-step": 1,
+        "docker-no-healthcheck": 1,
+        "docker-root-user": 2,
+        "import-cycle": 2,
+        "no-health-endpoint": 1,
+        "no-tests": 1,
+        "no-version-prefix": 1,
+        "openapi-drift": 14,
+        "query-in-loop": 2,
+        "unauth-write-route": 7,
+        "unbounded-query": 1,
+        "unvalidated-body": 3
       }
     }
   }

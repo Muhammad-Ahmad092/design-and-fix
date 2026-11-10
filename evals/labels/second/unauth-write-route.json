@@ -1,0 +1,173 @@
+[
+  {
+    "repo": "awesome-compose",
+    "file": "react-express-mongodb/backend/routes/index.js",
+    "line": 9,
+    "snippet": "POST /todos",
+    "fingerprint": "375af1d715d4a632",
+    "label": "tp",
+    "note": "No auth anywhere in backend/server.js or routes/index.js; anyone can insert todos (sample app, low impact)"
+  },
+  {
+    "repo": "django-styleguide-example",
+    "file": "styleguide_example/users/urls.py",
+    "line": 7,
+    "snippet": "POST create/",
+    "fingerprint": "a195263c53cd2dae",
+    "label": "tp",
+    "note": "UserCreateApi in users/apis.py has no auth; DEFAULT_AUTHENTICATION_CLASSES empty in config/django/base.py; file TODO says authenticated version pending"
+  },
+  {
+    "repo": "django-styleguide-example",
+    "file": "styleguide_example/users/urls.py",
+    "line": 9,
+    "snippet": "POST <int:user_id>/update/",
+    "fingerprint": "cc566ac3eda6cb8f",
+    "label": "tp",
+    "note": "UserUpdateApi updates any user by id with no auth or permission check (users/apis.py)"
+  },
+  {
+    "repo": "example-voting-app",
+    "file": "vote/app.py",
+    "line": 24,
+    "snippet": "POST /",
+    "fingerprint": "a30b1c25d1daf2d9",
+    "label": "fp",
+    "note": "Public anonymous voting form by design (vote/app.py hello())"
+  },
+  {
+    "repo": "full-stack-fastapi-template",
+    "file": "backend/app/api/routes/private.py",
+    "line": 23,
+    "snippet": "POST /users/",
+    "fingerprint": "cccce4ffc975d3a2",
+    "label": "unsure",
+    "note": "private.router only included when settings.ENVIRONMENT == 'local' (api/main.py)"
+  },
+  {
+    "repo": "golang-gin-realworld",
+    "file": "users/routers.go",
+    "line": 11,
+    "snippet": "POST /",
+    "fingerprint": "e113f60281e6533e",
+    "label": "fp",
+    "note": "Registration route, public by design; auth middleware applied after it in hello.go"
+  },
+  {
+    "repo": "homeland",
+    "file": "config/routes.rb",
+    "line": 152,
+    "snippet": "POST /api/v3/topics/:id/replies",
+    "fingerprint": "d1e56b3c2f050cc2",
+    "label": "fp",
+    "note": "POST replies dispatches to create_replies which calls doorkeeper_authorize! (api/v3/topics_controller.rb)"
+  },
+  {
+    "repo": "robot-shop",
+    "file": "cart/server.js",
+    "line": 101,
+    "snippet": "DELETE /cart/:id",
+    "fingerprint": "8dec5ff70f72b4e8",
+    "label": "tp",
+    "note": "No auth in cart/server.js; exposed via web nginx /api/cart/, anyone can delete any cart"
+  },
+  {
+    "repo": "robot-shop",
+    "file": "cart/server.js",
+    "line": 269,
+    "snippet": "POST /shipping/:id",
+    "fingerprint": "dd54c31a60d98d24",
+    "label": "tp",
+    "note": "No auth in cart/server.js; proxied publicly via /api/cart/, anyone can add shipping to any cart"
+  },
+  {
+    "repo": "robot-shop",
+    "file": "payment/payment.py",
+    "line": 54,
+    "snippet": "POST /pay/<id>",
+    "fingerprint": "39d5ced48993a4dc",
+    "label": "tp",
+    "note": "pay() in payment/payment.py has no auth; exposed via /api/payment/ proxy"
+  },
+  {
+    "repo": "robot-shop",
+    "file": "shipping/src/main/java/com/instana/robotshop/shipping/Controller.java",
+    "line": 131,
+    "snippet": "POST /confirm/{id}",
+    "fingerprint": "4e54d393e35570db",
+    "label": "tp",
+    "note": "Controller.confirm has no auth or security config in shipping service; proxied publicly via /api/shipping/"
+  },
+  {
+    "repo": "robot-shop",
+    "file": "user/server.js",
+    "line": 183,
+    "snippet": "POST /order/:id",
+    "fingerprint": "88ed2837c472e017",
+    "label": "tp",
+    "note": "No auth in user/server.js; anyone can append orders to any user history via /api/user/order/:id"
+  },
+  {
+    "repo": "todo-nodejs-mongo",
+    "file": "src/api/src/routes/items.ts",
+    "line": 38,
+    "snippet": "POST /",
+    "fingerprint": "4247f4d6401aa431",
+    "label": "tp",
+    "note": "No auth middleware in src/api/src/app.ts; items routes writable by anyone"
+  },
+  {
+    "repo": "todo-nodejs-mongo",
+    "file": "src/api/src/routes/items.ts",
+    "line": 76,
+    "snippet": "PUT /:itemId",
+    "fingerprint": "51270e59d7a0029d",
+    "label": "tp",
+    "note": "No auth middleware in src/api/src/app.ts; items routes writable by anyone"
+  },
+  {
+    "repo": "todo-nodejs-mongo",
+    "file": "src/api/src/routes/items.ts",
+    "line": 98,
+    "snippet": "DELETE /:itemId",
+    "fingerprint": "e3730e9a8d952ea7",
+    "label": "tp",
+    "note": "No auth middleware in src/api/src/app.ts; items routes writable by anyone"
+  },
+  {
+    "repo": "todo-nodejs-mongo",
+    "file": "src/api/src/routes/items.ts",
+    "line": 137,
+    "snippet": "PUT /state/:state",
+    "fingerprint": "03a9e56e317a812f",
+    "label": "tp",
+    "note": "No auth middleware in src/api/src/app.ts; items routes writable by anyone"
+  },
+  {
+    "repo": "todo-nodejs-mongo",
+    "file": "src/api/src/routes/lists.ts",
+    "line": 36,
+    "snippet": "POST /",
+    "fingerprint": "559311ddf9453009",
+    "label": "tp",
+    "note": "No auth middleware in src/api/src/app.ts; lists routes writable by anyone"
+  },
+  {
+    "repo": "todo-nodejs-mongo",
+    "file": "src/api/src/routes/lists.ts",
+    "line": 71,
+    "snippet": "PUT /:listId",
+    "fingerprint": "0ce32b590ed1cd64",
+    "label": "tp",
+    "note": "No auth middleware in src/api/src/app.ts; lists routes writable by anyone"
+  },
+  {
+    "repo": "todo-nodejs-mongo",
+    "file": "src/api/src/routes/lists.ts",
+    "line": 90,
+    "snippet": "DELETE /:listId",
+    "fingerprint": "6da38acf386e6c3a",
+    "label": "tp",
+    "note": "No auth middleware in src/api/src/app.ts; lists routes writable by anyone"
+  }
+]

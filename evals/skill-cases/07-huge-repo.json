@@ -1,0 +1,30 @@
+{
+  "id": "07-huge-repo",
+  "prompt": "Audit this repo. Don't ask me anything.",
+  "setup": {
+    "fixture": "tests/fixtures/monorepo",
+    "preexisting": {},
+    "generate_files": {
+      "dir": "generated",
+      "count": 20000,
+      "per_dir": 200,
+      "ext": ".py",
+      "text": "VALUE = {n}\n"
+    }
+  },
+  "timeout": 900,
+  "must_exist": [
+    "docs/architecture/quick-audit.md"
+  ],
+  "must_not_exist": [],
+  "must_contain": {
+    "docs/architecture/quick-audit.md": [
+      "Assumed (non-interactive)",
+      "> Scope:",
+      "Evidence:"
+    ]
+  },
+  "must_not_contain": {},
+  "lint": true,
+  "lint_repo": true
+}

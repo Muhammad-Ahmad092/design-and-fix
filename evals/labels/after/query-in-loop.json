@@ -1,119 +1,29 @@
 [
   {
-    "repo": "django",
-    "file": "django/contrib/gis/db/backends/spatialite/schema.py",
-    "line": 101,
-    "snippet": "self.execute(",
-    "fingerprint": "96bfb8a7a82a2c61",
-    "label": "fp",
-    "note": "DDL per geometry table in schema editor; not data-driven N+1."
+    "repo": "aspnetcore-realworld",
+    "file": "src/Conduit/Features/Articles/Create.cs",
+    "line": 61,
+    "snippet": "context.Tags.FindAsync inside for loop at line 59",
+    "fingerprint": "49c9ca53f9672641",
+    "label": "tp",
+    "note": "Create.Handler awaits context.Tags.FindAsync (and SaveChanges) per tag in a user-supplied TagList on request path; N queries per article create, low impact since tag lists are small"
   },
   {
-    "repo": "django",
-    "file": "django/contrib/gis/db/backends/spatialite/schema.py",
+    "repo": "todo-nodejs-mongo",
+    "file": "src/api/src/routes/items.ts",
+    "line": 143,
+    "snippet": "repository.findById inside map callback at line 142",
+    "fingerprint": "9449f245ddfaa58b",
+    "label": "tp",
+    "note": "items.ts PUT /state/:state runs repository.findById per id in client-supplied array (N+1 against Mongo), request path; list can grow"
+  },
+  {
+    "repo": "todo-nodejs-mongo",
+    "file": "src/api/src/routes/items.ts",
     "line": 148,
-    "snippet": "self.execute(",
-    "fingerprint": "b38d3a6a161b8651",
-    "label": "fp",
-    "note": "DDL per geometry field while remaking a table; schema migration code path."
-  },
-  {
-    "repo": "django",
-    "file": "django/contrib/gis/db/backends/spatialite/schema.py",
-    "line": 160,
-    "snippet": "self.execute(",
-    "fingerprint": "b2c6b53df95ac664",
-    "label": "fp",
-    "note": "DDL per geometry table in schema editor; not data-driven N+1."
-  },
-  {
-    "repo": "django",
-    "file": "django/contrib/gis/db/backends/spatialite/schema.py",
-    "line": 173,
-    "snippet": "self.execute(",
-    "fingerprint": "0b2a93bcf80c7ba5",
-    "label": "fp",
-    "note": "DDL per geometry field while renaming table; schema migration."
-  },
-  {
-    "repo": "django",
-    "file": "django/contrib/gis/db/backends/spatialite/schema.py",
-    "line": 184,
-    "snippet": "self.execute(",
-    "fingerprint": "14d5823dab6ff145",
-    "label": "fp",
-    "note": "DDL per spatial index while renaming table; schema migration."
-  },
-  {
-    "repo": "django",
-    "file": "django/db/backends/base/schema.py",
-    "line": 1162,
-    "snippet": "self.execute(",
-    "fingerprint": "08ebbc012d7235cd",
-    "label": "fp",
-    "note": "ALTER per pending action in schema editor; DDL, bounded by schema."
-  },
-  {
-    "repo": "django",
-    "file": "django/db/backends/base/schema.py",
-    "line": 1189,
-    "snippet": "self.execute(",
-    "fingerprint": "fae9a2bba00dcc79",
-    "label": "fp",
-    "note": "ALTER per pending NOT NULL action; DDL."
-  },
-  {
-    "repo": "django",
-    "file": "django/db/backends/base/schema.py",
-    "line": 1247,
-    "snippet": "self.execute(",
-    "fingerprint": "78e4681b7e1f25e7",
-    "label": "fp",
-    "note": "ALTER per related field during column alter; DDL, bounded by schema."
-  },
-  {
-    "repo": "django",
-    "file": "django/db/backends/base/schema.py",
-    "line": 1256,
-    "snippet": "self.execute(sql, params)",
-    "fingerprint": "64e43c33d9160aac",
-    "label": "fp",
-    "note": "Executes queued DDL actions; inherent."
-  },
-  {
-    "repo": "django",
-    "file": "django/db/backends/mysql/base.py",
-    "line": 345,
-    "snippet": "cursor.execute(",
-    "fingerprint": "fde03c61ce5d7e1c",
-    "label": "fp",
-    "note": "FK integrity check per FK column in a maintenance routine; bounded by schema, not row count."
-  },
-  {
-    "repo": "django",
-    "file": "django/db/backends/sqlite3/introspection.py",
-    "line": 105,
-    "snippet": "has_json_constraint = cursor.execute(",
-    "fingerprint": "a009c080de8c5b9d",
-    "label": "unsure",
-    "note": "One sqlite_master query per column during introspection: real N+1 shape, but a dev-time introspection path with negligible cost."
-  },
-  {
-    "repo": "django",
-    "file": "django/db/backends/sqlite3/introspection.py",
-    "line": 339,
-    "snippet": "cursor.execute(",
-    "fingerprint": "17f24dbd94bf1172",
-    "label": "unsure",
-    "note": "One sqlite_master query per index during introspection; N+1 shape on a cold path."
-  },
-  {
-    "repo": "django-styleguide-example",
-    "file": "styleguide_example/emails/services.py",
-    "line": 63,
-    "snippet": "Email.objects.filter(id=email.id).update(status=Email.Status.SENDING)",
-    "fingerprint": "69de44a810250cee",
-    "label": "fp",
-    "note": "Per-email UPDATE in its own atomic block is deliberate and documented in the docstring (on_commit per email)."
+    "snippet": "repository.update inside map callback at line 142",
+    "fingerprint": "cc80db1933be9151",
+    "label": "tp",
+    "note": "items.ts same map callback does repository.update per id rather than one bulk update; per-item writes on request path"
   }
 ]

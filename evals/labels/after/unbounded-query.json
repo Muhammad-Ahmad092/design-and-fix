@@ -1,83 +1,83 @@
 [
   {
-    "repo": "django",
-    "file": "django/contrib/auth/backends.py",
-    "line": 78,
-    "snippet": "perms = Permission.objects.all()",
-    "fingerprint": "e336258adbddfe24",
+    "repo": "awesome-compose",
+    "file": "nginx-aspnet-mysql/backend/Program.cs",
+    "line": 20,
+    "snippet": "string sql = \"SELECT title FROM blog\";",
+    "fingerprint": "91ba8f80f0df5d98",
     "label": "fp",
-    "note": "Superuser permission set from small auth_permission table (baseline fp)"
+    "note": "Demo blog table seeded with a few rows in the sample; fixed small table."
   },
   {
-    "repo": "django",
-    "file": "django/contrib/gis/db/backends/postgis/introspection.py",
-    "line": 46,
-    "snippet": "SELECT * FROM geometry_columns",
-    "fingerprint": "8d8f65b011694ae3",
+    "repo": "awesome-compose",
+    "file": "nginx-flask-mysql/backend/hello.py",
+    "line": 26,
+    "snippet": "self.cursor.execute('SELECT title FROM blog')",
+    "fingerprint": "fcf60dc26d1f8eb0",
     "label": "fp",
-    "note": "Introspection of PostGIS metadata views, filtered by table/column in the WHERE clause"
+    "note": "Demo blog table seeded with 4 rows in populate_db; sample."
   },
   {
-    "repo": "django",
-    "file": "django/contrib/gis/db/backends/postgis/introspection.py",
-    "line": 48,
-    "snippet": "SELECT * FROM geography_columns",
-    "fingerprint": "510572e9fe7ecc71",
+    "repo": "awesome-compose",
+    "file": "nginx-golang-mysql/backend/main.go",
+    "line": 34,
+    "snippet": "rows, err := db.Query(\"SELECT title FROM blog\")",
+    "fingerprint": "04943bd8426f89e6",
     "label": "fp",
-    "note": "Same metadata query, filtered by table/column"
+    "note": "Demo blog table with a handful of seeded rows; sample."
   },
   {
-    "repo": "django",
-    "file": "django/db/backends/mysql/base.py",
-    "line": 347,
-    "snippet": "SELECT REFERRING.`%s`, REFERRING.`%s` FROM `%s` as REFERRING",
-    "fingerprint": "bda22165014a4c61",
+    "repo": "awesome-compose",
+    "file": "nginx-golang-postgres/backend/main.go",
+    "line": 34,
+    "snippet": "rows, err := db.Query(\"SELECT title FROM blog\")",
+    "fingerprint": "d7adc79f6e0f3749",
     "label": "fp",
-    "note": "Integrity check must scan for dangling FK rows (baseline fp)"
+    "note": "Demo blog table with a handful of seeded rows; sample."
   },
   {
-    "repo": "django",
-    "file": "django/db/backends/postgresql/base.py",
-    "line": 561,
-    "snippet": "qparts = [sql.SQL(\"SELECT * FROM \"), name, sql.SQL(\"(\")]",
-    "fingerprint": "ce6d00a742735d3b",
+    "repo": "awesome-compose",
+    "file": "sparkjava-mysql/backend/src/main/java/App.java",
+    "line": 28,
+    "snippet": "try (ResultSet rs = stmt.executeQuery(\"SELECT title FROM blog\")) {",
+    "fingerprint": "fb359b9bfd880695",
     "label": "fp",
-    "note": "callproc builds SELECT * FROM function(args); a function call, not a table scan"
+    "note": "Demo blog table with a handful of seeded rows; sample."
   },
   {
-    "repo": "django",
-    "file": "django/db/backends/sqlite3/operations.py",
-    "line": 205,
-    "snippet": ") SELECT name FROM tables;",
-    "fingerprint": "1277e2211bc657db",
-    "label": "fp",
-    "note": "Recursive CTE over sqlite_master, schema metadata; bounded"
+    "repo": "robot-shop",
+    "file": "catalogue/server.js",
+    "line": 69,
+    "snippet": "collection.find({}).toArray().then((products) => {",
+    "fingerprint": "330462625bd6deb8",
+    "label": "tp",
+    "note": "GET /products reads whole products collection via find({}).toArray() with no limit; catalogue grows."
   },
   {
-    "repo": "django",
-    "file": "django/db/models/sql/datastructures.py",
-    "line": 204,
-    "snippet": "SELECT * FROM \"foo\" WHERE somecond",
-    "fingerprint": "b4a95e902ad9320f",
+    "repo": "robot-shop",
+    "file": "ratings/html/src/Service/RatingsService.php",
+    "line": 13,
+    "snippet": "private const QUERY_RATINGS_BY_SKU = 'select avg_rating, rating_count from ratings where sku = ?';",
+    "fingerprint": "82c928eb9da1b94e",
     "label": "fp",
-    "note": "SQL appears in a docstring example only"
+    "note": "Query filtered by sku and fetch() returns one row; not unbounded."
   },
   {
-    "repo": "django",
-    "file": "django/db/models/sql/query.py",
-    "line": 855,
-    "snippet": "compute the columns to select from the database and also by the",
-    "fingerprint": "e7514182eada6be2",
+    "repo": "robot-shop",
+    "file": "shipping/src/main/java/com/instana/robotshop/shipping/CityRepository.java",
+    "line": 12,
+    "snippet": "value = \"select c from City c where c.code = ?1 and c.city like ?2%\"",
+    "fingerprint": "f8e301dbb4e2805f",
     "label": "fp",
-    "note": "Match is a docstring/comment sentence, not a query"
+    "note": "Query filtered by code and city prefix on a fixed cities lookup table; bounded."
   },
   {
-    "repo": "django-styleguide-example",
-    "file": "styleguide_example/users/selectors.py",
-    "line": 23,
-    "snippet": "qs = BaseUser.objects.all()",
-    "fingerprint": "c479ccf0d4c641ef",
+    "repo": "todo-nodejs-mongo",
+    "file": "src/api/src/models/todoItemRepository.ts",
+    "line": 10,
+    "snippet": "query: \"SELECT * FROM c WHERE c.listId = @listId\",",
+    "fingerprint": "eb525b10d596799c",
     "label": "fp",
-    "note": "Selector returns lazy QuerySet that callers paginate/filter (baseline fp)"
+    "note": "Query scoped to one listId; per-list items are the request scope, route slices in items.ts."
   }
 ]

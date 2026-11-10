@@ -19,21 +19,21 @@
   },
   {
     "repo": "django",
+    "file": "django/contrib/gis/utils/__init__.py",
+    "line": 1,
+    "snippet": "django/contrib/gis/utils/__init__.py -> django/contrib/gis/utils/ogrinspect.py -> django/... [through package __init__ (often a re-export, not a runtime cycle)]",
+    "fingerprint": "a6d89c79b337d98d",
+    "label": "fp",
+    "note": "Back edge is the docstring example and a function-local import in ogrinspect.py (lines 66/77); no load-time cycle through __init__."
+  },
+  {
+    "repo": "django",
     "file": "django/contrib/messages/__init__.py",
     "line": 1,
     "snippet": "django/contrib/messages/__init__.py -> django/contrib/messages/api.py -> django/contrib/m... [through package __init__ (often a re-export, not a runtime cycle)]",
     "fingerprint": "887190e4d29a5565",
     "label": "fp",
     "note": "Package __init__ star-re-exports api.py; api.py imports sibling submodules through the package name; re-export pattern, not a runtime cycle."
-  },
-  {
-    "repo": "django",
-    "file": "django/contrib/postgres/fields/array.py",
-    "line": 1,
-    "snippet": "django/contrib/postgres/fields/array.py -> django/contrib/postgres/lookups.py -> django/contrib/postgres/search.py -> django/contrib/postgres/fields/array.py",
-    "fingerprint": "c37228c0365213b2",
-    "label": "fp",
-    "note": "search.py imports ArrayField inside a method (line 255, function-local); lookups.py also defers imports; no load-time cycle."
   },
   {
     "repo": "django",
@@ -91,12 +91,12 @@
   },
   {
     "repo": "flask",
-    "file": "src/flask/blueprints.py",
+    "file": "src/flask/__init__.py",
     "line": 1,
-    "snippet": "src/flask/blueprints.py -> src/flask/sansio/scaffold.py -> src/flask/templating.py -> src/flask/debughelpers.py -> src/flask/blueprints.py",
-    "fingerprint": "21311d9dbc4ec1b7",
+    "snippet": "src/flask/__init__.py -> src/flask/app.py -> src/flask/__init__.py [through package __init__ (often a re-export, not a runtime cycle)]",
+    "fingerprint": "687705aa8d3ede7e",
     "label": "fp",
-    "note": "templating.py imports debughelpers only inside a function (line 84); no load-time cycle."
+    "note": "Chain runs through package __init__ re-exporting app; app.py uses `from . import cli`, a submodule import; no real cycle."
   },
   {
     "repo": "nestjs-prisma-starter",
@@ -106,5 +106,23 @@
     "fingerprint": "782464aeb7649019",
     "label": "tp",
     "note": "post.model.ts and user.model.ts import each other at module level (GraphQL object types referencing each other); real cycle, commonly benign but real."
+  },
+  {
+    "repo": "todo-nodejs-mongo",
+    "file": "src/api/src/config/applicationInsightsTransport.ts",
+    "line": 1,
+    "snippet": "src/api/src/config/applicationInsightsTransport.ts -> src/api/src/config/observability.ts -> src/api/src/config/applicationInsightsTransport.ts",
+    "fingerprint": "e7a2e921cef82fc2",
+    "label": "tp",
+    "note": "observability.ts imports the transport and the transport imports runtime enum LogLevel from observability; real module-level cycle, benign because LogLevel is only used inside functions."
+  },
+  {
+    "repo": "todo-nodejs-mongo",
+    "file": "src/web/src/actions/common.ts",
+    "line": 1,
+    "snippet": "src/web/src/actions/common.ts -> src/web/src/actions/itemActions.ts -> src/web/src/actions/common.ts",
+    "fingerprint": "018402c48e4d0145",
+    "label": "fp",
+    "note": "common.ts imports itemActions/listActions only for types (elided at compile), so no runtime cycle; itemActions imports ActionTypes enum one-way."
   }
 ]

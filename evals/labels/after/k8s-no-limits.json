@@ -1,0 +1,47 @@
+[
+  {
+    "repo": "example-voting-app",
+    "file": "k8s-specifications/db-deployment.yaml",
+    "line": 18,
+    "snippet": "container postgres has no resource limits",
+    "fingerprint": "f23b6d41a7d5726d",
+    "label": "tp",
+    "note": "postgres container has no resources.limits; no LimitRange or patch; README uses kubectl create directly (low impact demo)"
+  },
+  {
+    "repo": "example-voting-app",
+    "file": "k8s-specifications/redis-deployment.yaml",
+    "line": 18,
+    "snippet": "container redis has no resource limits",
+    "fingerprint": "4e63401f0dbe41fa",
+    "label": "tp",
+    "note": "redis container has no limits; no LimitRange/patch in repo (demo manifests)"
+  },
+  {
+    "repo": "example-voting-app",
+    "file": "k8s-specifications/result-deployment.yaml",
+    "line": 18,
+    "snippet": "container result has no resource limits",
+    "fingerprint": "7c73c7b75bd5c31a",
+    "label": "tp",
+    "note": "result container has no limits; no LimitRange/patch in repo"
+  },
+  {
+    "repo": "example-voting-app",
+    "file": "k8s-specifications/vote-deployment.yaml",
+    "line": 18,
+    "snippet": "container vote has no resource limits",
+    "fingerprint": "cddc3c7680416bc1",
+    "label": "tp",
+    "note": "vote container has no limits; no LimitRange/patch in repo"
+  },
+  {
+    "repo": "example-voting-app",
+    "file": "k8s-specifications/worker-deployment.yaml",
+    "line": 18,
+    "snippet": "container worker has no resource limits",
+    "fingerprint": "bc6c2e4aaeef136e",
+    "label": "tp",
+    "note": "worker container has no limits; no LimitRange/patch in repo"
+  }
+]

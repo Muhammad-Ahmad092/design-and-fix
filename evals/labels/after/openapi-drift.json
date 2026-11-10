@@ -1,0 +1,128 @@
+[
+  {
+    "repo": "todo-nodejs-mongo",
+    "file": "src/api/openapi.yaml",
+    "line": 137,
+    "snippet": "spec path /lists has no route in code",
+    "fingerprint": "da41ad917de496ec",
+    "label": "fp",
+    "note": "Spec path is the same route; app.ts mounts lists router at /lists and items router at /lists/:listId/items, rule did not resolve mounts"
+  },
+  {
+    "repo": "todo-nodejs-mongo",
+    "file": "src/api/openapi.yaml",
+    "line": 161,
+    "snippet": "spec path /lists/{listId} has no route in code",
+    "fingerprint": "f54b82662cd675bb",
+    "label": "fp",
+    "note": "Spec path is the same route; app.ts mounts lists router at /lists and items router at /lists/:listId/items, rule did not resolve mounts"
+  },
+  {
+    "repo": "todo-nodejs-mongo",
+    "file": "src/api/openapi.yaml",
+    "line": 202,
+    "snippet": "spec path /lists/{listId}/items has no route in code",
+    "fingerprint": "4f10f77af04847ff",
+    "label": "fp",
+    "note": "Spec path is the same route; app.ts mounts lists router at /lists and items router at /lists/:listId/items, rule did not resolve mounts"
+  },
+  {
+    "repo": "todo-nodejs-mongo",
+    "file": "src/api/openapi.yaml",
+    "line": 231,
+    "snippet": "spec path /lists/{listId}/items/{itemId} has no route in code",
+    "fingerprint": "7b05e832c4f18d06",
+    "label": "fp",
+    "note": "Spec path is the same route; app.ts mounts lists router at /lists and items router at /lists/:listId/items, rule did not resolve mounts"
+  },
+  {
+    "repo": "todo-nodejs-mongo",
+    "file": "src/api/src/routes/items.ts",
+    "line": 18,
+    "snippet": "GET / not in src/api/openapi.yaml",
+    "fingerprint": "9781e5d5d4e4ec42",
+    "label": "fp",
+    "note": "Spec path is the same route; app.ts mounts lists router at /lists and items router at /lists/:listId/items, rule did not resolve mounts"
+  },
+  {
+    "repo": "todo-nodejs-mongo",
+    "file": "src/api/src/routes/items.ts",
+    "line": 38,
+    "snippet": "POST / not in src/api/openapi.yaml",
+    "fingerprint": "b01a1745c7d0a143",
+    "label": "fp",
+    "note": "Spec path is the same route; app.ts mounts lists router at /lists and items router at /lists/:listId/items, rule did not resolve mounts"
+  },
+  {
+    "repo": "todo-nodejs-mongo",
+    "file": "src/api/src/routes/items.ts",
+    "line": 57,
+    "snippet": "GET /:itemId not in src/api/openapi.yaml",
+    "fingerprint": "3cc1743afaea153c",
+    "label": "fp",
+    "note": "Spec path is the same route; app.ts mounts lists router at /lists and items router at /lists/:listId/items, rule did not resolve mounts"
+  },
+  {
+    "repo": "todo-nodejs-mongo",
+    "file": "src/api/src/routes/items.ts",
+    "line": 76,
+    "snippet": "PUT /:itemId not in src/api/openapi.yaml",
+    "fingerprint": "98b912647c2f8b4c",
+    "label": "fp",
+    "note": "Spec path is the same route; app.ts mounts lists router at /lists and items router at /lists/:listId/items, rule did not resolve mounts"
+  },
+  {
+    "repo": "todo-nodejs-mongo",
+    "file": "src/api/src/routes/items.ts",
+    "line": 98,
+    "snippet": "DELETE /:itemId not in src/api/openapi.yaml",
+    "fingerprint": "fcd05ed77ebf0674",
+    "label": "fp",
+    "note": "Spec path is the same route; app.ts mounts lists router at /lists and items router at /lists/:listId/items, rule did not resolve mounts"
+  },
+  {
+    "repo": "todo-nodejs-mongo",
+    "file": "src/api/src/routes/lists.ts",
+    "line": 16,
+    "snippet": "GET / not in src/api/openapi.yaml",
+    "fingerprint": "dbd1e5e0494d030e",
+    "label": "fp",
+    "note": "Spec path is the same route; app.ts mounts lists router at /lists and items router at /lists/:listId/items, rule did not resolve mounts"
+  },
+  {
+    "repo": "todo-nodejs-mongo",
+    "file": "src/api/src/routes/lists.ts",
+    "line": 36,
+    "snippet": "POST / not in src/api/openapi.yaml",
+    "fingerprint": "3dd65637d0c78d3a",
+    "label": "fp",
+    "note": "Spec path is the same route; app.ts mounts lists router at /lists and items router at /lists/:listId/items, rule did not resolve mounts"
+  },
+  {
+    "repo": "todo-nodejs-mongo",
+    "file": "src/api/src/routes/lists.ts",
+    "line": 52,
+    "snippet": "GET /:listId not in src/api/openapi.yaml",
+    "fingerprint": "af83c15ded88ba6a",
+    "label": "fp",
+    "note": "Spec path is the same route; app.ts mounts lists router at /lists and items router at /lists/:listId/items, rule did not resolve mounts"
+  },
+  {
+    "repo": "todo-nodejs-mongo",
+    "file": "src/api/src/routes/lists.ts",
+    "line": 71,
+    "snippet": "PUT /:listId not in src/api/openapi.yaml",
+    "fingerprint": "5804abff984c535c",
+    "label": "fp",
+    "note": "Spec path is the same route; app.ts mounts lists router at /lists and items router at /lists/:listId/items, rule did not resolve mounts"
+  },
+  {
+    "repo": "todo-nodejs-mongo",
+    "file": "src/api/src/routes/lists.ts",
+    "line": 90,
+    "snippet": "DELETE /:listId not in src/api/openapi.yaml",
+    "fingerprint": "d84621ac970f234c",
+    "label": "fp",
+    "note": "Spec path is the same route; app.ts mounts lists router at /lists and items router at /lists/:listId/items, rule did not resolve mounts"
+  }
+]

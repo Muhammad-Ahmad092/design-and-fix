@@ -1,0 +1,182 @@
+[
+  {
+    "repo": "awesome-compose",
+    "file": "apache-php/app",
+    "line": 0,
+    "snippet": "no test files under apache-php/app",
+    "fingerprint": "a7a323862145a984",
+    "label": "fp",
+    "note": "Single 3-line hello-world index.php"
+  },
+  {
+    "repo": "awesome-compose",
+    "file": "nginx-golang-mysql/backend",
+    "line": 0,
+    "snippet": "no test files under nginx-golang-mysql/backend",
+    "fingerprint": "ac673b31acf5717d",
+    "label": "tp",
+    "note": "main.go service with DB prep and blog handler, no tests in repo (small demo, low impact)"
+  },
+  {
+    "repo": "awesome-compose",
+    "file": "nginx-golang-postgres/backend",
+    "line": 0,
+    "snippet": "no test files under nginx-golang-postgres/backend",
+    "fingerprint": "70781e16e200f6d3",
+    "label": "tp",
+    "note": "main.go service with DB prep and blog handler, no tests in repo (small demo, low impact)"
+  },
+  {
+    "repo": "awesome-compose",
+    "file": "react-express-mongodb/backend",
+    "line": 0,
+    "snippet": "no test files under react-express-mongodb/backend",
+    "fingerprint": "ff8f1df82cc0a30d",
+    "label": "tp",
+    "note": "Express service (routes, model, helpers) with no tests; only frontend has App.test.js (low impact)"
+  },
+  {
+    "repo": "create-t3-turbo",
+    "file": "apps/expo",
+    "line": 0,
+    "snippet": "no test files under apps/expo",
+    "fingerprint": "a74229fae7ce8f4f",
+    "label": "fp",
+    "note": "Expo app: screens, layout and client wiring (auth, api, session store), presentational"
+  },
+  {
+    "repo": "create-t3-turbo",
+    "file": "apps/nextjs",
+    "line": 0,
+    "snippet": "no test files under apps/nextjs",
+    "fingerprint": "6482fa2e9e1230f4",
+    "label": "fp",
+    "note": "Next.js app: pages, components, route handlers and tRPC/auth wiring only"
+  },
+  {
+    "repo": "create-t3-turbo",
+    "file": "packages/api",
+    "line": 0,
+    "snippet": "no test files under packages/api",
+    "fingerprint": "642a7b2fd38a0198",
+    "label": "tp",
+    "note": "tRPC routers with protected create/delete logic (packages/api/src/router), no tests anywhere in repo"
+  },
+  {
+    "repo": "create-t3-turbo",
+    "file": "packages/ui",
+    "line": 0,
+    "snippet": "no test files under packages/ui",
+    "fingerprint": "31a108a14340da8d",
+    "label": "fp",
+    "note": "Presentational UI wrappers (button, input, toast etc.)"
+  },
+  {
+    "repo": "django-styleguide-example",
+    "file": "styleguide_example/core",
+    "line": 0,
+    "snippet": "no test files under styleguide_example/core",
+    "fingerprint": "dc688d3bcc624208",
+    "label": "fp",
+    "note": "core holds a single ApplicationError class"
+  },
+  {
+    "repo": "django-styleguide-example",
+    "file": "styleguide_example/emails",
+    "line": 0,
+    "snippet": "no test files under styleguide_example/emails",
+    "fingerprint": "2a85605b8810a110",
+    "label": "tp",
+    "note": "emails/services.py has send/fail state logic and tasks, no tests"
+  },
+  {
+    "repo": "django-styleguide-example",
+    "file": "styleguide_example/errors",
+    "line": 0,
+    "snippet": "no test files under styleguide_example/errors",
+    "fingerprint": "a76fc25828636e79",
+    "label": "fp",
+    "note": "errors app is example triggers for error-handling demos (errors/services.py)"
+  },
+  {
+    "repo": "django-styleguide-example",
+    "file": "styleguide_example/integrations",
+    "line": 0,
+    "snippet": "no test files under styleguide_example/integrations",
+    "fingerprint": "ec887fbf040c2a00",
+    "label": "tp",
+    "note": "integrations/aws/client.py S3 presign wrapper; test_direct_upload patches it out, so untested (low impact)"
+  },
+  {
+    "repo": "django-styleguide-example",
+    "file": "styleguide_example/tasks",
+    "line": 0,
+    "snippet": "no test files under styleguide_example/tasks",
+    "fingerprint": "bf0c2e0f09341979",
+    "label": "fp",
+    "note": "tasks: Celery wiring, debug task and periodic task setup command"
+  },
+  {
+    "repo": "golang-gin-realworld",
+    "file": "articles",
+    "line": 0,
+    "snippet": "no test files under articles",
+    "fingerprint": "731a34e61962aab6",
+    "label": "tp",
+    "note": "articles package (models, serializers, validators) has no tests; only users and common have unit_test.go"
+  },
+  {
+    "repo": "nestjs-prisma-starter",
+    "file": "src/posts",
+    "line": 0,
+    "snippet": "no test files under src/posts",
+    "fingerprint": "d23dd19417c7df2a",
+    "label": "tp",
+    "note": "posts resolver has no tests; test/ e2e only covers hello endpoints"
+  },
+  {
+    "repo": "nestjs-prisma-starter",
+    "file": "src/users",
+    "line": 0,
+    "snippet": "no test files under src/users",
+    "fingerprint": "f19768d3eebd829d",
+    "label": "tp",
+    "note": "users service/resolver (update, change password) untested; e2e tests only cover hello"
+  },
+  {
+    "repo": "robot-shop",
+    "file": "ratings/html",
+    "line": 0,
+    "snippet": "no test files under ratings/html",
+    "fingerprint": "013dd20e806ad9f3",
+    "label": "tp",
+    "note": "PHP ratings service (RatingsService, CatalogueService, controllers) with no tests in repo"
+  },
+  {
+    "repo": "robot-shop",
+    "file": "shipping/src",
+    "line": 0,
+    "snippet": "no test files under shipping/src",
+    "fingerprint": "2cd38163b3965300",
+    "label": "tp",
+    "note": "Spring shipping service (Calculator, CartHelper, Controller) with no tests in repo"
+  },
+  {
+    "repo": "robot-shop",
+    "file": "web/static",
+    "line": 0,
+    "snippet": "no test files under web/static",
+    "fingerprint": "82fb2c110d590cf6",
+    "label": "fp",
+    "note": "Static HTML templates and AngularJS UI glue for the web frontend"
+  },
+  {
+    "repo": "todo-nodejs-mongo",
+    "file": "src/web",
+    "line": 0,
+    "snippet": "no test files under src/web",
+    "fingerprint": "cdc096e177e105c9",
+    "label": "fp",
+    "note": "React UI exercised by Playwright e2e tests in tests/todo.spec.ts"
+  }
+]

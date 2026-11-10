@@ -1,0 +1,9 @@
+{
+  "repo": "<corpus repo name>",
+  "guide_version": "2",
+  "reviewed_rules": [],
+  "missed": [
+    {"rule": "<rule id, also listed in reviewed_rules>", "file": "<path in repo>", "line": 1,
+     "label": "fn", "note": "<why the rule should have fired here>"}
+  ]
+}

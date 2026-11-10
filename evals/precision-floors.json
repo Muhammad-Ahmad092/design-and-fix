@@ -1,0 +1,94 @@
+{
+  "ci-no-test-step": {
+    "floor": 0.4,
+    "n": 2
+  },
+  "console-logging-only": {
+    "floor": 0.0667,
+    "n": 12
+  },
+  "docker-latest-tag": {
+    "floor": 0.4,
+    "n": 2
+  },
+  "docker-no-healthcheck": {
+    "floor": 0.9,
+    "n": 5
+  },
+  "docker-root-user": {
+    "floor": 0.4,
+    "n": 20
+  },
+  "god-module": {
+    "floor": 0.2,
+    "n": 10
+  },
+  "hardcoded-secret": {
+    "floor": 0.3,
+    "n": 5
+  },
+  "http-no-timeout": {
+    "floor": 0.35,
+    "n": 20
+  },
+  "import-cycle": {
+    "floor": 0.1857,
+    "n": 14
+  },
+  "k8s-no-limits": {
+    "floor": 0.9,
+    "n": 5
+  },
+  "k8s-no-probes": {
+    "floor": 0.9,
+    "n": 5
+  },
+  "list-route-no-pagination": {
+    "floor": 0.9,
+    "n": 2
+  },
+  "missing-lockfile": {
+    "floor": 0.9,
+    "n": 6
+  },
+  "no-health-endpoint": {
+    "floor": 0.8,
+    "n": 20
+  },
+  "no-tests": {
+    "floor": 0.4,
+    "n": 20
+  },
+  "no-version-prefix": {
+    "floor": 0.275,
+    "n": 8
+  },
+  "openapi-drift": {
+    "floor": 0.0,
+    "n": 14
+  },
+  "query-in-loop": {
+    "floor": 0.9,
+    "n": 3
+  },
+  "swallowed-error": {
+    "floor": 0.0,
+    "n": 19
+  },
+  "unauth-write-route": {
+    "floor": 0.2333,
+    "n": 18
+  },
+  "unbounded-query": {
+    "floor": 0.0111,
+    "n": 9
+  },
+  "unpinned-dependency": {
+    "floor": 0.9,
+    "n": 18
+  },
+  "unvalidated-body": {
+    "floor": 0.1,
+    "n": 5
+  }
+}

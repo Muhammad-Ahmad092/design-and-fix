@@ -1,9 +1,18 @@
 [
   {
+    "repo": "awesome-compose",
+    "file": "nginx-wsgi-flask/flask/app.py",
+    "line": 3,
+    "snippet": "4 routes in service nginx-wsgi-flask/flask, none versioned",
+    "fingerprint": "b8184d22cdd85353",
+    "label": "fp",
+    "note": "awesome-compose Flask demo returning text/HTML-ish samples behind nginx; not a public JSON API"
+  },
+  {
     "repo": "django-styleguide-example",
     "file": "config/urls.py",
     "line": 22,
-    "snippet": "30 routes in service ., none versioned",
+    "snippet": "38 routes in service ., none versioned",
     "fingerprint": "ba4a776acc6580eb",
     "label": "tp",
     "note": "All routes under /api/ with no version segment"
@@ -16,5 +25,50 @@
     "fingerprint": "b0fe84b667b9a0e5",
     "label": "tp",
     "note": "Routes under /api with no version segment (v1 is only a variable name)"
+  },
+  {
+    "repo": "robot-shop",
+    "file": "cart/server.js",
+    "line": 41,
+    "snippet": "7 routes in service cart, none versioned",
+    "fingerprint": "79e99d213112c410",
+    "label": "fp",
+    "note": "Internal microservice behind the web gateway, not a public versioned API surface"
+  },
+  {
+    "repo": "robot-shop",
+    "file": "catalogue/server.js",
+    "line": 31,
+    "snippet": "5 routes in service catalogue, none versioned",
+    "fingerprint": "8b271b4129f37651",
+    "label": "fp",
+    "note": "Internal microservice behind the web gateway, not a public versioned API surface"
+  },
+  {
+    "repo": "robot-shop",
+    "file": "shipping/src/main/java/com/instana/robotshop/shipping/Controller.java",
+    "line": 41,
+    "snippet": "8 routes in service shipping, none versioned",
+    "fingerprint": "ce5700c4bf71e115",
+    "label": "fp",
+    "note": "Internal microservice behind the web gateway, not a public versioned API surface"
+  },
+  {
+    "repo": "robot-shop",
+    "file": "user/server.js",
+    "line": 34,
+    "snippet": "7 routes in service user, none versioned",
+    "fingerprint": "bc2e2750c62ad7a8",
+    "label": "fp",
+    "note": "Internal microservice behind the web gateway, not a public versioned API surface"
+  },
+  {
+    "repo": "todo-nodejs-mongo",
+    "file": "src/api/src/app.ts",
+    "line": 45,
+    "snippet": "12 routes in service src/api/src, none versioned",
+    "fingerprint": "0bb4829a3817c38d",
+    "label": "tp",
+    "note": "Public JSON API (Swagger UI, CORS for portal) with routes /lists and /lists/:listId/items, no version segment"
   }
 ]

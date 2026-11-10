@@ -2,6 +2,7 @@
 docs/superpowers/
 review1.md
 review2.md
+v*review*.md
 PUSH-GUIDE.md
 REMAINING-WORK.md
 
@@ -50,3 +51,6 @@ desktop.ini
 # Logs and archives
 *.log
 *.zip
+
+# Per-client eval results (intermediate; merge with run.py --merge-results)
+evals/skill-results-*.md

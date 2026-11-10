@@ -1,16 +1,54 @@
 name: Skill evals
 
-# Paid: runs the real claude CLI. Manual trigger only.
+# Paid: runs the real claude CLI, once per model. Weekly (Monday 06:00 UTC) and manual.
 on:
+  schedule:
+    - cron: "0 6 * * 1"
   workflow_dispatch:
+    inputs:
+      models:
+        description: "Comma-separated model aliases or ids"
+        required: false
+        default: "sonnet,opus"
 
 permissions:
   contents: read
 
 jobs:
+  plan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      matrix: ${{ steps.models.outputs.matrix }}
+    steps:
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: "3.12"
+      - id: models
+        env:
+          MODELS_INPUT: ${{ github.event.inputs.models }}
+        run: |
+          python - <<'PY'
+          import json, os, re
+          raw = os.environ.get("MODELS_INPUT") or "sonnet,opus"
+          names = []
+          for name in raw.split(","):
+              name = name.strip()
+              if not re.fullmatch(r"[A-Za-z0-9._\[\]-]+", name):
+                  raise SystemExit("bad model name: %r" % name)
+              if name not in names:
+                  names.append(name)
+          with open(os.environ["GITHUB_OUTPUT"], "a") as fh:
+              fh.write("matrix=%s\n" % json.dumps({"model": names}))
+          PY
+
   skill-evals:
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    needs: plan
+    timeout-minutes: 240
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -24,14 +62,41 @@ jobs:
       - name: Run skill evals
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-        run: python evals/run.py
+          EVAL_MODEL: ${{ matrix.model }}
+        # Remove the committed results file first, so a run that exits before writing
+        # it cannot upload stale rows for this model.
+        run: |
+          rm -f evals/skill-results.md
+          python evals/run.py --model "$EVAL_MODEL"
       # Transcripts can be downloaded by anyone who can see the repo's Actions runs
       # (on a public repo, any signed-in user) until retention ends.
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: always()
         with:
-          name: skill-eval-runs
+          name: skill-eval-runs-${{ matrix.model }}
           retention-days: 7
           path: |
             evals/runs/
             evals/skill-results.md
+
+  merge:
+    runs-on: ubuntu-latest
+    needs: [plan, skill-evals]
+    if: always() && needs.plan.result == 'success'
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: "3.12"
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          pattern: skill-eval-runs-*
+          path: per-model
+      - name: Merge per-model results
+        run: python evals/run.py --merge-results $(find per-model -name skill-results.md | sort)
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: skill-results-merged
+          retention-days: 7
+          path: evals/skill-results.md

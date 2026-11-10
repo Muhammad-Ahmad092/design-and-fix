@@ -5,7 +5,7 @@ import os
 import re
 import time
 from dataclasses import dataclass, field
-from typing import Callable, List, Optional
+from typing import Callable, List, Optional, Tuple
 
 from .ignore import GitIgnore
 from .model import FileInfo
@@ -49,20 +49,31 @@ CONFIG_EXCLUDE = {
 
 _TEST_NAME = re.compile(
     r"(^test_.*\.py$)|(_test\.py$)|(_test\.go$)|(\.test\.(js|ts|jsx|tsx)$)|(\.spec\.[^/]+$)"
+    r"|(_spec\.rb$)"  # RSpec (x.spec.rb is covered by .spec.*)
 )
 _TEST_DIRS = {"tests", "test", "__tests__"}
 # Example/demo programs: listed and scanned, but route and folder rules skip them.
 EXAMPLE_DIRS = {"examples", "example", "_examples", "_example", "demo", "demos", "samples"}
 
 
+def _globs(patterns: Tuple[str, ...]) -> "re.Pattern[str]":
+    """One regex matching like any(fnmatch.fnmatchcase(name, p) for p in patterns)."""
+    return re.compile("|".join(fnmatch.translate(p) for p in patterns))
+
+
+# fnmatch.fnmatch normcases name and pattern (case-insensitive on Windows): same here.
+_MANIFEST_RE = _globs(tuple(os.path.normcase(p) for p in MANIFEST_PATTERNS))
+_CONFIG_RE = _globs(CONFIG_PATTERNS)
+
+
 def is_manifest(name: str) -> bool:
-    return any(fnmatch.fnmatch(name, p) for p in MANIFEST_PATTERNS)
+    return bool(_MANIFEST_RE.match(os.path.normcase(name)))
 
 
 def is_config(name: str) -> bool:
     if name in CONFIG_EXCLUDE:
         return False
-    return any(fnmatch.fnmatchcase(name.lower(), p) for p in CONFIG_PATTERNS)
+    return bool(_CONFIG_RE.match(name.lower()))
 
 
 # Infra files (spec 9.3): walked with is_infra=True and no LOC, read only by the infra rules.
@@ -128,6 +139,7 @@ def normalize_scope(entry: str) -> str:
 
 
 SECRET_FILE_PATTERNS = ("*.pem", "*.key", "id_rsa*", "*.p12")
+_SECRET_RE = _globs(SECRET_FILE_PATTERNS)
 MINIFIED_AVG_LINE = 1000
 GENERATED_MARKERS = ("@generated", "DO NOT EDIT")
 _CHECK_EVERY = 64
@@ -137,7 +149,7 @@ _PROGRESS_EVERY = 500
 def is_secret_file(name: str) -> bool:
     """Private-key style files, read only by the hardcoded-secret rule (public .pub excluded)."""
     low = name.lower()
-    return not low.endswith(".pub") and any(fnmatch.fnmatchcase(low, p) for p in SECRET_FILE_PATTERNS)
+    return not low.endswith(".pub") and bool(_SECRET_RE.match(low))
 
 
 @dataclass
@@ -146,6 +158,7 @@ class WalkResult:
     skipped: List[dict] = field(default_factory=list)  # {"path", "reason"}
     partial: bool = False
     invalid_gitignore: List[str] = field(default_factory=list)  # root .gitignore lines git ignores
+    excluded: List[str] = field(default_factory=list)  # dropped by config exclude/include globs
 
 
 def _inside(root_real: str, path: str) -> bool:
@@ -181,7 +194,8 @@ def walk_result(root: str, scope: Optional[List[str]] = None, respect_gitignore:
     max_files). The root `.gitignore` is applied unless `respect_gitignore` is false. The walk stops
     with `partial` set when `max_files` files are listed or `deadline` (time.perf_counter) passes.
     Files above `max_file_bytes` are skipped as too_large. `exclude` globs (gitignore syntax) drop
-    matching files and folders silently; when `include` globs are given only matching files are listed.
+    matching files and folders (recorded in `excluded`, a folder once, not in `skipped`); when `include`
+    globs are given only matching files are listed (the others are recorded in `excluded` too).
     """
     root = os.path.abspath(root)
     root_real = os.path.realpath(root)
@@ -199,7 +213,16 @@ def walk_result(root: str, scope: Optional[List[str]] = None, respect_gitignore:
     def skip(rel: str, reason: str) -> None:
         res.skipped.append({"path": rel, "reason": reason})
 
+    prefix = root if root.endswith(os.sep) else root + os.sep
+
     def rel_of(full: str) -> str:
+        # Walked paths are root + os.sep + names: slice them (relpath is slow). Anything else,
+        # or a path with an empty, "." or ".." part, goes through relpath.
+        if full.startswith(prefix):
+            rest = full[len(prefix):]
+            parts = rest.split(os.sep)
+            if rest and all(p not in ("", ".", "..") for p in parts):
+                return "/".join(parts)
         return os.path.relpath(full, root).replace(os.sep, "/")
 
     def on_error(err: OSError) -> None:
@@ -224,6 +247,7 @@ def walk_result(root: str, scope: Optional[List[str]] = None, respect_gitignore:
                 if gi is not None and gi.matches(rel_d, True):
                     continue
                 if ex is not None and ex.matches(rel_d, True):
+                    res.excluded.append(rel_d)  # a folder counts once
                     continue
                 keep.append(d)
             dirnames[:] = keep
@@ -256,8 +280,10 @@ def walk_result(root: str, scope: Optional[List[str]] = None, respect_gitignore:
                 if gi is not None and gi.matches(rel, False):
                     continue
                 if ex is not None and ex.matches(rel, False):
+                    res.excluded.append(rel)
                     continue
                 if inc is not None and not inc.matches(rel, False):
+                    res.excluded.append(rel)
                     continue
                 if os.path.islink(full) and not _inside(root_real, full):
                     skip(rel, "symlink_outside")

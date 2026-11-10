@@ -37,7 +37,22 @@ Example line in the output: `- Scale: 10k MAU at launch, 100k in 12 months, peak
 
 ## Mode 1: New Project Questions
 
-Requirements capture: the answers (or defaults) form a requirements list of Workload, Deployment environment, Budget, Team size, Data sensitivity, Latency, Availability and Operational constraints. Each item becomes a row of Requirements → Decisions in `01-system-design.md`.
+Requirements capture: the answers (or defaults) fill the Requirements table in `01-system-design.md` (`| Requirement | Value | Source | Effect on design |`), one row per item:
+
+| Requirement row | Comes from | Default when unanswered |
+|---|---|---|
+| Goal | The request or PRD | none: always from the input |
+| Functional | The request or PRD | none: always from the input |
+| Non-functional | Question 4 (Latency, consistency) | Latency default |
+| Roles | The request; question 5 when admin or partner access matters | end users plus one admin role |
+| Traffic and data estimate | Question 1 (Workload) | Workload default |
+| Availability and recovery target | Question 4 (Availability) | Availability default; RPO 1 h, RTO 4 h |
+| Compliance | Question 5 (Data sensitivity) | Data sensitivity default |
+| Budget | Question 6 | Budget default |
+| Deployment constraint | Question 2 (Deployment environment) and question 6 (Operational constraints) | Deployment environment and Operational constraints defaults |
+| Team capacity | Question 3 (Team size) | Team size default |
+
+Source is `user` for a stated answer and `assumption` for a default (`assumption (non-interactive)` when no questions could be asked). Effect on design names the decision or component the value drives. Each row also feeds Requirements → Decisions, and each assumption is listed under Assumptions & Constraints.
 
 | # | Topic | Example ask | Why it matters |
 |---|---|---|---|

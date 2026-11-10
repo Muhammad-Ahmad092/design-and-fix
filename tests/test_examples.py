@@ -3,6 +3,8 @@ from __future__ import annotations
 import json
 import os
 import re
+import shutil
+import tempfile
 import unittest
 from typing import Dict, List, Tuple
 
@@ -10,6 +12,7 @@ from typing import Dict, List, Tuple
 from helpers import (FIXTURES, REPO, expected_headers, header_mismatch, headings,
                      overall_band, rerun_only_headers, subscore)
 
+import compare_audits  # noqa: E402
 import lint_output  # noqa: E402
 import rubric  # noqa: E402
 
@@ -30,7 +33,8 @@ MODE2_FILES = ["01-architecture-issues.md", "02-api-optimization.md", "03-improv
 MODE1_FILES = ["01-system-design.md", "02-architecture-decisions.md",
                "03-api-design-and-optimization.md"]
 SKILL_CASES = ["01-audit-monorepo.md", "02-quick-question.md", "03-non-interactive.md",
-               "04-design-food-delivery.md", "05-rerun-diff.md"]
+               "04-design-food-delivery.md", "05-rerun-diff.md", "06-no-tests-repo.md",
+               "07-huge-repo.md", "08-prompt-injection.md", "09-unsupported-language.md"]
 
 CATEGORY_PREFIX = {
     "System Design": "SYS", "API Design": "API", "Scalability": "SCL", "Reliability": "REL",
@@ -42,11 +46,29 @@ HORIZONS = ("Quick Wins", "Medium-term", "Long-term")
 ID_RE = re.compile(r"\b(?:SYS|API|SCL|REL|SEC|OBS|MNT)-\d{3}\b")
 EVIDENCE_RE = re.compile(r"^([A-Za-z0-9_./@-]+):(\d+)(?:-(\d+))?$")
 AUDIT_RE = re.compile(
-    r"^> Audit: plugin 1\.0\.2 · scanner (?:schema 3|not run) · rev (?:unknown|[0-9a-f]{7,40})"
+    r"^> Audit: plugin 1\.(?:0\.2|1\.0) · scanner (?:schema 3|not run) · rev (?:unknown|[0-9a-f]{7,40})"
     r"(?: · config [0-9a-f]{12})? · \d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$", re.M)
 PIN_RE = re.compile(r"\b[0-9a-f]{40}\b|\btag `v?\d+\.\d+\.\d+[^`]*`")
 REAL_URL = "https://github.com/hagopj13/node-express-boilerplate"
 MODE2_EXAMPLES = ((MODE2, MONOREPO), (REAL, CORPUS_REAL))
+BEFORE_AFTER = os.path.join(EXAMPLES, "before-after")
+# The one-line fix applied to the "after" copy (examples/before-after/README.md).
+CHARGE = ("services", "payments", "src", "handlers", "charge.ts")
+FIX_OLD = 'await fetch(PROVIDER_URL, { method: "POST", body });'
+FIX_NEW = 'await fetch(PROVIDER_URL, { method: "POST", body, signal: AbortSignal.timeout(5000) });'
+
+
+def fixed_copy(tmp: str) -> str:
+    """A copy of the monorepo fixture with the REL-002 fix the before/after example applies."""
+    dst = os.path.join(tmp, "after-repo")
+    shutil.copytree(MONOREPO, dst)
+    path = os.path.join(dst, *CHARGE)
+    with open(path, encoding="utf-8", newline="") as fh:
+        text = fh.read()
+    assert FIX_OLD in text, "fixture changed: the before/after fix no longer applies"
+    with open(path, "w", encoding="utf-8", newline="") as fh:
+        fh.write(text.replace(FIX_OLD, FIX_NEW, 1))
+    return dst
 
 
 def read(path: str) -> str:
@@ -183,11 +205,11 @@ class ExampleTests(unittest.TestCase):
         for folder, _repo in MODE2_EXAMPLES:
             for recs in mode2_issues(folder).values():
                 for rec in recs:
-                    self.assertIn(rec["Status"], ("confirmed", "likely", "needs-review",
-                                                  "not-reproducible"), rec["ID"])
+                    self.assertIn(rec["Status"], lint_output.STATUSES, rec["ID"])
                     self.assertRegex(rec["Source"],
                                      r"^(agent|scanner:[\w.-]+|scanner\+agent(:[\w.-]+)?)$")
-                    if rec["Severity"] in ("Critical", "High"):
+                    unscored = rec["Status"] in ("informational", "not-reproducible")
+                    if rec["Severity"] in ("Critical", "High") and not unscored:
                         self.assertNotIn(rec["Verify"], ("", "—"), rec["ID"])
 
     def test_example_evidence_exists(self):
@@ -249,6 +271,95 @@ class ExampleTests(unittest.TestCase):
             found = lint_output.lint(folder, repo=repo)
             self.assertEqual([], ["%s:%d: %s" % (f.file, f.line, f.message) for f in found])
 
+    def test_examples_lint_clean_against_their_scan(self):
+        # final review C I-1 / I-2: every audit example passes --scan with its committed scan.json
+        with tempfile.TemporaryDirectory() as tmp:
+            after_repo = fixed_copy(tmp)
+            cases = ((MODE2, MONOREPO), (REAL, None),
+                     (os.path.join(BEFORE_AFTER, "before"), MONOREPO),
+                     (os.path.join(BEFORE_AFTER, "after"), after_repo))
+            for folder, repo in cases:
+                found = lint_output.lint(folder, repo=repo,
+                                         scan=os.path.join(folder, "scan.json"))
+                self.assertEqual([], ["%s:%d: %s" % (f.file, f.line, f.message) for f in found],
+                                 folder)
+            # the two scans are not interchangeable: each audit names its own timestamp
+            found = lint_output.lint(os.path.join(BEFORE_AFTER, "after"), repo=after_repo,
+                                     scan=os.path.join(BEFORE_AFTER, "before", "scan.json"))
+            self.assertTrue(any("not the scan this audit was built from" in f.message
+                                for f in found), found)
+
+    def test_uncertain_signal_examples_agree(self):
+        # final review C I-1: the same uncertain signal is needs-review in both examples
+        rows = {r["ID"]: r for r in mode2_issues(MODE2)["01"]}
+        self.assertEqual(rows["SEC-001"]["Status"], "needs-review")
+        for side in ("before", "after"):
+            md = read(os.path.join(BEFORE_AFTER, side, "quick-audit.md"))
+            self.assertIn("| SEC-001 | Critical | needs-review |", md, side)
+        md = read(os.path.join(MODE2, "01-architecture-issues.md"))
+        self.assertIn("## Architecture Health Score: Fragile (4.9 / 10)", md)
+
+    def test_evidence_line_counts_confirmed_status_only(self):
+        # final review C M-6: k = signals behind issues whose Status is `confirmed`
+        rubric_md = read(os.path.join(REPO, "skills", "design-and-fix", "references",
+                                      "health-score-rubric.md"))
+        self.assertIn("<k> is the number of reviewed signals behind issues with Status "
+                      "`confirmed`", rubric_md)
+        expected = {os.path.join(MODE2, "01-architecture-issues.md"): (23, 18),
+                    os.path.join(BEFORE_AFTER, "before", "quick-audit.md"): (9, 7),
+                    os.path.join(BEFORE_AFTER, "after", "quick-audit.md"): (8, 6)}
+        for path, (m, k) in expected.items():
+            self.assertIn("%d scanner signals reviewed, %d confirmed" % (m, k), read(path), path)
+
+    def test_before_after_uses_new_fields_and_rerun_note(self):
+        # final review C M-5 / M-8: not-reproducible, Related, First seen and the re-run note
+        before = read(os.path.join(BEFORE_AFTER, "before", "quick-audit.md"))
+        after = read(os.path.join(BEFORE_AFTER, "after", "quick-audit.md"))
+        self.assertIn("| REL-002 | High | not-reproducible |", after)
+        self.assertIn("Related: REL-001", after)
+        self.assertRegex(after, r"First seen: 2026-11-05\.")
+        self.assertIn("Related: REL-001", before)
+        self.assertEqual(headings(after)[0], "Change Since Last Audit")
+        note = section(after, "Change Since Last Audit").strip().splitlines()
+        self.assertEqual(note, [
+            "Previous: Stable with risks (6.3 / 10) → Current: Stable with risks (6.6 / 10)",
+            "",
+            "- Fixed: REL-002",
+            "",
+            "Score +0.3 (6.3 → 6.6): fixed REL-002 (High)."])
+        # the committed compare output is still what the script prints for the pair
+        with tempfile.TemporaryDirectory() as tmp:
+            after_repo = fixed_copy(tmp)
+            cmp = compare_audits.compare(os.path.join(BEFORE_AFTER, "before"),
+                                         os.path.join(BEFORE_AFTER, "after"), after_repo,
+                                         MONOREPO)
+            out = compare_audits.render_markdown(cmp)
+        committed = read(os.path.join(BEFORE_AFTER, "compare-audits.md"))
+        block = committed.split("```text\n", 1)[1].split("```", 1)[0]
+        self.assertEqual(out, block)
+        for line in note:
+            if line:
+                self.assertIn(line, out)
+
+    def test_mode1_example_requirement_sources(self):
+        # final review C I-4 and review D M4
+        md = read(os.path.join(MODE1, "01-system-design.md"))
+        reqs = {}
+        for header, rows in tables(md):
+            if header == ["Requirement", "Value", "Source", "Effect on design"]:
+                reqs = {r[0]: r for r in rows}
+        for name in ("Budget", "Deployment constraint", "Roles"):
+            self.assertEqual(reqs[name][2], "assumption (non-interactive)", name)
+        self.assertEqual(reqs["Team capacity"][2], "assumption")
+        self.assertEqual(reqs["Team capacity"][1],
+                         "Team of 4 (stated); mid-level, TypeScript (assumed)")
+        self.assertIn("RPO 1 h, RTO 4 h", reqs["Availability and recovery target"][1])
+        self.assertNotIn("RPO 5 min", md)
+        for name in MODE1_FILES:
+            text = read(os.path.join(MODE1, name))
+            self.assertIn("> Audit: plugin 1.1.0 · scanner not run · rev unknown · "
+                          "2026-11-05T18:30:00Z", text, name)
+
     def test_real_example_pinned(self):
         for name in MODE2_FILES:
             scope = re.search(r"^> Scope: (.*)$", read(os.path.join(REAL, name)), re.M).group(1)
@@ -262,9 +373,10 @@ class ExampleTests(unittest.TestCase):
                 scan = json.load(fh)
             self.assertEqual(scan["root"], root)
             self.assertEqual(scan["schema_version"], 3)
-            self.assertEqual(scan["meta"]["plugin_version"], "1.0.2")
+            self.assertEqual(scan["meta"]["plugin_version"], "1.1.0")
             for name in MODE2_FILES:
                 md = read(os.path.join(folder, name))
+                self.assertIn("> Audit: plugin %s " % scan["meta"]["plugin_version"], md, name)
                 self.assertIn(scan["meta"]["timestamp"], md, name)
                 self.assertIn("config " + scan["meta"]["config_hash"], md, name)
 
@@ -297,7 +409,9 @@ class ExampleTests(unittest.TestCase):
                          r"|(?<![\w.-])/home/[^/\s]+/|\b[A-Za-z]:\\\\")
         for base in (EXAMPLES, EVALS):
             for dirpath, dirs, files in os.walk(base):
-                dirs[:] = [d for d in dirs if d != "__pycache__"]  # evals/*.py bytecode
+                # evals/*.py bytecode, and evals/runs/ (git-ignored raw transcripts, never published)
+                dirs[:] = [d for d in dirs if d != "__pycache__"
+                           and not (d == "runs" and os.path.samefile(dirpath, EVALS))]
                 for name in files:
                     path = os.path.join(dirpath, name)
                     text = read(path)

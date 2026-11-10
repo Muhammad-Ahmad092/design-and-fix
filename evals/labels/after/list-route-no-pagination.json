@@ -1,0 +1,20 @@
+[
+  {
+    "repo": "robot-shop",
+    "file": "catalogue/server.js",
+    "line": 67,
+    "snippet": "GET /products: returns every row with no pagination",
+    "fingerprint": "a698dca23b3cc1c7",
+    "label": "tp",
+    "note": "GET /products returns all products from find({}) with no skip/limit (catalogue/server.js)."
+  },
+  {
+    "repo": "robot-shop",
+    "file": "user/server.js",
+    "line": 104,
+    "snippet": "GET /users: returns every row with no pagination",
+    "fingerprint": "bc7b8e94ca067d13",
+    "label": "tp",
+    "note": "GET /users returns all users with no pagination; comment says debugging only but route is mounted; low impact."
+  }
+]

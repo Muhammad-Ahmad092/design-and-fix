@@ -132,7 +132,7 @@
     "snippet": "no health endpoint in src/flask",
     "fingerprint": "095001b0f3abbeef",
     "label": "fp",
-    "note": "Route matched inside a docstring of flask/ctx.py; library code (the review2 case)."
+    "note": "Route matched inside a docstring of flask/ctx.py; library code (a Flask false positive fixed in 1.0.2)."
   },
   {
     "repo": "full-stack-fastapi-template",

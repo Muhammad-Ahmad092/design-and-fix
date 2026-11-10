@@ -3,7 +3,7 @@
     "repo": "django",
     "file": "django/contrib/admin/options.py",
     "line": 1,
-    "snippet": "fan-in 14 (non-test 7), fan-out 39, 2574 LOC",
+    "snippet": "fan-in 14 (non-test 7), fan-out 39, 2574 LOC, 13 import clusters, 9 top-level defs",
     "fingerprint": "528ebd8db08e1d95",
     "label": "tp",
     "note": "ModelAdmin/InlineModelAdmin in 2574 LOC with fan-out 39: forms, permissions, views, changelist, history and messaging in one module."
@@ -12,7 +12,7 @@
     "repo": "django",
     "file": "django/contrib/admin/utils.py",
     "line": 1,
-    "snippet": "fan-in 15 (non-test 10), fan-out 17, 614 LOC",
+    "snippet": "fan-in 15 (non-test 10), fan-out 17, 614 LOC, 5 import clusters, 25 top-level defs",
     "fingerprint": "6e475a68ca68767f",
     "label": "unsure",
     "note": "Grab-bag admin helpers (614 LOC, fan-in 15, fan-out 17); mixed responsibilities but moderate size."
@@ -21,34 +21,16 @@
     "repo": "django",
     "file": "django/contrib/auth/models.py",
     "line": 1,
-    "snippet": "fan-in 100 (non-test 8), fan-out 15, 500 LOC",
+    "snippet": "fan-in 100 (non-test 8), fan-out 15, 500 LOC, 5 import clusters, 13 top-level defs",
     "fingerprint": "f831654d9c3852e6",
     "label": "fp",
     "note": "Core auth models (User, Group, Permission); fan-in 100 is mostly tests importing the User model; cohesive."
   },
   {
     "repo": "django",
-    "file": "django/contrib/contenttypes/fields.py",
-    "line": 1,
-    "snippet": "fan-in 30 (non-test 2), fan-out 17, 828 LOC",
-    "fingerprint": "acddc54fb2a15b05",
-    "label": "fp",
-    "note": "GenericForeignKey/GenericRelation in 828 LOC; one cohesive feature."
-  },
-  {
-    "repo": "django",
-    "file": "django/contrib/gis/db/models/functions.py",
-    "line": 1,
-    "snippet": "fan-in 11 (non-test 3), fan-out 8, 590 LOC",
-    "fingerprint": "9326fede43997dc0",
-    "label": "fp",
-    "note": "Collection of GIS database function classes; cohesive by design."
-  },
-  {
-    "repo": "django",
     "file": "django/contrib/gis/geos/geometry.py",
     "line": 1,
-    "snippet": "fan-in 12 (non-test 12), fan-out 18, 780 LOC",
+    "snippet": "fan-in 12 (non-test 12), fan-out 18, 780 LOC, 3 import clusters, 3 top-level defs",
     "fingerprint": "e400e873e64f6224",
     "label": "fp",
     "note": "GEOSGeometry class hierarchy (780 LOC); one cohesive abstraction."
@@ -57,25 +39,16 @@
     "repo": "django",
     "file": "django/core/management/base.py",
     "line": 1,
-    "snippet": "fan-in 65 (non-test 32), fan-out 10, 695 LOC",
+    "snippet": "fan-in 65 (non-test 32), fan-out 10, 695 LOC, 4 import clusters, 10 top-level defs",
     "fingerprint": "d98107e55ce37f0a",
     "label": "fp",
     "note": "BaseCommand and its parser helpers; high fan-in because every command subclasses it; cohesive."
   },
   {
     "repo": "django",
-    "file": "django/core/validators.py",
-    "line": 1,
-    "snippet": "fan-in 19 (non-test 8), fan-out 6, 698 LOC",
-    "fingerprint": "7cfb9dec4c6f77a0",
-    "label": "fp",
-    "note": "Collection of validators; cohesive by design."
-  },
-  {
-    "repo": "django",
     "file": "django/db/backends/base/base.py",
     "line": 1,
-    "snippet": "fan-in 12 (non-test 7), fan-out 11, 792 LOC",
+    "snippet": "fan-in 12 (non-test 7), fan-out 11, 792 LOC, 3 import clusters, 1 top-level defs",
     "fingerprint": "ebd43c6de38dc965",
     "label": "unsure",
     "note": "BaseDatabaseWrapper (792 LOC): large central class, but a single responsibility (connection lifecycle)."
@@ -84,99 +57,72 @@
     "repo": "django",
     "file": "django/db/migrations/state.py",
     "line": 1,
-    "snippet": "fan-in 15 (non-test 5), fan-out 15, 989 LOC",
+    "snippet": "fan-in 15 (non-test 5), fan-out 15, 989 LOC, 5 import clusters, 8 top-level defs",
     "fingerprint": "c6f2473780498c94",
     "label": "unsure",
     "note": "ProjectState/ModelState/StateApps (989 LOC); large but one concern (migration state)."
   },
   {
     "repo": "django",
-    "file": "django/db/models/expressions.py",
+    "file": "django/db/models/fields/related.py",
     "line": 1,
-    "snippet": "fan-in 46 (non-test 31), fan-out 9, 2085 LOC",
-    "fingerprint": "7d3f74a3db4b5c13",
-    "label": "unsure",
-    "note": "All expression classes in 2085 LOC (fan-in 46); same-kind classes, but the file size alone is a maintainability cost."
-  },
-  {
-    "repo": "django",
-    "file": "django/db/models/fields/__init__.py",
-    "line": 1,
-    "snippet": "fan-in 16 (non-test 15), fan-out 24, 2885 LOC",
-    "fingerprint": "7b306fec39b0b408",
-    "label": "unsure",
-    "note": "All model field classes in 2885 LOC; same-kind classes, file size is the concern rather than coupling."
-  },
-  {
-    "repo": "django",
-    "file": "django/db/models/lookups.py",
-    "line": 1,
-    "snippet": "fan-in 29 (non-test 16), fan-out 11, 798 LOC",
-    "fingerprint": "d657adfa1f01604b",
+    "snippet": "fan-in 10 (non-test 6), fan-out 23, 1995 LOC, 6 import clusters, 8 top-level defs",
+    "fingerprint": "e6be66fdb9a710d9",
     "label": "fp",
-    "note": "Collection of lookup classes; cohesive."
+    "note": "Related-field classes and descriptors (ForeignKey, M2M, OneToOne); one cohesive concern, same-kind classes."
+  },
+  {
+    "repo": "django",
+    "file": "django/db/models/query.py",
+    "line": 1,
+    "snippet": "fan-in 11 (non-test 6), fan-out 20, 2732 LOC, 5 import clusters, 19 top-level defs (mixed kinds)",
+    "fingerprint": "79fef8127adef790",
+    "label": "unsure",
+    "note": "QuerySet, RawQuerySet, Prefetch and prefetch helpers; related ORM concern but 2732 LOC size is the cost."
   },
   {
     "repo": "django",
     "file": "django/db/models/sql/query.py",
     "line": 1,
-    "snippet": "fan-in 10 (non-test 8), fan-out 17, 2735 LOC",
+    "snippet": "fan-in 10 (non-test 8), fan-out 17, 2735 LOC, 3 import clusters, 9 top-level defs",
     "fingerprint": "ec081fda6640c049",
     "label": "tp",
     "note": "Query class in 2735 LOC with fan-out 17: a single god class (joins, filters, annotations, ordering, subqueries)."
   },
   {
     "repo": "django",
-    "file": "django/forms/widgets.py",
+    "file": "django/forms/models.py",
     "line": 1,
-    "snippet": "fan-in 16 (non-test 9), fan-out 11, 1210 LOC",
-    "fingerprint": "e5099806824c9bf5",
+    "snippet": "fan-in 17 (non-test 6), fan-out 14, 1687 LOC, 2 import clusters, 20 top-level defs (mixed kinds)",
+    "fingerprint": "3a875f56015acd1a",
     "label": "fp",
-    "note": "Collection of widget classes; cohesive."
+    "note": "ModelForm, formsets and model choice fields; one concern (model-backed forms)."
   },
   {
     "repo": "django",
-    "file": "django/template/base.py",
+    "file": "django/test/client.py",
     "line": 1,
-    "snippet": "fan-in 19 (non-test 8), fan-out 10, 1124 LOC",
-    "fingerprint": "30d9f264c043f1e9",
-    "label": "unsure",
-    "note": "Template engine core (lexer, parser, nodes, variables) in 1124 LOC; several concerns but tightly related."
+    "snippet": "fan-in 21 (non-test 0), fan-out 17, 1756 LOC, 6 import clusters, 15 top-level defs (mixed kinds)",
+    "fingerprint": "b38f8adfed958b68",
+    "label": "fp",
+    "note": "Test client, RequestFactory and handlers; cohesive, test tooling."
   },
   {
     "repo": "django",
-    "file": "django/template/defaultfilters.py",
+    "file": "django/test/testcases.py",
     "line": 1,
-    "snippet": "fan-in 56 (non-test 4), fan-out 11, 991 LOC",
-    "fingerprint": "a331021d46fb57d3",
+    "snippet": "fan-in 14 (non-test 0), fan-out 26, 1859 LOC, 7 import clusters, 26 top-level defs (mixed kinds)",
+    "fingerprint": "42dfbcdd9daadc24",
     "label": "fp",
-    "note": "Collection of template filters; cohesive by design."
+    "note": "Test case class hierarchy (SimpleTestCase, TestCase, LiveServer*) with assertions; one hierarchy, test tooling."
   },
   {
     "repo": "django",
     "file": "django/test/utils.py",
     "line": 1,
-    "snippet": "fan-in 195 (non-test 1), fan-out 16, 994 LOC",
+    "snippet": "fan-in 195 (non-test 1), fan-out 16, 994 LOC, 6 import clusters, 35 top-level defs (mixed kinds)",
     "fingerprint": "94d2d4be61075581",
     "label": "tp",
     "note": "Grab-bag of unrelated test utilities (settings overrides, query capture, isolate_apps, tag helpers) in 994 LOC with fan-in 195."
-  },
-  {
-    "repo": "django",
-    "file": "django/utils/html.py",
-    "line": 1,
-    "snippet": "fan-in 33 (non-test 20), fan-out 9, 510 LOC",
-    "fingerprint": "472ec47e0deec0bc",
-    "label": "fp",
-    "note": "HTML utility functions; cohesive."
-  },
-  {
-    "repo": "django",
-    "file": "tests/model_fields/models.py",
-    "line": 1,
-    "snippet": "fan-in 22 (non-test 0), fan-out 11, 687 LOC",
-    "fingerprint": "3eab0c57cd3132fc",
-    "label": "fp",
-    "note": "Test fixture models for the model_fields test app; test data, not production design."
   }
 ]

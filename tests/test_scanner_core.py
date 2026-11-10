@@ -214,5 +214,199 @@ class CliArgumentReviewTests(unittest.TestCase):  # review M6, M7
         self.assertEqual(json.loads(out)["scope"], ["a"])
 
 
+
+# ---------------------------------------------------------------- 1.1.0 CLI additions (Task 15)
+SEV_ORDER = ("Critical", "High", "Medium", "Low")
+
+
+class CliAdditionsTests(unittest.TestCase):
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        self.root = os.path.join(self._tmp.name, "root")
+        _tree(self.root, {
+            "svc/app.py": ("import requests\n\n\ndef f(u):\n    try:\n        return requests.get(u)\n"
+                           "    except Exception:\n        pass\n"),
+            "svc/more.py": "import requests\n\n\ndef g(u):\n    return requests.post(u)\n",
+        })
+
+    def test_version_flag(self):
+        code, out = run_cli("--version")
+        self.assertEqual(code, 0)
+        self.assertEqual(out, "design-and-fix scanner 1.1.0 (schema 3)\n")
+
+    def test_scan_without_path_is_usage_error(self):
+        code, _ = run_cli("--no-git")
+        self.assertEqual(code, 2)
+
+    def test_list_rules_includes_default_column(self):
+        from dfscan import registry
+        registry.ensure_loaded()
+        code, out = run_cli("--list-rules")
+        self.assertEqual(code, 0)
+        lines = out.splitlines()
+        self.assertEqual(lines[0].split(), ["ID", "CATEGORY", "SEVERITY", "CONFIDENCE", "DEFAULT"])
+        rows = {ln.split()[0]: ln for ln in lines[1:] if ln.strip()}
+        self.assertEqual(set(rows), set(registry.RULES))
+        meta = registry.RULES["http-no-timeout"]
+        row = rows["http-no-timeout"]
+        for text in (meta.category, meta.default_severity, meta.confidence):
+            self.assertIn(text, row)
+        self.assertTrue(row.rstrip().endswith(" on"), row)
+        code, out = run_cli("--list-rules", "--format", "json")
+        self.assertEqual(code, 0)
+        data = {r["id"]: r for r in json.loads(out)}
+        self.assertEqual(data["http-no-timeout"]["default"], "on")
+        self.assertEqual(set(data["http-no-timeout"]),
+                         {"id", "category", "default_severity", "confidence", "default"})
+
+    def test_list_rules_formats_and_path_conflict(self):  # fix round 1
+        code, out = run_cli("--list-rules", "--format", "markdown")
+        self.assertEqual(code, 0)
+        self.assertTrue(out.startswith("ID "), out[:40])
+        code, out = run_cli(self.root, "--list-rules")
+        self.assertEqual(code, 2)
+        self.assertEqual(out, "")
+        code, _ = run_cli(self.root, "--explain-rule", "god-module")
+        self.assertEqual(code, 2)
+
+    def test_scope_report_matches_schema(self):
+        from schema_validate import validate
+        with open(os.path.join(SCRIPTS, "scan.schema.json"), encoding="utf-8") as fh:
+            schema = json.load(fh)
+        prop = schema["properties"]["summary"]["properties"]["scope_report"]
+        self.assertEqual(set(prop["required"]),
+                         {"scanned", "skipped_by_reason", "excluded_by_config"})
+        self.assertNotIn("scope_report", schema["properties"]["summary"]["required"])
+        code, out = run_cli(self.root, "--no-git", "--quiet")
+        self.assertEqual(validate(json.loads(out), schema), [])
+        self.assertNotEqual(validate({"scanned": 1, "skipped_by_reason": {}}, prop), [])
+
+    def test_explain_rule_unknown_id_exits_2(self):
+        code, out = run_cli("--explain-rule", "no-such-rule")
+        self.assertEqual(code, 2)
+        self.assertIn("unknown rule id", json.loads(out)["error"])
+
+    def test_explain_rule_shows_meta_and_precision(self):
+        from dfscan import registry
+        import gen_rule_docs
+        registry.ensure_loaded()
+        code, out = run_cli("--explain-rule", "http-no-timeout")
+        self.assertEqual(code, 0)
+        meta = registry.RULES["http-no-timeout"]
+        for text in (meta.id, meta.description, meta.limitations, meta.remediation,
+                     "version: " + meta.version, "default: on"):
+            self.assertIn(text, out)
+        self.assertIn("measured precision:", out)
+        precision = os.path.join(gen_rule_docs.REPO, "evals", "precision.md")
+        if os.path.isfile(precision):
+            with open(precision, encoding="utf-8") as fh:
+                measured = gen_rule_docs.parse_precision(fh.read())
+            if "http-no-timeout" in measured:
+                prec, n = measured["http-no-timeout"]
+                self.assertIn("measured precision: %s (n=%s" % (prec, n), out)
+
+    def test_max_findings_caps_and_notes(self):
+        code, out = run_cli(self.root, "--no-git", "--quiet")
+        self.assertEqual(code, 0)
+        full = json.loads(out)["signals"]
+        self.assertGreaterEqual(len(full), 3)
+        code, out = run_cli(self.root, "--no-git", "--quiet", "--max-findings", "2")
+        self.assertEqual(code, 0)
+        res = json.loads(out)
+        sev = [SEV_ORDER.index(s["severity_hint"]) for s in res["signals"]]
+        self.assertEqual(len(sev), 2)
+        self.assertEqual(sev, sorted(sev))
+        self.assertEqual(sev[0], min(SEV_ORDER.index(s["severity_hint"]) for s in full))
+        self.assertTrue(any("max-findings 2: showing 2 of %d signals" % len(full) in n
+                            for n in res["notes"]), res["notes"])
+        code, out = run_cli(self.root, "--no-git", "--quiet", "--max-findings", "100")
+        self.assertFalse(any("max-findings" in n for n in json.loads(out)["notes"]))
+        code, _ = run_cli(self.root, "--no-git", "--quiet", "--max-findings", "-1")
+        self.assertEqual(code, 2)
+
+    def test_output_dir_writes_scan_json(self):
+        out_dir = os.path.join(self._tmp.name, "docs", "architecture", ".scan")
+        code, out = run_cli(self.root, "--no-git", "--quiet", "--format", "markdown",
+                            "--output-dir", out_dir)
+        self.assertEqual(code, 0)
+        self.assertTrue(out.startswith("# Scan summary"))
+        with open(os.path.join(out_dir, "scan.json"), encoding="utf-8") as fh:
+            saved = json.load(fh)
+        self.assertEqual(saved["schema_version"], 3)
+        self.assertIn("signals", saved)
+
+    def test_output_dir_gets_a_gitignore(self):
+        # final review C M-11: scan.json holds the absolute root and snippets; keep it out of git
+        out_dir = os.path.join(self._tmp.name, "docs", "architecture", ".scan")
+        code, _ = run_cli(self.root, "--no-git", "--quiet", "--output-dir", out_dir)
+        self.assertEqual(code, 0)
+        with open(os.path.join(out_dir, ".gitignore"), encoding="utf-8", newline="") as fh:
+            self.assertEqual(fh.read(), "*\n")
+        # an existing .gitignore is the user's: never overwritten
+        with open(os.path.join(out_dir, ".gitignore"), "w", encoding="utf-8") as fh:
+            fh.write("scan.json\n")
+        code, _ = run_cli(self.root, "--no-git", "--quiet", "--output-dir", out_dir)
+        self.assertEqual(code, 0)
+        with open(os.path.join(out_dir, ".gitignore"), encoding="utf-8") as fh:
+            self.assertEqual(fh.read(), "scan.json\n")
+
+    def test_output_dir_unwritable_is_an_error(self):
+        blocker = os.path.join(self._tmp.name, "file.txt")
+        with open(blocker, "w", encoding="utf-8") as fh:
+            fh.write("x")
+        code, out = run_cli(self.root, "--no-git", "--quiet", "--output-dir",
+                            os.path.join(blocker, "sub"))
+        self.assertEqual(code, 1)
+        self.assertIn("cannot write", json.loads(out)["error"])
+
+
+class ScopeReportTests(unittest.TestCase):
+    def test_scope_report_counts(self):
+        with tempfile.TemporaryDirectory() as d:
+            _tree(d, {
+                "src/a.py": "a = 1\n",
+                "src/b.py": "b = 2\n",
+                "src/app.min.js": "var x=1;\n",
+                "src/big.py": "x = 1\n" * 40,
+                "src/gen/x.generated.ts": "export const x = 1;\n",
+                "legacy/old.py": "o = 1\n",
+                "legacy/old2.py": "o = 2\n",
+                "only/kept.py": "k = 1\n",
+            })
+            kw = dict(use_git=False, max_file_bytes=100, exclude=["legacy/", "**/*.generated.ts"])
+            r = scan(d, **kw)
+            rep = r["summary"]["scope_report"]
+            self.assertEqual(rep["scanned"], r["summary"]["files_scanned"])
+            self.assertEqual(rep["skipped_by_reason"], {"minified": 1, "too_large": 1})
+            self.assertEqual(rep["excluded_by_config"], 2)  # legacy/ (once) + the generated file
+            r = scan(d, scope=["src"], **kw)
+            rep = r["summary"]["scope_report"]
+            self.assertEqual(rep["scanned"], 2)
+            self.assertEqual(rep["excluded_by_config"], 1)
+            r = scan(d, use_git=False, include=["only/**"])
+            rep = r["summary"]["scope_report"]
+            self.assertEqual(rep["scanned"], 1)
+            self.assertEqual(rep["excluded_by_config"], 7)
+            self.assertEqual(rep["skipped_by_reason"], {})
+
+
+class WalkerTestNameTests(unittest.TestCase):  # Task 16 (d)
+    def test_rspec_files_are_tests(self):
+        from dfscan.walker import is_test_file, is_test_filename
+        for rel in ("app/models/user_spec.rb", "lib/user.spec.rb", "user_spec.rb"):
+            self.assertTrue(is_test_filename(rel), rel)
+            self.assertTrue(is_test_file(rel), rel)
+        for rel in ("app/models/spec.rb", "app/models/inspector.rb", "lib/user_spec_helper.rb"):
+            self.assertFalse(is_test_filename(rel), rel)
+        with tempfile.TemporaryDirectory() as d:
+            os.makedirs(os.path.join(d, "lib"))
+            for name in ("user_spec.rb", "user.rb"):
+                with open(os.path.join(d, "lib", name), "w", encoding="utf-8") as fh:
+                    fh.write("class User\nend\n")
+            tests = {f.rel: f.is_test for f in walk(d)}
+        self.assertEqual(tests, {"lib/user_spec.rb": True, "lib/user.rb": False})
+
+
 if __name__ == "__main__":
     unittest.main()

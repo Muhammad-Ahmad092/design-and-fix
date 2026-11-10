@@ -13,16 +13,24 @@ def _read(*parts):
 
 
 class RepoDocsTests(unittest.TestCase):
-    def test_changelog_covers_every_review_id(self):
+    def test_changelog_has_no_internal_tags(self):
         text = _read("CHANGELOG.md")
-        section = text.split("## [1.0.1]")[1].split("## [1.0.0]")[0]
-        ids = (["BUG-%d" % i for i in range(1, 10)]
-               + ["DES-%d" % i for i in range(1, 9)]
-               + ["FEAT-%d" % i for i in range(1, 11)]
-               + ["REPO-1", "REPO-2", "REPO-4", "REPO-5"])
-        for i in ids:
-            self.assertRegex(section, r"\(%s\)" % re.escape(i), i)
-        self.assertIn("Initial release.", text)
+        self.assertIsNone(re.search(r"\((?:R[12]-|BUG-|DES-|FEAT-|REPO-)[^)]*\)", text))
+
+    def test_changelog_has_1_1_0_section_first(self):
+        text = _read("CHANGELOG.md")
+        self.assertRegex(text, r"(?m)^## \[1\.1\.0\] - (unreleased|\d{4}-\d{2}-\d{2})$")
+        self.assertLess(text.index("## [1.1.0]"), text.index("## [1.0.2]"))
+
+    def test_changelog_matrix_matches_ci(self):
+        ci = _read(".github", "workflows", "ci.yml")
+        versions = re.search(r'python: \[([^\]]+)\]', ci).group(1)
+        section = _read("CHANGELOG.md").split("## [1.0.2]")[1].split("## [1.0.1]")[0]
+        for v in re.findall(r'"([\d.]+)"', versions):
+            self.assertIn(v, section)
+
+    def test_readme_has_ci_badge(self):
+        self.assertIn("actions/workflows/ci.yml/badge.svg", _read("README.md"))
 
     def test_readme_install_one_block_per_harness(self):
         text = _read("README.md")
@@ -75,23 +83,17 @@ class RepoDocsTests(unittest.TestCase):
         self.assertRegex(text, r"(?m)^## \[1\.0\.2\] - \d{4}-\d{2}-\d{2}$")
         self.assertLess(text.index("## [1.0.2]"), text.index("## [1.0.1]"))
 
-    def test_changelog_1_0_2_covers_every_item_id(self):
+    def test_changelog_1_0_2_keeps_key_notes(self):
         text = _read("CHANGELOG.md")
         section = text.split("## [1.0.2]")[1].split("## [1.0.1]")[0]
-        ids = (["R1-%d" % i for i in (2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 14)]
-               + ["R2-release", "R2-ci-validate", "R2-fp1", "R2-fp2", "R2-fp3",
-                  "R2-fp4", "R2-fp5", "R2-precision", "R2-example", "R2-linter",
-                  "R2-runner", "R2-demo", "R2-trend", "R2-api", "R2-frameworks",
-                  "R2-infra", "R2-deps", "R2-schema", "R2-sarif", "R2-mode1",
-                  "R2-weights"])
-        for i in ids:
-            self.assertIn(i, section, i)
         for needle in ("additive", "--no-gitignore", "schema 3"):
             self.assertIn(needle, section, needle)
+        self.assertIn("Initial release.", text)
 
-    def test_roadmap_lists_1_2_0_features(self):
+    def test_roadmap_lists_1_1_0_and_2_0_0(self):
         text = _read("ROADMAP.md")
-        self.assertIn("1.2.0", text)
+        self.assertIn("## 1.1.0", text)
+        self.assertIn("## 2.0.0", text)
         for needle in ("MCP server", "GitHub Action", "Architecture rules file",
                        "Diagrams from the import graph", "Custom rule plugins",
                        "CVE", "Incremental scanning"):
@@ -175,6 +177,45 @@ class RepoDocsTests(unittest.TestCase):
         m_file = re.search(r"(\d+)\s*/\s*(\d+)", skill)
         self.assertTrue(m_readme and m_file, "skill pass rate missing")
         self.assertEqual(m_readme.groups(), m_file.groups())
+
+    def test_readme_five_minute_start_is_first_section(self):
+        text = _read("README.md")
+        first = re.search(r"(?m)^## (.+)$", text)
+        self.assertEqual(first.group(1), "Five-minute start")
+        self.assertNotIn("<!--", text[:first.start()])
+        self.assertIn("docs/architecture", text[first.start():text.index("## Install")])
+        self.assertNotIn("Demo GIF", text)
+
+    def test_readme_states_reports_only(self):
+        text = _read("README.md")
+        self.assertIn("## Reports only, never edits code", text)
+        self.assertIn("## What this is not", text)
+        for term in ("Scanner signal", "Verified finding", "Recommendation"):
+            self.assertIn("**%s**" % term, text)
+
+    def test_new_docs_exist_and_linked(self):
+        readme = _read("README.md")
+        for name in ("architecture", "troubleshooting", "compatibility"):
+            self.assertTrue(os.path.isfile(os.path.join(ROOT, "docs", name + ".md")), name)
+            self.assertIn("docs/%s.md" % name, readme)
+        arch = _read("docs", "architecture.md")
+        self.assertIn("no-tests", arch)
+        self.assertIn("OBS-001", arch)
+        self.assertIn("Rejected", arch)
+
+    def test_before_after_example_shows_resolved(self):
+        base = ("examples", "before-after")
+        compare = _read(*base, "compare-audits.md")
+        self.assertRegex(compare, r"- Fixed: REL-002")
+        self.assertRegex(compare, r"Score [+-]\d+\.\d \(\d+\.\d → \d+\.\d\)")
+        self.assertIn("REL-002", _read(*base, "before", "quick-audit.md"))
+        # the after run keeps REL-002 for one run only, as not-reproducible (never open)
+        after = _read(*base, "after", "quick-audit.md")
+        self.assertIn("| REL-002 | High | not-reproducible |", after)
+        self.assertNotRegex(after, r"\| REL-002 \| High \| (confirmed|likely|needs-review) \|")
+        for side in ("before", "after"):
+            raw = _read(*base, side, "scan.json")
+            self.assertNotRegex(raw, r"\b[A-Za-z]:[\\/]|/Users/|/tmp/")
 
     def test_local_links_resolve(self):
         for rel in (("README.md",), ("CONTRIBUTING.md",), ("ROADMAP.md",), ("examples", "README.md"),

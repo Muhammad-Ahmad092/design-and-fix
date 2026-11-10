@@ -3,11 +3,26 @@
 > Scope: Food-delivery platform (customer app, restaurant dashboard, courier app, backend)
 > Context: 50k users, team of 4, Node.js preferred, cost-sensitive, single launch city
 > Format: 1.0.2
-> Audit: plugin 1.0.2 · scanner not run · rev unknown · 2026-11-02T18:30:00Z
+> Audit: plugin 1.1.0 · scanner not run · rev unknown · 2026-11-05T18:30:00Z
 
 ## Overview
 
 A food-delivery platform where customers order from nearby restaurants, restaurants accept and prepare orders, and couriers deliver them with live tracking. A team of 4 must build and run it, so operational simplicity outranks independent scaling.
+
+### Requirements
+
+| Requirement | Value | Source | Effect on design |
+|---|---|---|---|
+| Goal | Customers order from nearby restaurants; couriers deliver with live tracking | user | One product in one launch city: one deployable covers it |
+| Functional | Menus, ordering and payment, restaurant accept and prepare, courier dispatch, live tracking | user | Modules identity, catalog, ordering, payments, dispatch and tracking |
+| Non-functional | p95 < 300 ms for API reads and writes, excluding the provider call | assumption (non-interactive) | Slow provider calls run in the worker, off the request path |
+| Roles | Customer, restaurant staff, courier, admin | assumption (non-interactive) | Role check per route; three client apps over one API |
+| Traffic and data estimate | 50k users, 10k DAU, about 30 peak QPS plus 20 courier pings/s | assumption (non-interactive) | One PostgreSQL primary without sharding; pings go to Redis |
+| Availability and recovery target | 99.9%; RPO 1 h, RTO 4 h (skill default) | assumption (non-interactive) | Managed PostgreSQL with standby and point-in-time recovery meets it without a second region |
+| Compliance | No special compliance; card data stays with the payment provider | assumption (non-interactive) | Hosted provider with tokenised cards keeps full PCI DSS out of scope |
+| Budget | Cost-sensitive | assumption (non-interactive) | Managed services in one region, about 300–600 USD/month |
+| Deployment constraint | One cloud region, single launch city | assumption (non-interactive) | No multi-region replication or global load balancing |
+| Team capacity | Team of 4 (stated); mid-level, TypeScript (assumed) | assumption | Modular monolith on NestJS; no service mesh or self-run clusters |
 
 ## System Context
 
@@ -120,13 +135,43 @@ Location pings are 90% of writes but go to Redis, not PostgreSQL: one API pair, 
 | Background work | BullMQ job queue on Redis | Kafka | Reuses Redis; job volume is thousands per day, not millions |
 | Payments | Hosted payment provider with tokenised cards and idempotency keys | Storing and charging cards in-house | Keeps the system out of full PCI DSS scope |
 
-Options for the architecture pattern:
+Each decision compares its options on the same ten columns (Low / Medium / High plus the reason that matters here).
 
-| Option | Strength | Weakness | Verdict |
-|---|---|---|---|
-| Modular monolith | One deploy, in-process calls, transactions across modules | Modules scale together; one bad release hits every domain | Chosen |
-| Microservices | Independent scaling and deploys per domain | Per-service ops, tracing and contracts for a team of 4 at 30 peak QPS | Rejected: operations cost exceeds any scaling gain |
-| Serverless functions | No servers to patch; pay per call | Cold starts on checkout, awkward WebSocket tracking | Rejected: tracking needs long-lived connections |
+### Trade-offs: Architecture pattern
+
+| Option | Complexity | Scalability | Reliability | Security | Operations | Cost | Familiarity | Lock-in | Migration path |
+|---|---|---|---|---|---|---|---|---|---|
+| Modular monolith (chosen) | Low: one deployable | Medium: modules scale together | Medium: one bad release hits every module | Medium: one boundary to secure | Low: one pipeline | Low | High: NestJS known | Low | Split a module into a service along its existing boundary |
+| Microservices | High: contracts and tracing | High: per domain | Medium: partial failures to handle | Medium: many service boundaries | High: per-service ops for a team of 4 | High | Low | Medium: platform tooling | Merging services back is costly |
+| Serverless functions | Medium | High | Medium: cold starts on checkout | Medium | Low | Low at this volume | Medium | High: provider runtime | Rewrite handlers to leave; WebSocket tracking is awkward |
+
+### Trade-offs: Primary database
+
+| Option | Complexity | Scalability | Reliability | Security | Operations | Cost | Familiarity | Lock-in | Migration path |
+|---|---|---|---|---|---|---|---|---|---|
+| PostgreSQL (chosen) | Low | Medium: one primary plus replicas | High: transactions and managed standby | High: row-level constraints | Low: managed service | Low | High | Low: standard SQL | Read replicas first, then partition orders by city |
+| MongoDB | Low | High: sharding built in | Medium: multi-document transactions are newer | Medium | Low: managed service | Medium | Medium | Medium: query API | Reshape documents into tables to leave |
+
+### Trade-offs: Live courier tracking
+
+| Option | Complexity | Scalability | Reliability | Security | Operations | Cost | Familiarity | Lock-in | Migration path |
+|---|---|---|---|---|---|---|---|---|---|
+| Redis keys + pub/sub over WebSocket (chosen) | Medium: socket gateway | High: pings stay off PostgreSQL | Medium: positions lost on a Redis restart (acceptable) | Medium: socket auth needed | Medium: one more managed service | Low | Medium | Low | Move to a managed pub/sub service behind the same gateway |
+| Polling positions stored in PostgreSQL | Low | Low: 20 writes/s plus polling reads on the primary | Medium | High: no new surface | Low | Low | High | Low | Add Redis later when the primary saturates |
+
+### Trade-offs: Background work
+
+| Option | Complexity | Scalability | Reliability | Security | Operations | Cost | Familiarity | Lock-in | Migration path |
+|---|---|---|---|---|---|---|---|---|---|
+| BullMQ on Redis (chosen) | Low | Medium: thousands of jobs/day | Medium: retries and backoff built in | Medium | Low: reuses Redis | Low | High: Node.js library | Low | Swap the queue adapter for a managed queue |
+| Kafka | High | High: millions of events/day | High: replayable log | Medium | High: cluster to run | High | Low | Medium | Event replay rarely needed at this volume |
+
+### Trade-offs: Payments
+
+| Option | Complexity | Scalability | Reliability | Security | Operations | Cost | Familiarity | Lock-in | Migration path |
+|---|---|---|---|---|---|---|---|---|---|
+| Hosted provider, tokenised cards (chosen) | Low | High: provider scales | High: provider SLA plus idempotency keys | High: card data never stored | Low | Medium: per-transaction fee | Medium | Medium: provider API | Second provider behind the same payments module |
+| Storing and charging cards in-house | High | Medium | Medium | Low: full PCI DSS scope | High: audits and key management | High | Low | Low | Hard to undo once card data is stored |
 
 ADRs: one per row in `docs/adr/` (shipped in this example under `adr/`).
 
@@ -147,9 +192,10 @@ ADRs: one per row in `docs/adr/` (shipped in this example under `adr/`).
 - Users: 50k registered customers (stated); 20% daily active = 10k DAU, 30 requests per DAU (Assumed (non-interactive))
 - Couriers: 200 on shift at once, one location ping every 10 s over 8 h (Assumed (non-interactive))
 - Team: 4 (stated); mid-level, comfortable with TypeScript (Assumed (non-interactive))
+- Roles: customer, restaurant staff, courier, admin (Assumed (non-interactive))
 - Stack: Node.js (stated) with TypeScript and PostgreSQL (Assumed (non-interactive), skill default)
 - Latency: p95 < 300 ms for API reads and writes, excluding the provider call (Assumed (non-interactive))
-- Availability: 99.9% (Assumed (non-interactive))
+- Availability: 99.9%; recovery: RPO 1 h, RTO 4 h, the skill default (Assumed (non-interactive))
 - Compliance: no special compliance; card data stays with the payment provider (Assumed (non-interactive))
 - Cost: cost-sensitive; one cloud region, single launch city (Assumed (non-interactive))
 - Sizing inputs: record 1 KB, response 10 KB, menu object 2 KB, peak = 3× average, replication 3 (Assumed (non-interactive))

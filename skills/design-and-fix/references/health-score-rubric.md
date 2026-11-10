@@ -18,6 +18,7 @@ Seven categories, weight 1.0 each unless the Context line raises one (Context We
 
 - A category that is out of scope, or has no evidence either way, is `Not assessed` and excluded; the mean is taken over the remaining categories with their weights.
 - A category scored without any file read is not allowed: mark it `Not assessed`.
+- Issues with Status `informational` or `not-reproducible` are not scored: leave them out of every sub-score count.
 
 ## Sub-score Lookup
 
@@ -83,7 +84,7 @@ Overall = weighted mean of assessed sub-scores (Σ score × weight / Σ weight),
 ## Output Format
 
 Headline: `## Architecture Health Score: <Band> (<X.X> / 10)`
-Evidence line: `Evidence: <n> files read, <m> scanner signals reviewed, <k> confirmed`
+Evidence line: `Evidence: <n> files read, <m> scanner signals reviewed, <k> confirmed`. <m> counts every signal you opened, rejected ones included. <k> is the number of reviewed signals behind issues with Status `confirmed`; signals behind `likely`, `needs-review` or `informational` issues, and rejected signals, are not in <k>.
 
 ```markdown
 ## Architecture Health Score: Fragile (5.3 / 10)
@@ -114,4 +115,4 @@ The example lists every issue with its severity so each score can be checked aga
 - [ ] Overall equals the weighted mean of assessed sub-scores, rounded half up to one decimal
 - [ ] Headline band matches the overall band table
 - [ ] Every assessed category has at least one file read; others say `Not assessed`
-- [ ] Every defined ID sits in exactly one roadmap `Action (IDs)` row; Suggested Sequence follows the order in `references/formatting-rules.md` (Roadmap Table)
+- [ ] Every defined ID sits in exactly one roadmap `Action (IDs)` row (scored issues; `informational` / `not-reproducible` at most one); Suggested Sequence follows the order in `references/formatting-rules.md` (Roadmap Table)

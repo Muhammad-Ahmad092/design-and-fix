@@ -3,7 +3,7 @@
 > Scope: <folders / services audited>
 > Context: <scale>, <key constraint>
 > Format: 1.0.2
-> Audit: plugin 1.0.2 · scanner schema 3 · rev <sha|unknown> · config <config_hash> · <timestamp>
+> Audit: plugin 1.1.0 · scanner schema 3 · rev <sha|unknown> · config <config_hash> · <timestamp>
 
 ## Change Since Last Audit
 
@@ -20,6 +20,8 @@ Previous: <Band> (<X.X> / 10) → Current: <Band> (<X.X> / 10)
 - Still open: <IDs>
 
 ### Score Trend
+
+Score <+/-X.X> (<old> → <new>): fixed <IDs (severity)>; new <IDs (severity)>.
 
 | Date | Overall | Band | Fixed | New |
 |---|---|---|---|---|

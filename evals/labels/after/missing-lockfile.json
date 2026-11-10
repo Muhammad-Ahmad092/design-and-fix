@@ -16,5 +16,41 @@
     "fingerprint": "e2d3894b17b592f9",
     "label": "tp",
     "note": "Laravel app asset build deps unlocked, nonreproducible build; low severity"
+  },
+  {
+    "repo": "robot-shop",
+    "file": "cart/package.json",
+    "line": 1,
+    "snippet": "package.json without package-lock.json / npm-shrinkwrap.json / yarn.lock",
+    "fingerprint": "a8cc47c5f92b419f",
+    "label": "tp",
+    "note": "Node service (cart), no lockfile; installs not reproducible; low severity"
+  },
+  {
+    "repo": "robot-shop",
+    "file": "catalogue/package.json",
+    "line": 1,
+    "snippet": "package.json without package-lock.json / npm-shrinkwrap.json / yarn.lock",
+    "fingerprint": "c17a3dc6f369d39d",
+    "label": "tp",
+    "note": "Node service (catalogue), no lockfile; low severity"
+  },
+  {
+    "repo": "robot-shop",
+    "file": "ratings/html/composer.json",
+    "line": 1,
+    "snippet": "composer.json without composer.lock",
+    "fingerprint": "e0ff846919c9c45b",
+    "label": "tp",
+    "note": "Symfony app with no composer.lock; low severity"
+  },
+  {
+    "repo": "robot-shop",
+    "file": "user/package.json",
+    "line": 1,
+    "snippet": "package.json without package-lock.json / npm-shrinkwrap.json / yarn.lock",
+    "fingerprint": "d562532cef1919b0",
+    "label": "tp",
+    "note": "Node service (user), no lockfile; low severity"
   }
 ]

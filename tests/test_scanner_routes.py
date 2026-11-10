@@ -193,8 +193,9 @@ class BaselineRouteFalsePositiveTests(unittest.TestCase):
                               '\tr.Run()\n}\n'),
                  "articles/routers.go": ('package articles\nfunc Register(router *gin.RouterGroup) {\n'
                                          '\trouter.POST("/", ArticleCreate)\n}\n')}
-        got = _route_sigs(files, "unauth-write-route")
-        self.assertEqual([(s["file"], s["confidence"]) for s in got], [("articles/routers.go", "low")])
+        # 1.1.0 (rule version 7): the call site articles.Register(v1.Group("/a")) after
+        # v1.Use(AuthMiddleware) is followed, so the route is protected.
+        self.assertEqual(_route_sigs(files, "unauth-write-route"), [])
         # In-file use on any receiver (v1.Use) marks later routes as authed.
         rs = _routes_of({"m.go": 'v1.Use(AuthMiddleware(true))\nv1.POST("/x", h)\n'})
         self.assertTrue(rs[0]["auth_detected"])
@@ -371,7 +372,7 @@ class ReleaseReviewRouteTests(unittest.TestCase):
 
     def test_rule_versions(self):
         from dfscan import registry
-        self.assertEqual(registry.RULES["unauth-write-route"].version, "6")
+        self.assertEqual(registry.RULES["unauth-write-route"].version, "7")
         self.assertEqual(registry.RULES["no-health-endpoint"].version, "5")
         self.assertIn("passport.use", registry.RULES["unauth-write-route"].limitations)
 

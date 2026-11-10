@@ -89,11 +89,11 @@ Non-interactive: wherever this file says to ask (ambiguous topic, out-of-scope r
 1. **Edit in place.** Modify the target section inside the existing file; do not create a new file (except `04-*` or an ADR when asked).
 2. **Keep the format.** Same headers, tables and fixed vocabulary as `references/formatting-rules.md`; one-line "Why" on every recommendation.
 3. **Go deeper means more specific, not longer prose.** Add concrete numbers, configs, examples and trade-offs in tables or bullets. Stay within about half a page per section; split into sub-tables if needed.
-4. **New context wins.** If the user gives new facts (traffic doubled, team shrank), update Assumptions & Constraints first, then revise the affected sections (Capacity Estimates first in Mode 1).
+4. **New context wins.** If the user gives new facts (traffic doubled, team shrank), update Assumptions & Constraints first, then revise the affected sections (Capacity Estimates first in Mode 1). In Mode 1 also update the matching Requirements row: its Value, and its Source (`user` once the user stated it), plus its Effect on design.
 5. **IDs are stable.** Never renumber issues. A new issue gets the next unused number for its prefix; a removed issue's ID is never reused.
-6. **Mode 2 consistency.** If a refinement changes an issue's severity or adds/removes an issue, update the sub-score and headline from the rubric lookup table, keep the ID in exactly one roadmap `Action (IDs)` row, and tell the user in one line.
-7. **Mode 1 decisions.** If a revisited decision changes, update the Key Architectural Decisions row and write a superseding ADR (`references/adr-guide.md`), unless the user opted out of ADRs.
-8. **Lint the edited file.** Run `lint_output.py` on the folder (`--repo <root>` for audits) and fix what it reports.
+6. **Mode 2 consistency.** If a refinement changes an issue's severity or adds/removes an issue, update the sub-score and headline from the rubric lookup table, keep the ID in exactly one roadmap `Action (IDs)` row (scored issues; `informational` / `not-reproducible` at most one), and tell the user in one line.
+7. **Mode 1 decisions.** If a revisited decision changes, update the Key Architectural Decisions row and its trade-off table (ratings and the `(chosen)` mark; the linter only notices a missing table, not a stale one) and write a superseding ADR (`references/adr-guide.md`), unless the user opted out of ADRs.
+8. **Lint the edited file.** Run `lint_output.py` on the folder and fix what it reports: design files without flags; audits with `--repo <root> --scan docs/architecture/.scan/scan.json` (a refinement does not re-scan, so the saved scan still matches the Audit line; after a full re-run, the new scan does).
 9. **Report briefly.** Reply with file, section changed, one-line summary and impacted sections. Do not repeat unchanged content.
 
 ## Reply Format

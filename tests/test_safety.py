@@ -206,7 +206,8 @@ class SecretTests(TempTree):
         self.assertEqual(mask_secrets('token: "abcdefghijkl'), 'token: "***')  # truncated value
 
     def test_snippets_masked_all_rules(self):
-        line = ('db.execute("SELECT * FROM users WHERE id=" + uid + " /* "'
+        line = ("def f(request, uid):\n"
+                '    db.execute("SELECT * FROM users WHERE id=" + uid + " /* "'
                 " + 'api_key=\"Zq8fHkd93LmPw02x\"')\n")
         put(self.d, "src/dao.py", line)
         put(self.d, "src/app.js",
@@ -214,8 +215,7 @@ class SecretTests(TempTree):
         r = scan(self.d, use_git=False)
         self.assertTrue([s for s in r["signals"] if s["rule"] == "sql-string-concat"])
         self.assertNotIn("Zq8fHkd93LmPw02x", json.dumps(r))
-        sql = [s for s in r["signals"] if s["rule"] == "sql-string-concat"][0]
-        self.assertIn("***", sql["snippet"])
+        # 1.1.0: sql-string-concat snippets describe the flow and no longer quote code.
 
 
 def _tokens():
@@ -343,12 +343,20 @@ class SecretRegexLinearTests(TempTree):  # review C1
 
     def test_db_receiver_linear_on_long_capitalised_word(self):
         from dfscan import patterns
-        t0 = time.perf_counter()
-        list(patterns._DB_CALL_RE.finditer("A" * 100000 + "b"))
-        self.assertLess(time.perf_counter() - t0, 2.0)
-        self.assertTrue(patterns._DB_CALL_RE.search("UserModel.get("))
-        self.assertTrue(patterns._DB_CALL_RE.search("User.find("))
-        self.assertFalse(patterns._DB_CALL_RE.search("SELECT2_TRANSLATIONS.get("))
+        # query-in-loop 1.1.0: one regex per DB/ORM family (_DB_CALL_RES) plus the Python-only
+        # CamelCase and PHP receiver patterns.
+        rxs = list(patterns._DB_CALL_RES) + [patterns._PY_CAMEL_CALL_RE, patterns._PHP_CALL_RE]
+        for text in ("A" * 100000 + "b", "$" + "A" * 100000 + "b"):
+            t0 = time.perf_counter()
+            for rx in rxs:
+                list(rx.finditer(text))
+            self.assertLess(time.perf_counter() - t0, 2.0, text[:5])
+
+        def hit(s):
+            return any(rx.search(s) for rx in rxs)
+        self.assertTrue(hit("UserModel.get("))
+        self.assertTrue(hit("User.find("))
+        self.assertFalse(hit("SELECT2_TRANSLATIONS.get("))
 
     def test_scan_with_huge_json_blob_finishes_fast(self):
         put(self.d, "fixtures/firmware.json", '{"image": "' + "0f" * 200000 + '"}')
@@ -497,6 +505,76 @@ class MaskingCoverageTests(TempTree):  # review I4, M9
         self.assertNotIn(_pw()[:6], blob)
         for s in r["signals"]:
             self.assertLessEqual(len(s["snippet"]), 160)
+
+
+
+# ---------------------------------------------------------------- 1.1.0 hardcoded-secret (Task 8)
+def _rand_secret(n, seed):
+    """Random-looking generic secret assembled at runtime."""
+    import random
+    rng = random.Random(seed)
+    return "".join(rng.choice("abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789")
+                   for _ in range(n))
+
+
+def _provider_tokens():
+    """Provider-shaped secrets built at runtime (never committed as literals)."""
+    return {
+        "stripe": "sk_" + "live_" + _rand_secret(24, 21),
+        "github": "gh" + "p_" + _rand_secret(36, 22),
+        "github_pat": "github" + "_pat_" + _rand_secret(60, 23),
+        "google": "AI" + "za" + _rand_secret(35, 24),
+        "gitlab": "gl" + "pat-" + _rand_secret(20, 25),
+        "slack": "xo" + "xb-" + "1234567890-" + _rand_secret(24, 26),
+        "anthropic": "sk" + "-ant-" + "api03-" + _rand_secret(40, 27),
+        "aws": "AK" + "IA" + "QWERTYUIOPASDFGH",
+    }
+
+
+class SecretOutputTests(TempTree):
+    def test_no_secret_value_in_any_output_format(self):
+        from dfscan.sarif import to_sarif
+        tok = _provider_tokens()
+        generic = {"py": _rand_secret(40, 31), "env": _rand_secret(40, 32),
+                   "yml": _rand_secret(40, 33), "props": _rand_secret(86, 34)}
+        key_body = _rand_secret(64, 35)
+        put(self.d, "src/settings.py", 'SECRET_KEY = "%s"\nSTRIPE = "%s"\n'
+            % (generic["py"], tok["stripe"]))
+        put(self.d, "src/tokens.js", "".join('const t%d = "%s";\n' % (i, v)
+                                             for i, v in enumerate(tok.values())))
+        put(self.d, ".env", "API_KEY=%s\nGITLAB=%s\n" % (generic["env"], tok["gitlab"]))
+        put(self.d, "deploy/config.yml", "db:\n  password: %s\n" % generic["yml"])
+        put(self.d, "src/main/resources/application.properties", "jwt.secret=%s\n" % generic["props"])
+        put(self.d, "certs/server.pem", "-----BEGIN " + "PRIVATE KEY-----\n" + key_body
+            + "\n-----END " + "PRIVATE KEY-----\n")
+        r = scan(self.d, use_git=False)
+        sigs = [s for s in r["signals"] if s["rule"] == "hardcoded-secret"]
+        self.assertGreaterEqual(len(sigs), 6 + len(tok))
+        values = dict(tok, **generic)
+        values["pem"] = key_body
+        blobs = {"json": json.dumps(r), "notes": json.dumps(r.get("notes", [])),
+                 "markdown": render_markdown(r), "sarif": json.dumps(to_sarif(r))}
+        for fmt in ("json", "markdown", "sarif"):
+            blobs["cli-" + fmt] = run_cli(self.d, "--no-git", "--quiet", "--format", fmt)[1]
+        for fmt, blob in blobs.items():
+            for name, value in values.items():
+                self.assertNotIn(value, blob, (fmt, name))
+                self.assertNotIn(value[-12:], blob, (fmt, name))  # no partial leak either
+        for s in sigs:
+            self.assertNotIn("uncertain_reason", s)
+
+    def test_new_provider_formats_masked(self):
+        for name, value in _provider_tokens().items():
+            out = mask_secrets("x = %s y" % value)
+            self.assertNotIn(value, out, name)
+            self.assertEqual(out, "x = *** y", name)
+
+    def test_provider_mask_linear_on_long_runs(self):
+        t0 = time.perf_counter()
+        for text in ("github" + "_pat_" + "a" * 100000, "gl" + "pat-" + "-" * 100000,
+                     "sk" + "-ant-" + "a" * 100000, "sk-" + "a-" * 50000):
+            mask_secrets(text)
+        self.assertLess(time.perf_counter() - t0, 2.0)
 
 
 if __name__ == "__main__":

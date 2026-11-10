@@ -50,8 +50,21 @@ Windows npm `claude.cmd` shim included). On Windows, a `.cmd`/`.bat` shim routes
 arguments through cmd.exe, which mangles `"` and `&`; for those the prompt is
 sent on stdin instead.
 
-Usage: python evals/run.py [--case ID] [--claude PATH] [--model M] [--keep]
-                           [--timeout SECONDS] [--bare]
+Several models: `--model` may be repeated (or comma-separated); every case runs
+once per model and skill-results.md has one row per case x model. The headline
+`**N / M cases pass.**` counts all those rows.
+
+Clients: `--client claude|codex|cursor` (default claude). Codex runs
+`codex exec --sandbox workspace-write` with the skill staged under
+`.agents/skills/` in the temp folder; Cursor runs `cursor-agent -p --force
+--sandbox enabled --plugin-dir <staged plugin>`. See evals/README.md, "Clients",
+for the sources and for the safety controls each client lacks. A non-claude full
+run writes evals/skill-results-<client>.md (never overwrites the Claude rows);
+combine files with --merge-results.
+
+Usage: python evals/run.py [--client C] [--case ID] [--claude PATH] [--model M ...]
+                           [--keep] [--timeout SECONDS] [--bare]
+       python evals/run.py --merge-results FILE [FILE ...]
 """
 from __future__ import annotations
 
@@ -79,7 +92,16 @@ DEFAULT_TIMEOUT = 1200
 
 REQUIRED_KEYS = ("id", "prompt", "setup", "must_exist", "must_not_exist",
                  "must_contain", "must_not_contain", "lint", "lint_repo")
-# Optional: must_output_contain [str] - case-sensitive strings the transcript must hold.
+# Optional keys:
+#   must_output_contain [str]   case-sensitive strings the transcript must hold.
+#   must_not_output_line [str]  compliance markers: no transcript line, and no line of any
+#                               new or changed file, may be just the marker plus punctuation
+#                               or emphasis (`X`, **X**, "X.", ...). A mention inside a
+#                               longer sentence (reporting an injection) is fine.
+#   allowed_new_paths [glob]    files the run may create (default docs/architecture/** and
+#                               docs/adr/**); any other new file fails the case.
+#   must_contain_any {glob: [str]}  case-insensitive; at least one needle per glob.
+#   timeout int                 per-case seconds cap (min with --timeout).
 
 
 class RunResult(NamedTuple):
@@ -106,7 +128,9 @@ def prepare_workdir(case: dict, workdir: str, repo: str = REPO) -> None:
     """Build the case's starting folder inside `workdir` (must exist, be empty).
 
     setup keys: fixture (repo-relative dir or null), preexisting {path: text},
-    copy_files {dest: repo-relative source}, line_replace {path: {line, text}}.
+    copy_files {dest: repo-relative source}, line_replace {path: {line, text}},
+    generate_files {dir, count, per_dir, ext, text}: write `count` small files under
+    `dir` at run time (so a huge repo is not committed).
     """
     setup = case.get("setup") or {}
     fixture = setup.get("fixture")
@@ -126,6 +150,24 @@ def prepare_workdir(case: dict, workdir: str, repo: str = REPO) -> None:
         lines[spec["line"] - 1] = spec["text"]
         with open(path, "w", encoding="utf-8", newline="") as fh:
             fh.write("\n".join(lines))
+    gen = setup.get("generate_files")
+    if gen:
+        generate_files(workdir, gen)
+
+
+def generate_files(workdir: str, gen: dict) -> None:
+    """Write gen["count"] small files under workdir/gen["dir"], gen["per_dir"] per folder."""
+    base = os.path.join(workdir, *gen["dir"].split("/"))
+    per_dir = max(1, int(gen.get("per_dir", 200)))
+    ext = gen.get("ext", ".py")
+    text = gen.get("text", "VALUE = {n}\n")
+    for n in range(int(gen["count"])):
+        folder = os.path.join(base, "pkg_%04d" % (n // per_dir))
+        if n % per_dir == 0:
+            os.makedirs(folder, exist_ok=True)
+        with open(os.path.join(folder, "mod_%05d%s" % (n, ext)), "w",
+                  encoding="utf-8", newline="\n") as fh:
+            fh.write(text.format(n=n))
 
 
 def _matches(workdir: str, pattern: str) -> List[str]:
@@ -133,10 +175,14 @@ def _matches(workdir: str, pattern: str) -> List[str]:
 
 
 def _read(path: str) -> str:
+    """File text; "" for a directory, a dangling symlink or an unreadable file."""
     if os.path.isdir(path):
         return ""
-    with open(path, "r", encoding="utf-8", errors="replace") as fh:
-        return fh.read()
+    try:
+        with open(path, "r", encoding="utf-8", errors="replace") as fh:
+            return fh.read()
+    except OSError:
+        return ""
 
 
 _LINE_NEEDLE = re.compile(r"^(.+):(\d+)$")
@@ -169,7 +215,7 @@ def _lint(target: str, label: str, workdir: str, repo_flag: bool) -> List[str]:
     if repo_flag:
         cmd += ["--repo", workdir]
     proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                          timeout=120, encoding="utf-8", errors="replace")
+                          timeout=120, encoding="utf-8", errors="replace", env=_child_env())
     failures = []  # type: List[str]
     if proc.returncode != 0:
         for line in proc.stdout.strip().splitlines()[:20]:
@@ -179,30 +225,90 @@ def _lint(target: str, label: str, workdir: str, repo_flag: bool) -> List[str]:
     return failures
 
 
-def run_failures(case: dict, result: RunResult) -> List[str]:
-    """Failures from the claude run itself: exit code, timeout, transcript checks."""
+def run_failures(case: dict, result: RunResult, client: str = "claude") -> List[str]:
+    """Failures from the client run itself: exit code, timeout, transcript checks."""
     failures = []  # type: List[str]
     if result.timed_out:
-        failures.append("claude timed out")
+        failures.append("%s timed out" % client)
     elif result.returncode != 0:
-        failures.append("claude exited with code %s" % result.returncode)
+        failures.append("%s exited with code %s" % (client, result.returncode))
     if not result.output.strip():
-        failures.append("claude printed no output")
+        failures.append("%s printed no output" % client)
     for needle in case.get("must_output_contain") or []:
         if needle not in result.output:
             failures.append("transcript lacks %r" % needle)
+    for needle in case.get("must_not_output_line") or []:
+        if any(is_marker_line(ln, needle) for ln in result.output.splitlines()):
+            failures.append("transcript prints forbidden line %r" % needle)
     return failures
 
 
-def grade(case: dict, workdir: str, result: Optional[RunResult] = None) -> List[str]:
+DEFAULT_ALLOWED_NEW = ["docs/architecture/**", "docs/adr/**"]
+
+
+def _glob_re(pattern: str):
+    out = []
+    i = 0
+    while i < len(pattern):
+        if pattern.startswith("**", i):
+            out.append(".*")
+            i += 2
+            continue
+        c = pattern[i]
+        out.append("[^/]*" if c == "*" else "[^/]" if c == "?" else re.escape(c))
+        i += 1
+    return re.compile("^" + "".join(out) + "$")
+
+
+def workdir_files(workdir: str, baseline: Optional[Dict[str, str]] = None) -> Dict[str, str]:
+    """sha256 per entry under workdir, keyed by POSIX relative path.
+
+    `baseline` (a previous workdir_files result) lets snapshot() skip .pyc and
+    __pycache__ entries that already existed; new ones are still reported."""
+    abs_base = None
+    if baseline is not None:
+        abs_base = {os.path.abspath(os.path.join(workdir, *rel.split("/"))): d
+                    for rel, d in baseline.items()}
+    out = {}  # type: Dict[str, str]
+    for path, digest in snapshot([workdir], abs_base).items():
+        rel = os.path.relpath(path, workdir).replace(os.sep, "/")
+        out[rel] = digest
+    return out
+
+
+def is_marker_line(line: str, marker: str) -> bool:
+    return re.fullmatch(r"[\W_]*" + re.escape(marker) + r"[\W_]*", line.strip()) is not None
+
+
+def new_file_failures(case: dict, workdir: str, baseline: Dict[str, str]) -> List[str]:
+    """New files outside allowed_new_paths, and marker lines in any new or changed file."""
+    failures = []  # type: List[str]
+    allowed = [_glob_re(g) for g in case.get("allowed_new_paths") or DEFAULT_ALLOWED_NEW]
+    markers = case.get("must_not_output_line") or []
+    for rel, digest in sorted(workdir_files(workdir, baseline).items()):
+        is_new = rel not in baseline
+        if is_new and not any(a.match(rel) for a in allowed):
+            failures.append("unexpected new file: %s" % rel)
+        if (is_new or baseline[rel] != digest) and markers:
+            for line in _read(os.path.join(workdir, *rel.split("/"))).splitlines():
+                for marker in markers:
+                    if is_marker_line(line, marker):
+                        failures.append("%s prints forbidden line %r" % (rel, marker))
+                        break
+    return failures
+
+
+def grade(case: dict, workdir: str, result: Optional[RunResult] = None,
+          baseline: Optional[Dict[str, str]] = None, client: str = "claude") -> List[str]:
     """Return a list of failure messages; empty means the case passed.
 
     Paths in must_* keys are workdir-relative POSIX paths and may use glob
     wildcards (for example docs/architecture/history/*/01-architecture-issues.md).
     must_not_contain is case-insensitive. With `result`, the claude run's exit
-    code, timeout and transcript (must_output_contain) are graded too.
+    code, timeout and transcript (must_output_contain) are graded too. With `baseline`
+    (workdir_files() taken after setup), new files outside the allowed set fail.
     """
-    failures = run_failures(case, result) if result is not None else []
+    failures = run_failures(case, result, client) if result is not None else []
     for pattern in case.get("must_exist", []):
         if not _matches(workdir, pattern):
             failures.append("missing: %s" % pattern)
@@ -223,6 +329,16 @@ def grade(case: dict, workdir: str, result: Optional[RunResult] = None) -> List[
         for needle in needles:
             if needle.lower() in text:
                 failures.append("%s contains forbidden %r" % (pattern, needle))
+    for pattern, needles in (case.get("must_contain_any") or {}).items():
+        files = _matches(workdir, pattern)
+        if not files:
+            failures.append("cannot check contents, missing: %s" % pattern)
+            continue
+        text = "\n".join(_read(f) for f in files).lower()
+        if not any(n.lower() in text for n in needles):
+            failures.append("%s lacks any of %r" % (pattern, needles))
+    if baseline is not None:
+        failures += new_file_failures(case, workdir, baseline)
     if case.get("lint"):
         target = os.path.join(workdir, "docs", "architecture")
         if not os.path.isdir(target):
@@ -236,28 +352,65 @@ def grade(case: dict, workdir: str, result: Optional[RunResult] = None) -> List[
 
 
 # ---------------------------------------------------------------- tamper check
-def snapshot(paths: List[str]) -> Dict[str, str]:
-    """sha256 of every file under paths (files or dirs), keyed by absolute path.
+def _is_link(path: str) -> bool:
+    if os.path.islink(path):
+        return True
+    isjunction = getattr(os.path, "isjunction", None)
+    return bool(isjunction and isjunction(path))
 
-    __pycache__ folders and .pyc files are skipped (the grader's own lint run
-    creates them)."""
-    out = {}  # type: Dict[str, str]
 
-    def add(path: str) -> None:
-        if path.endswith(".pyc"):
-            return
-        h = hashlib.sha256()
+def _entry_digest(path: str) -> str:
+    """Digest of one entry. A symlink (file, directory or dangling) is recorded as
+    its target text, never followed; an unreadable file as a marker, never raised."""
+    if _is_link(path):
+        try:
+            target = os.readlink(path)
+        except OSError:
+            target = "?"
+        return "symlink:" + target
+    h = hashlib.sha256()
+    try:
         with open(path, "rb") as fh:
             for block in iter(lambda: fh.read(1 << 16), b""):
                 h.update(block)
-        out[os.path.abspath(path)] = h.hexdigest()
+    except OSError as exc:
+        return "unreadable:%s" % type(exc).__name__
+    return h.hexdigest()
+
+
+def snapshot(paths: List[str], baseline: Optional[Dict[str, str]] = None) -> Dict[str, str]:
+    """sha256 of every entry under paths (files or dirs), keyed by absolute path.
+
+    Symlinks are entries (their target text), directory symlinks included, and are
+    never followed. .pyc files and __pycache__ folders are skipped only when they
+    already existed in `baseline` (the grader's own lint run creates some); the
+    baseline value is carried over so they do not show as changed. A new .pyc or
+    __pycache__/x.md is reported like any other new file."""
+    out = {}  # type: Dict[str, str]
+    base = baseline or {}
+
+    def in_cache(path: str) -> bool:
+        parts = os.path.abspath(path).replace("\\", "/").split("/")
+        return path.endswith(".pyc") or "__pycache__" in parts
+
+    def add(path: str) -> None:
+        key = os.path.abspath(path)
+        if in_cache(path) and key in base:
+            out[key] = base[key]
+            return
+        out[key] = _entry_digest(path)
 
     for p in paths:
-        if os.path.isfile(p):
+        if _is_link(p) or os.path.isfile(p):
             add(p)
             continue
         for root, dirs, files in os.walk(p):
-            dirs[:] = sorted(d for d in dirs if d != "__pycache__")
+            dirs.sort()
+            for d in list(dirs):
+                full = os.path.join(root, d)
+                if _is_link(full):
+                    dirs.remove(d)
+                    add(full)
             for name in sorted(files):
                 add(os.path.join(root, name))
     return out
@@ -369,6 +522,104 @@ def build_command(claude: str, prompt: Optional[str], model: Optional[str] = Non
     return cmd
 
 
+# ---------------------------------------------------------------- clients
+CLIENTS = {"claude": ("claude", "Claude Code"),
+           "codex": ("codex", "Codex"),
+           "cursor": ("cursor-agent", "Cursor")}
+SKILL_NAME = "design-and-fix"
+
+
+def find_client(client: str, override: Optional[str] = None) -> Optional[str]:
+    """Path of the client's CLI; Cursor's binary is `cursor-agent` (current docs
+    also call it `agent`)."""
+    if override:
+        return override
+    names = [CLIENTS[client][0]] + (["agent"] if client == "cursor" else [])
+    for name in names:
+        found = shutil.which(name)
+        if found:
+            return found
+    return None
+
+
+def build_command_for(client: str, prompt: Optional[str], plugin_dir: str,
+                      model: Optional[str] = None, exe: Optional[str] = None,
+                      flags: Optional[set] = None, mcp_config: str = "empty-mcp.json",
+                      bare: bool = False) -> List[str]:
+    """argv (no shell; the prompt is one element, or omitted when None so the caller
+    sends it on stdin) for one headless run of `client` in the temp folder.
+
+    claude: see build_command. codex: `codex exec` in a workspace-write sandbox, no
+    approval prompts; the skill is read from `.agents/skills/` in the temp folder
+    (stage_codex_skill). cursor: `cursor-agent -p --force` in its sandbox with the
+    staged plugin via `--plugin-dir`. Flags are from each CLI's published
+    reference (evals/README.md, Clients); they were not run in this build."""
+    if client not in CLIENTS:
+        raise ValueError("unknown client %r (expected one of %s)"
+                         % (client, ", ".join(sorted(CLIENTS))))
+    exe = exe or CLIENTS[client][0]
+    if client == "claude":
+        return build_command(exe, prompt, model, repo=plugin_dir, flags=flags,
+                             mcp_config=mcp_config, bare=bare)
+    if client == "codex":
+        cmd = [exe, "exec", "--sandbox", "workspace-write", "--skip-git-repo-check",
+               "--ephemeral", "-c", "approval_policy='never'",
+               "-c", "sandbox_workspace_write.network_access=false"]
+    else:
+        cmd = [exe, "-p", "--force", "--trust", "--sandbox", "enabled",
+               "--plugin-dir", plugin_dir, "--output-format", "text"]
+    if model:
+        cmd += ["--model", model]
+    if prompt is not None:
+        if client == "codex":
+            cmd.append("--")  # after every option: clap keeps a prompt starting with "-" a prompt
+        cmd.append(prompt)
+    return cmd
+
+
+def stage_codex_skill(workdir: str, plugin_dir: str) -> str:
+    """Copy the staged skill to <workdir>/.agents/skills/design-and-fix, where Codex
+    discovers repo-scoped skills. Call before taking the workdir baseline."""
+    dest = os.path.join(workdir, ".agents", "skills", SKILL_NAME)
+    shutil.copytree(os.path.join(plugin_dir, "skills", SKILL_NAME), dest,
+                    ignore=shutil.ignore_patterns("__pycache__"))
+    return dest
+
+
+def client_isolation(client: str, flags: set, bare: bool) -> str:
+    if client == "codex":
+        return ("writes limited to the temp working folder (codex exec --sandbox "
+                "workspace-write, approvals never, network off, but /tmp and $TMPDIR stay "
+                "writable); Bash NOT limited to the bundled scripts; user ~/.codex config, AGENTS.md and skills still loaded")
+    if client == "cursor":
+        return ("--force with --sandbox enabled and --trust; writes NOT confined to the "
+                "temp folder and Bash NOT limited to the bundled scripts; user Cursor "
+                "settings, rules and MCP servers still loaded")
+    return isolation_summary(flags, bare)
+
+
+UNSAFE_SHELL_CHARS = '"&|<>^%'
+
+
+def shim_prompt_error(client: str, exe: str, prompts: List[str]) -> Optional[str]:
+    """Cursor's prompt must go in argv (its stdin use is undocumented), and a
+    .cmd/.bat shim re-parses argv in cmd.exe, which mangles these characters.
+    Return an error message when that would corrupt a prompt, else None."""
+    if client != "cursor" or not is_cmd_shim(exe):
+        return None
+    bad = [p for p in prompts if any(c in p for c in UNSAFE_SHELL_CHARS)]
+    if not bad:
+        return None
+    return ("cursor resolved to a .cmd/.bat shim (%s); cmd.exe would mangle %d prompt(s) "
+            "containing one of %s. Point --claude at the real executable "
+            "(cursor-agent.exe or the underlying script), or use another client."
+            % (exe, len(bad), " ".join(UNSAFE_SHELL_CHARS)))
+
+
+def cli_label(client: str, version: str) -> str:
+    return "%s (%s)" % (version, CLIENTS[client][1])
+
+
 def isolation_summary(flags: set, bare: bool) -> str:
     parts = ["writes limited to the temp working folder (acceptEdits, no Write/Edit rules)"]
     if "--permission-prompts" in flags:
@@ -390,7 +641,9 @@ def stage_plugin(dest: str, repo: str = REPO) -> str:
     under the temp folder (normally space-free).
     """
     plugin = os.path.join(dest, "plugin")
-    for name in (".claude-plugin", "skills"):
+    for name in (".claude-plugin", ".codex-plugin", ".cursor-plugin", "skills"):
+        if not os.path.isdir(os.path.join(repo, name)):
+            continue
         shutil.copytree(os.path.join(repo, name), os.path.join(plugin, name),
                         ignore=shutil.ignore_patterns("__pycache__"))
     if " " in plugin:
@@ -400,6 +653,27 @@ def stage_plugin(dest: str, repo: str = REPO) -> str:
 
 
 # ---------------------------------------------------------------- process control
+# Created by main() and removed in its `finally`, so importing this module leaves nothing behind.
+_PYCACHE_PREFIX = None  # type: Optional[str]
+
+
+def _is_cache_path(path: str) -> bool:
+    parts = path.replace("\\", "/").split("/")
+    return path.endswith(".pyc") or "__pycache__" in parts
+
+
+def _child_env() -> Dict[str, str]:
+    """Environment for child processes: no .pyc files, so a run that executes the
+    bundled scripts leaves no __pycache__ behind to confuse the file checks."""
+    env = dict(os.environ)
+    env["PYTHONDONTWRITEBYTECODE"] = "1"
+    # Bytecode lives only under a private prefix, so no child (the grader's linter
+    # included) ever reads a __pycache__ file from the repo or the staged plugin.
+    if _PYCACHE_PREFIX:
+        env["PYTHONPYCACHEPREFIX"] = _PYCACHE_PREFIX
+    return env
+
+
 def _decode(data) -> str:
     if data is None:
         return ""
@@ -438,7 +712,8 @@ def run_process(cmd: List[str], cwd: str, stdin_text: Optional[str],
     proc = subprocess.Popen(cmd, cwd=cwd,
                             stdin=subprocess.PIPE if stdin_text is not None else subprocess.DEVNULL,
                             stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                            encoding="utf-8", errors="replace", **popen_group_kwargs())
+                            encoding="utf-8", errors="replace", env=_child_env(),
+                            **popen_group_kwargs())
     try:
         out, _ = proc.communicate(stdin_text, timeout=timeout)
         return RunResult(proc.returncode, _decode(out), False)
@@ -461,11 +736,12 @@ def run_process(cmd: List[str], cwd: str, stdin_text: Optional[str],
 def run_claude(claude: str, case: dict, workdir: str, timeout: int,
                model: Optional[str] = None, flags: Optional[set] = None,
                mcp_config: str = "empty-mcp.json", repo: str = REPO,
-               bare: bool = False) -> RunResult:
-    """Run one case; never raises on timeout."""
-    via_stdin = is_cmd_shim(claude)
-    cmd = build_command(claude, None if via_stdin else case["prompt"], model,
-                        repo=repo, flags=flags, mcp_config=mcp_config, bare=bare)
+               bare: bool = False, client: str = "claude") -> RunResult:
+    """Run one case with `client` (`claude` is the exe path); never raises on timeout."""
+    # Cursor's stdin handling is undocumented: always pass its prompt as an argument.
+    via_stdin = is_cmd_shim(claude) and client != "cursor"
+    cmd = build_command_for(client, None if via_stdin else case["prompt"], repo, model,
+                            exe=claude, flags=flags, mcp_config=mcp_config, bare=bare)
     return run_process(cmd, workdir, case["prompt"] if via_stdin else None, timeout)
 
 
@@ -507,47 +783,165 @@ def _cell(text: str) -> str:
     return text.replace("|", "\\|").replace("\n", " ")
 
 
-def render_results(rows: List[Dict[str, str]], model: str, cli: str,
+def render_results(rows: List[Dict[str, str]], models, cli: str,
                    plugin: str, date: str, isolation: str = "") -> str:
-    """skill-results.md. The first `N / M` in the file is the pass line, which the
-    README skill-evals block must repeat (tests/test_repo_docs.py checks it)."""
+    """skill-results.md: one row per case x model. The first `N / M` in the file is
+    the pass line (all rows counted), which the README skill-evals block must
+    repeat (tests/test_repo_docs.py checks it). `models` is a name or a list."""
+    names = [models] if isinstance(models, str) else list(models)
     passed = sum(1 for r in rows if r["result"] == "PASS")
     out = ["# Skill eval results", "",
            "**%d / %d cases pass.**" % (passed, len(rows)), "",
-           "Generated by `python evals/run.py`, all cases in one run. Model: %s. CLI: %s. "
-           "Plugin: %s. Date: %s." % (_cell(model), _cell(cli), _cell(plugin), date)]
+           "Generated by `python evals/run.py`, every case once per model (one row per "
+           "case and model). Models: %s. CLI: %s. Plugin: %s. Date: %s."
+           % (_cell(", ".join(names)), _cell(cli), _cell(plugin), date)]
     if isolation:
         out += ["", "Isolation: %s." % _cell(isolation)]
-    out += ["", "| Case | Result | Model | CLI version | Plugin version | Date | Failures |",
+    out += ["", "| Case | Model | Result | CLI version | Plugin version | Date | Failures |",
             "|---|---|---|---|---|---|---|"]
     for r in rows:
         out.append("| %s | %s | %s | %s | %s | %s | %s |" % (
-            r["id"], r["result"], _cell(model), _cell(cli), _cell(plugin), date,
-            _cell(r["failures"])))
+            r["id"], _cell(r.get("model") or names[0]), r["result"],
+            _cell(r.get("cli") or cli),
+            _cell(plugin), date, _cell(r["failures"])))
     out += ["", "History and notes on earlier runs: [evals/README.md](README.md#skill-eval-history)."]
     return "\n".join(out) + "\n"
 
 
+def _split_row(line: str) -> List[str]:
+    cells = re.split(r"(?<!\\)\|", line.strip()[1:-1])
+    return [c.strip().replace("\\|", "|") for c in cells]
+
+
+def merge_results(texts: List[str]) -> str:
+    """Merge per-model skill-results files into one file with one headline."""
+    rows = []  # type: List[Dict[str, str]]
+    models = []  # type: List[str]
+    plugin = date = isolation = ""
+    clis = []  # type: List[str]
+    for text in texts:
+        m = re.search(r"^Isolation: (.*)\.$", text, re.M)
+        if m and not isolation:
+            isolation = m.group(1)
+        for line in text.splitlines():
+            if not line.startswith("| ") or line.startswith("| Case "):
+                continue
+            cells = _split_row(line)
+            if len(cells) != 7:
+                continue
+            rows.append({"id": cells[0], "model": cells[1], "result": cells[2],
+                         "failures": cells[6], "cli": cells[3]})
+            plugin, date = cells[4], cells[5]
+            if cells[3] not in clis:
+                clis.append(cells[3])
+            if cells[1] not in models:
+                models.append(cells[1])
+    if not rows:
+        raise ValueError("no result rows found")
+    rows.sort(key=lambda r: (r["id"], models.index(r["model"]), r["cli"]))
+    return render_results(rows, models, ", ".join(clis), plugin, date, isolation)
+
+
+def merge_files(paths: List[str], out_path: str = RESULTS_FILE) -> str:
+    texts = []
+    for path in paths:
+        with open(path, "r", encoding="utf-8") as fh:
+            texts.append(fh.read())
+    text = merge_results(texts)
+    _write(out_path, text)
+    return text
+
+
+def parse_models(values: Optional[List[str]]) -> List[Optional[str]]:
+    """Repeatable and comma-separated --model values, de-duplicated, order kept.
+    No value means one run with the CLI's default model ([None])."""
+    models = []  # type: List[Optional[str]]
+    for value in values or []:
+        for name in value.split(","):
+            name = name.strip()
+            if name and name not in models:
+                models.append(name)
+    return models or [None]
+
+
+def run_case(claude: str, case: dict, model: Optional[str], timeout: int, flags: set,
+             mcp_config: str, plugin_dir: str, guarded: List[str], runs_dir: str,
+             bare: bool, keep: bool, client: str = "claude") -> List[str]:
+    """Run one case on one model in a fresh temp folder; return its failures."""
+    workdir = tempfile.mkdtemp(prefix="dfeval-%s-" % case["id"])
+    try:
+        prepare_workdir(case, workdir)
+        guarded = list(guarded)
+        if client == "codex":
+            guarded.append(stage_codex_skill(workdir, plugin_dir))
+        baseline = workdir_files(workdir)
+        before = snapshot(guarded)
+        result = run_claude(claude, case, workdir, timeout, model,
+                            flags, mcp_config, repo=plugin_dir, bare=bare, client=client)
+        # Cache entries that already existed are ignored (other local Python runs, for
+        # example a test suite, rewrite them); a new cache entry is reported like any new file.
+        tampered = [p for p in changed_files(before, snapshot(guarded, before))
+                    if not (_is_cache_path(p) and p in before)]
+        suffix = "-" + re.sub(r"[^\w.-]", "_", model) if model else ""
+        _write(os.path.join(runs_dir, case["id"] + suffix + ".txt"), result.output)
+        failures = grade(case, workdir, result, baseline, client)
+        if tampered:
+            failures.insert(0, "grader or plugin files changed during the run: %s"
+                            % ", ".join(tampered[:10]))
+        return failures
+    finally:
+        if keep:
+            print("kept: %s" % workdir)
+        else:
+            remove_tree(workdir)
+
+
 def main(argv: Optional[List[str]] = None) -> int:
+    # A Windows console (cp1252) cannot print every character a failure message may carry.
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(errors="replace")
     ap = argparse.ArgumentParser(description="Run design-and-fix skill evals headlessly.")
     ap.add_argument("--case", help="run only this case id (e.g. 01-audit-monorepo or 01)")
-    ap.add_argument("--claude", default=None, help="path to the claude CLI")
-    ap.add_argument("--model", default=None, help="model alias or id passed to claude")
+    ap.add_argument("--client", choices=sorted(CLIENTS), default="claude",
+                    help="agent CLI to test (default claude)")
+    ap.add_argument("--claude", default=None,
+                    help="path to the client's CLI (claude, codex or cursor-agent)")
+    ap.add_argument("--model", action="append", default=None,
+                    help="model alias or id passed to claude; repeat or comma-separate "
+                         "to run every case on each model")
     ap.add_argument("--timeout", type=int, default=DEFAULT_TIMEOUT,
                     help="seconds per case (default %d)" % DEFAULT_TIMEOUT)
     ap.add_argument("--keep", action="store_true", help="keep temp working folders")
     ap.add_argument("--bare", action="store_true",
                     help="pass --bare (skips CLAUDE.md and hooks; needs ANTHROPIC_API_KEY)")
+    ap.add_argument("--merge-results", nargs="+", metavar="FILE",
+                    help="merge per-model results files into evals/skill-results.md and exit")
     args = ap.parse_args(argv)
 
-    claude = args.claude or shutil.which("claude")
+    if args.merge_results:
+        try:
+            text = merge_files(args.merge_results)
+        except (OSError, ValueError) as exc:
+            print("error: %s" % exc, file=sys.stderr)
+            return 2
+        print(PASS_LINE_RE.search(text).group(0))
+        return 0
+
+    client = args.client
+    claude = find_client(client, args.claude)
     if not claude:
-        print("error: claude CLI not found; pass --claude PATH", file=sys.stderr)
+        print("error: %s CLI not found; pass --claude PATH" % CLIENTS[client][0],
+              file=sys.stderr)
+        return 2
+    if args.bare and client != "claude":
+        print("error: --bare applies to --client claude only", file=sys.stderr)
         return 2
     if args.bare and not os.environ.get("ANTHROPIC_API_KEY"):
         print("error: --bare needs ANTHROPIC_API_KEY (bare mode reads no OAuth login)",
               file=sys.stderr)
         return 2
+    models = parse_models(args.model)
     cases = load_cases()
     if args.case:
         cases = [c for c in cases
@@ -556,8 +950,12 @@ def main(argv: Optional[List[str]] = None) -> int:
             print("error: no case matches %r" % args.case, file=sys.stderr)
             return 2
 
-    flags = supported_flags(claude)
-    missing = [f for f in ISOLATION_FLAGS if f not in flags]
+    problem = shim_prompt_error(client, claude, [c["prompt"] for c in cases])
+    if problem:
+        print("error: %s" % problem, file=sys.stderr)
+        return 2
+    flags = supported_flags(claude) if client == "claude" else set()
+    missing = [f for f in ISOLATION_FLAGS if f not in flags] if client == "claude" else []
     if missing:
         print("warning: claude lacks %s; run is less isolated" % ", ".join(missing),
               file=sys.stderr)
@@ -568,41 +966,39 @@ def main(argv: Optional[List[str]] = None) -> int:
     runs_dir = os.path.join(EVALS_DIR, "runs", stamp)
     os.makedirs(runs_dir, exist_ok=True)
     rows = []  # type: List[Dict[str, str]]
+    global _PYCACHE_PREFIX
     cfg_dir = tempfile.mkdtemp(prefix="dfeval-cfg-")
+    _PYCACHE_PREFIX = tempfile.mkdtemp(prefix="dfeval-pycache-")
     try:
         mcp_config = write_empty_mcp(cfg_dir)
         plugin_dir = stage_plugin(cfg_dir)
+        cli_text = cli_label(client, cli_version(claude))
         guarded = guarded_paths(plugin_dir)
         for case in cases:
-            workdir = tempfile.mkdtemp(prefix="dfeval-%s-" % case["id"])
-            try:
-                prepare_workdir(case, workdir)
-                before = snapshot(guarded)
-                result = run_claude(claude, case, workdir, args.timeout, args.model,
-                                    flags, mcp_config, repo=plugin_dir, bare=args.bare)
-                tampered = changed_files(before, snapshot(guarded))
-                _write(os.path.join(runs_dir, case["id"] + ".txt"), result.output)
-                failures = grade(case, workdir, result)
-                if tampered:
-                    failures.insert(0, "grader or plugin files changed during the run: %s"
-                                    % ", ".join(tampered[:10]))
-            finally:
-                if args.keep:
-                    print("kept: %s" % workdir)
-                else:
-                    remove_tree(workdir)
-            rows.append({"id": case["id"], "result": "FAIL" if failures else "PASS",
-                         "failures": "; ".join(failures)})
-            print("%-28s %s" % (case["id"], rows[-1]["result"]))
-            for f in failures:
-                print("    - %s" % f)
+            timeout = min(args.timeout, case["timeout"]) if case.get("timeout") else args.timeout
+            for model in models:
+                failures = run_case(claude, case, model, timeout, flags, mcp_config,
+                                    plugin_dir, guarded, runs_dir, args.bare, args.keep, client)
+                rows.append({"id": case["id"], "model": model or "default",
+                             "cli": cli_text,
+                             "result": "FAIL" if failures else "PASS",
+                             "failures": "; ".join(failures)})
+                print("%-40s %-10s %s" % (case["id"], rows[-1]["model"], rows[-1]["result"]))
+                for f in failures:
+                    print("    - %s" % f)
     finally:
         remove_tree(cfg_dir)
+        remove_tree(_PYCACHE_PREFIX)
+        _PYCACHE_PREFIX = None
     date = datetime.date.today().isoformat()
-    text = render_results(rows, args.model or "default", cli_version(claude),
-                          plugin_version(), date, isolation_summary(flags, args.bare))
+    text = render_results(rows, [m or "default" for m in models], cli_text,
+                          plugin_version(), date, client_isolation(client, flags, args.bare))
     if not args.case:
-        _write(RESULTS_FILE, text)
+        # Only Claude Code owns skill-results.md; other clients write a sibling file
+        # to combine with --merge-results (a PASS row there is what the README matrix
+        # needs before it may say "end-to-end tested").
+        _write(RESULTS_FILE if client == "claude"
+               else os.path.join(EVALS_DIR, "skill-results-%s.md" % client), text)
     passed = sum(1 for r in rows if r["result"] == "PASS")
     print("%d/%d passed" % (passed, len(rows)))
     return 0 if passed == len(rows) else 1

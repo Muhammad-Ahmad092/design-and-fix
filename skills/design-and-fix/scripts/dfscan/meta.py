@@ -7,7 +7,7 @@ from typing import List
 
 from . import registry
 
-PLUGIN_VERSION = "1.0.2"
+PLUGIN_VERSION = "1.1.0"
 SCHEMA_VERSION = 3
 
 

@@ -3,12 +3,12 @@
 > Scope: services/payments, services/orders, services/catalog in `tests/fixtures/monorepo` (synthetic fixture; all paths relative to it). App/ (.NET stub) not assessed.
 > Context: payments checkout, about 50 req/s peak, must keep PostgreSQL, pain point: checkout (charge) is slow and sometimes double-charges
 > Format: 1.0.2
-> Audit: plugin 1.0.2 · scanner schema 3 · rev unknown · config 3d96e5d5ea6d · 2026-11-03T11:54:08Z
+> Audit: plugin 1.1.0 · scanner schema 3 · rev unknown · config 3d96e5d5ea6d · 2026-11-05T16:53:17Z
 
 ## Architecture Health Score: Fragile (4.9 / 10)
 
 Fragile: structural fixes needed before growth.
-Evidence: 11 files read, 23 scanner signals reviewed, 22 confirmed
+Evidence: 11 files read, 23 scanner signals reviewed, 18 confirmed
 
 | Category | Score | Band | Weight | Main driver (IDs) |
 |---|---|---|---|---|
@@ -21,7 +21,7 @@ Evidence: 11 files read, 23 scanner signals reviewed, 22 confirmed
 | Maintainability | 6 | Mixed | 1.0 | Charge route untested, no tests in orders/catalog, no lockfiles, 30 copied unused functions (MNT-002 High, MNT-001 Medium, MNT-003 Low, MNT-004 Low) |
 
 - Arithmetic: the Context line says "payments", so Security weighs 2.0: (8 + 6 + 6 + 3 + 1 × 2.0 + 8 + 6) / 8 = 39 / 8 = 4.875 → 4.9 → Fragile (unweighted it would be 5.4). `API-*` issues are defined in `02-api-optimization.md`.
-- Rejected signal (1 of 23): `unbounded-query` at `services/catalog/app.py:21` (equality filter; the real defect there is SEC-002).
+- Rejected signal (1 of 23): `unbounded-query` at `services/catalog/app.py:21` (equality filter; the real defect there is SEC-002). Four more back issues that are not `confirmed`: REL-004 (2, `likely`), SCL-002 (`likely`) and SEC-001 (`needs-review`).
 - No git history (`--no-git`), so hotspots were not used to order reading.
 
 ## Critical Issues
@@ -29,13 +29,13 @@ Evidence: 11 files read, 23 scanner signals reviewed, 22 confirmed
 | ID | Status | Source | Issue | Evidence | Root cause | Consequence | Fix | Verify | Why |
 |---|---|---|---|---|---|---|---|---|---|
 | REL-001 | confirmed | agent | `POST /payments/charge` is not idempotent (double-charge pain point) | `services/payments/src/handlers/charge.ts:15`, `services/payments/src/handlers/charge.ts:17` | Handler reads only `items` and `customerId`, sends no idempotency key to the provider, writes no charge row first; `charge_items` rows (line 21) carry no charge ID | A retried request charges the card again and leaves no record to detect it | Require an `Idempotency-Key` header, insert a `charges` row with `UNIQUE (idempotency_key)` in PostgreSQL before the provider call, forward the key, replay the stored response | Test: two identical requests with one `Idempotency-Key` produce one provider call and one `charges` row | Makes retries safe and stays on PostgreSQL |
-| SEC-001 | confirmed | scanner+agent:unauth-write-route | `POST /payments/charge` has no authentication; refund's check is presence-only | `services/payments/src/handlers/charge.ts:14`, `services/payments/src/handlers/refund.ts:8` | RC-1; the only auth helper, `requireAuth` (`refund.ts:7`-13), checks that an `Authorization` header exists and never verifies it; charge does not use it | Anyone can charge any `customerId`; anyone sending any `Authorization` value can refund any charge | Replace `requireAuth` with real token verification (JWT signature + expiry) in `src/lib/auth.ts` and apply it to every payments write route | Test: charge and refund without a token or with a forged one return 401 | Both money-moving routes are effectively open |
+| SEC-001 | needs-review | scanner+agent:unauth-write-route | `POST /payments/charge` has no authentication; refund's check is presence-only | `services/payments/src/handlers/charge.ts:14`, `services/payments/src/handlers/refund.ts:8` | RC-1; the only auth helper, `requireAuth` (`refund.ts:7`-13), checks that an `Authorization` header exists and never verifies it; charge does not use it | Anyone can charge any `customerId`; anyone sending any `Authorization` value can refund any charge | Replace `requireAuth` with real token verification (JWT signature + expiry) in `src/lib/auth.ts` and apply it to every payments write route | Test: charge and refund without a token or with a forged one return 401 | Both money-moving routes are effectively open |
 | SEC-002 | confirmed | scanner:sql-string-concat | SQL injection in `POST /items` | `services/catalog/app.py:21` | Request field `name` is concatenated into the SQL string | Attacker can read or alter any catalog table | `cursor.execute("SELECT * FROM items WHERE name = %s", (name,))` | Test: `name` of `' OR '1'='1` returns no rows instead of every row | Parameter binding removes the injection in one line |
 | SEC-003 | confirmed | scanner:hardcoded-secret | Production database password committed in source | `services/catalog/app.py:9` | `DB_PASSWORD` is a literal named for prod | Every repo reader holds the catalog DB password | Read it from an environment variable injected by a secret store; rotate the current value | Check: `git grep` for the old value finds nothing and the old password is rejected by the database | A committed secret stays in history until rotated |
 | SEC-004 | confirmed | scanner:unauth-write-route | `POST /orders` and `POST /items` accept unauthenticated writes | `services/orders/src/orders.go:44`, `services/catalog/app.py:16` | RC-1; orders uses bare `gin.Default()` (line 43), catalog has no `before_request` check | Unauthenticated today: the injectable query at `app.py:21` and any write logic added to these handlers later are open to anyone | Add the same JWT verification (signature + expiry) as middleware on the Gin router and a Flask `before_request` hook | Test: both routes return 401 without a valid token | Same policy on every write route |
 
 - REL-001: Observed: the handler posts to the provider with no key and records nothing before the call. Inference: a client retry after a timeout charges twice, matching the reported double charges. Limitations: client retry behaviour Not verified (no client in scope).
-- SEC-001: Observed: `charge.ts` never calls an auth helper; `requireAuth` only tests for the header. Inference: any caller can move money. Limitations: an API gateway in front could authenticate (none in the repo).
+- SEC-001: Observed: `charge.ts` never calls an auth helper; `requireAuth` only tests for the header. Inference: any caller can move money. Limitations: the scanner could not see where the payments router is mounted (`uncertain_reason`) and no mount, gateway or auth config exists in the repo, so auth in front of the service is Not verified; the issue stays `needs-review` until that file is read.
 - SEC-002: Observed: string concatenation into `cursor.execute`. Inference: classic injection. Limitations: the route also selects instead of inserting (API-003), so the data reachable is whatever the connected role can read.
 - SEC-003: Observed: a literal password assigned to `DB_PASSWORD`. Inference: the committed value is exposed to every reader. Limitations: whether it is the live production password is Not verified.
 - SEC-004: Observed: no middleware on either route. Inference: both are open to anyone who can reach the service. Limitations: network-level restrictions Not verified.

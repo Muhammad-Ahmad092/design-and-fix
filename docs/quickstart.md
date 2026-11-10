@@ -43,9 +43,13 @@ cp -r tests/fixtures/monorepo /tmp/monorepo-demo && cd /tmp/monorepo-demo && cod
 
 Use the same prompt, or invoke the skill by name.
 
+The skill evals can drive Codex headlessly (`python evals/run.py --client codex`); this is not yet claimed as end-to-end tested. See `evals/README.md`, Clients.
+
 ### Cursor
 
 Open the copied folder in Cursor with the plugin installed (see the README) and send the same prompt in Agent chat.
+
+Headless runs use `cursor-agent` (`python evals/run.py --client cursor`); not yet claimed as end-to-end tested. See `evals/README.md`, Clients.
 
 ### Other clients
 

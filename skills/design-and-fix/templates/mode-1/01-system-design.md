@@ -3,11 +3,28 @@
 > Scope: <project name>
 > Context: <scale> users, team of <size>, <key constraint>
 > Format: 1.0.2
-> Audit: plugin 1.0.2 · scanner not run · rev <sha|unknown> · <timestamp>
+> Audit: plugin 1.1.0 · scanner not run · rev <sha|unknown> · <timestamp>
 
 ## Overview
 
 <2–3 lines: what the system does, who it is for, the one constraint that shapes it most>
+
+### Requirements
+
+| Requirement | Value | Source | Effect on design |
+|---|---|---|---|
+| Goal | <what the system must achieve, for whom> | <user / assumption> | <what this changes in the design> |
+| Functional | <the key capabilities> | <user / assumption> | <modules or components it needs> |
+| Non-functional | <latency, throughput, consistency targets, e.g. p95 < 300 ms> | <user / assumption> | <caching, async work, store choice> |
+| Roles | <user roles and what each may do> | <user / assumption> | <auth model, separate clients> |
+| Traffic and data estimate | <users, peak req/s, data volume now and in 12 months> | <user / assumption> | <Capacity Estimates inputs; sharding or not> |
+| Availability and recovery target | <uptime %, RPO, RTO> | <user / assumption> | <replicas, backups, failover> |
+| Compliance | <GDPR, PCI DSS, HIPAA, or none> | <user / assumption> | <data placement, threat model depth> |
+| Budget | <monthly infra budget, or cost-sensitive> | <user / assumption> | <managed vs self-run, Deployment & Cost> |
+| Deployment constraint | <cloud or on-prem, regions, managed services allowed> | <user / assumption> | <hosting shape> |
+| Team capacity | <size, seniority, who is on call> | <user / assumption> | <how much operational complexity is allowed> |
+
+Source is `user` (stated) or `assumption` (`assumption (non-interactive)` when no questions could be asked); every assumption is also listed under Assumptions & Constraints. One row per item, all ten rows.
 
 ## System Context
 
@@ -99,12 +116,14 @@ Formulas in `references/capacity-estimation.md`.
 | <decision area> | <chosen option> | <alternative> | <reason> |
 | <decision area> | <chosen option> | <alternative> | <reason> |
 
-Options for <top decision> (2–3 options for the top 1–2 decisions only):
+One trade-off table per decision row, 2–3 options each; rate each column Low / Medium / High with the reason that matters here.
 
-| Option | Strength | Weakness | Verdict |
-|---|---|---|---|
-| <option A> | <what it does well here> | <cost or risk here> | Chosen |
-| <option B> | <what it does well here> | <cost or risk here> | <rejected: reason> |
+### Trade-offs: <decision area>
+
+| Option | Complexity | Scalability | Reliability | Security | Operations | Cost | Familiarity | Lock-in | Migration path |
+|---|---|---|---|---|---|---|---|---|---|
+| <option A> (chosen) | <Low: one deployable> | <Medium: scales as one unit> | <rating: reason> | <rating: reason> | <rating: reason> | <rating> | <rating: team knows it?> | <rating: provider-specific parts> | <how to move off it later> |
+| <option B> | <rating: reason> | <rating: reason> | <rating: reason> | <rating: reason> | <rating: reason> | <rating> | <rating> | <rating> | <how to move off it later> |
 
 ADRs: one per row (max 5) in `docs/adr/`, unless the user opted out.
 

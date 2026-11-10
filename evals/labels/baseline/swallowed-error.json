@@ -168,7 +168,7 @@
     "snippet": "except Exception:",
     "fingerprint": "60b128cef0ddaa47",
     "label": "fp",
-    "note": "Commented intentional fallback (keep value as string) - the review2 flask/config.py:163 case."
+    "note": "Commented intentional fallback (keep value as string) - a Flask false positive fixed in 1.0.2 (flask/config.py:163)."
   },
   {
     "repo": "itsdangerous",

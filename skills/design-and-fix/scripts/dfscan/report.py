@@ -5,10 +5,14 @@ import re
 import time
 from typing import Callable, Dict, List, Optional
 
+from . import frameworks as _frameworks
+from . import patterns as _patterns
 from . import registry
+from .auth.spring import _ant as _spring_ant
 from .api_rules import run_api_rules
 from .deps_rules import run_deps_rules
-from .fingerprint import enclosing_names, line_fingerprint, signal_fingerprint
+from .filecache import DEFAULT_MAX_BYTES, FileCache
+from .fingerprint import enclosing_names, line_fingerprint, normalise, signal_fingerprint
 from .hotspots import compute_hotspots
 from .ignore import is_comment_only
 from .imports import _read, build_graph, graph_signals
@@ -32,11 +36,37 @@ def _in_scope(rel: str, scopes: List[str]) -> bool:
     return any(rel == s or rel.startswith(s + "/") for s in scopes)
 
 
+def _real_case_scope(root: str, scope: str) -> str:
+    """`scope` spelled as the folders are named on disk. On a case-insensitive file system
+    (Windows, macOS) `SERVICES` passes an existence check for `services`, but file paths are
+    compared case-sensitively, so the scope would match nothing. Each component that is not an
+    exact entry of its parent folder takes the single entry that differs only in case. A scope
+    that does not exist as given (a case-sensitive file system) is returned unchanged."""
+    if not os.path.isdir(os.path.join(root, *scope.split("/"))):
+        return scope
+    cur, parts = root, []
+    for part in scope.split("/"):
+        try:
+            names = os.listdir(cur)
+        except OSError:
+            return scope
+        if part not in names:
+            folded = [n for n in names if n.lower() == part.lower()
+                      and os.path.isdir(os.path.join(cur, n))]
+            if len(folded) != 1:
+                return scope
+            part = folded[0]
+        parts.append(part)
+        cur = os.path.join(cur, part)
+    return "/".join(parts)
+
+
 EMPTY_GRAPH = {"modules": 0, "edges": 0, "cycles": [], "cycles_meta": [], "god_modules": []}
 
 
 def manifest_dirs(root: str, scopes: List[str]) -> List[str]:
-    """Extra folders whose manifests feed stack detection (spec R2-fp2).
+    """Extra folders whose manifests feed stack detection, so a scoped scan still sees the
+    manifests above its scope.
 
     Every ancestor of each scope root up to the scan root; and, when a scope is given and the scan
     root sits below a repository root (a `.git` in some ancestor), the ancestors of the scan root up
@@ -67,6 +97,17 @@ def manifest_dirs(root: str, scopes: List[str]) -> List[str]:
 FOLDERS_ONLY_NOTE = "folders-only: analyzers skipped"
 
 
+def _clear_module_memos() -> None:
+    """Start a scan without module-level memos of an earlier scan: snippet masking, line
+    normalising, the last docstring-blanked text, every frameworks.py memo (file heads, C# class
+    tables, route details, bracket matching) and the Spring path-pattern memo."""
+    mask_secrets.cache_clear()
+    normalise.cache_clear()
+    _patterns._DOCSTRINGS_LAST[:] = [None, None]
+    _frameworks.clear_scan_memos()
+    _spring_ant.cache_clear()
+
+
 def scan(root: str, scope: Optional[List[str]] = None, list_depth: int = 2,
          top: int = 15, use_git: bool = True, since: str = "12.months",
          folders_only: bool = False, *, config_hash: str = "", respect_gitignore: bool = True,
@@ -74,9 +115,15 @@ def scan(root: str, scope: Optional[List[str]] = None, list_depth: int = 2,
          progress: Optional[Callable[[str], None]] = None, verbose: bool = False,
          max_file_bytes: int = MAX_FILE_BYTES, exclude: Optional[List[str]] = None,
          include: Optional[List[str]] = None,
-         rule_config: Optional[Dict[str, Dict[str, object]]] = None) -> dict:
+         rule_config: Optional[Dict[str, Dict[str, object]]] = None,
+         file_cache_bytes: int = DEFAULT_MAX_BYTES) -> dict:
     """`rule_config` maps rule id -> {"enabled": bool, "severity": str} (from the config file).
-    Disabled rules are not skipped inside the rule runners; their signals are dropped before the
+    `file_cache_bytes` bounds the per-scan file cache (each file is read and comment-stripped
+    once); 0 turns the cache off (every rule family reads files directly). The output does not
+    depend on it.
+    Disabled rules (config `"enabled": false`, or `RuleMeta.default_enabled` False with no config
+    `"enabled": true`) are not skipped inside the rule runners (except openapi-drift, which does
+    not run, so a disabled spec check writes no notes); their signals are dropped before the
     per-rule cap and are not counted as suppressed."""
     root = os.path.abspath(root)
     started = time.perf_counter()
@@ -93,7 +140,10 @@ def scan(root: str, scope: Optional[List[str]] = None, list_depth: int = 2,
             timed_out = True
         return timed_out
 
-    norm_scope = [s for s in (normalize_scope(x) for x in (scope or [])) if s]
+    cache = FileCache(file_cache_bytes) if file_cache_bytes > 0 else None
+    _clear_module_memos()
+    norm_scope = [_real_case_scope(root, s)
+                  for s in (normalize_scope(x) for x in (scope or [])) if s]
     # Stack detection and candidate folders always cover the whole root;
     # imports, routes, signals and hotspots are restricted to the scope.
     walked = walk_result(root, respect_gitignore=respect_gitignore, max_files=max_files,
@@ -107,8 +157,11 @@ def scan(root: str, scope: Optional[List[str]] = None, list_depth: int = 2,
     rule_cfg = rule_config or {}
     disabled = sorted(r for r, c in rule_cfg.items() if c.get("enabled") is False)
     if disabled:
-        notes.append("config disabled rules: %s (their signals are dropped and not counted in "
+        notes.append("rules disabled by config or profile: %s (their signals are dropped and not counted in "
                      "summary.suppressed)" % ", ".join(disabled))
+    default_off = registry.default_off_rules(rule_cfg)
+    if default_off:
+        notes.append("rules off by default (enable in config): %s" % ", ".join(default_off))
     if exclude:
         notes.append("config exclude patterns: %s" % ", ".join(exclude))
     if include:
@@ -136,12 +189,12 @@ def scan(root: str, scope: Optional[List[str]] = None, list_depth: int = 2,
     elif not expired():
         t0 = time.perf_counter()
         say("analyzing imports")
-        graph = build_graph(files, norm_scope)
+        graph = build_graph(files, norm_scope, cache)
         timing["imports"] = time.perf_counter() - t0
         if not expired():
             t0 = time.perf_counter()
             say("finding routes")
-            routes = find_routes(files)
+            routes = find_routes(files, cache)
             timing["routes"] = time.perf_counter() - t0
         if not expired():
             t0 = time.perf_counter()
@@ -151,12 +204,13 @@ def scan(root: str, scope: Optional[List[str]] = None, list_depth: int = 2,
             rule_times: Dict[str, float] = {}
             runners = (
                 ("graph_rules", lambda: graph_signals(graph)),
-                ("route_rules", lambda: route_signals(routes, files)),
+                ("route_rules", lambda: route_signals(routes, files, cache)),
                 ("pattern_rules", lambda: run_rules(files, folders, norm_scope, all_files,
-                                                    deadline, rule_times)),
-                ("api_rules", lambda: run_api_rules(files, routes, notes)),
-                ("infra_rules", lambda: run_infra_rules(files)),
-                ("deps_rules", lambda: run_deps_rules(files, notes)),
+                                                    deadline, rule_times, cache, notes)),
+                ("api_rules", lambda: run_api_rules(
+                    files, routes, notes, cache, lambda r: registry.is_enabled(r, rule_cfg))),
+                ("infra_rules", lambda: run_infra_rules(files, cache)),
+                ("deps_rules", lambda: run_deps_rules(files, notes, cache)),
             )
             for name, runner in runners:
                 t1 = time.perf_counter()
@@ -185,7 +239,7 @@ def scan(root: str, scope: Optional[List[str]] = None, list_depth: int = 2,
     suppressed = 0
     per_rule: Dict[str, int] = {}
     signals: List[dict] = []
-    cache: Dict[str, dict] = {}
+    stamp_cache: Dict[str, dict] = {}
     seen: Dict[str, int] = {}
     t0 = time.perf_counter()
     check_deadline = not timed_out  # a scan already out of time still stamps what it found
@@ -195,18 +249,20 @@ def scan(root: str, scope: Optional[List[str]] = None, list_depth: int = 2,
         if registry.validate_signal(s, known) is not None:
             invalid += 1
             continue
-        _stamp(s, by_rel, cache, seen)
-        rc = rule_cfg.get(s.rule, {})
-        if rc.get("enabled") is False:
+        _stamp(s, by_rel, stamp_cache, seen, cache)
+        if not registry.is_enabled(s.rule, rule_cfg):
             continue
+        rc = rule_cfg.get(s.rule, {})
         if "severity" in rc:
             s.severity_hint = str(rc["severity"])
-        if s.line > 0 and s.file in by_rel and _is_suppressed(s, by_rel[s.file], cache):
+        if s.line > 0 and s.file in by_rel and _is_suppressed(s, by_rel[s.file], stamp_cache,
+                                                              cache):
             suppressed += 1
             continue
         per_rule[s.rule] = per_rule.get(s.rule, 0) + 1
         if per_rule[s.rule] <= RULE_CAP:
             s.snippet = mask_secrets(s.snippet)
+            s.uncertain_reason = mask_secrets(s.uncertain_reason)
             signals.append(s.to_dict())
     timing["stamp"] = time.perf_counter() - t0
     if invalid:
@@ -218,6 +274,12 @@ def scan(root: str, scope: Optional[List[str]] = None, list_depth: int = 2,
         notes += ["timing %s: %.3fs" % (k, v) for k, v in sorted(timing.items())]
     truncated = {r: n for r, n in per_rule.items() if n > RULE_CAP}
     skipped_all = [x for x in walked.skipped if not norm_scope or _in_scope(x["path"], norm_scope)]
+    skipped_by_reason: Dict[str, int] = {}
+    for x in skipped_all:
+        skipped_by_reason[x["reason"]] = skipped_by_reason.get(x["reason"], 0) + 1
+    # An excluded folder that contains a scope counts too: it emptied (part of) that scope.
+    excluded = [p for p in walked.excluded if not norm_scope or _in_scope(p, norm_scope)
+                or any(_in_scope(s, [p]) for s in norm_scope)]
     by_category: Dict[str, int] = {}
     for s in signals:
         by_category[s["category"]] = by_category.get(s["category"], 0) + 1
@@ -229,7 +291,9 @@ def scan(root: str, scope: Optional[List[str]] = None, list_depth: int = 2,
         "frameworks": frameworks,
         "candidate_folders": candidate_folders(all_files, list_depth, top),
         "import_graph": graph,
-        "routes": routes[:MAX_ROUTES],
+        # Route paths and notes can quote source text (a token in a URL path): masked here, so
+        # every renderer (JSON, Markdown, SARIF, --output-dir) gets masked data.
+        "routes": [dict(r, path=mask_secrets(r["path"])) for r in routes[:MAX_ROUTES]],
         "hotspots": hotspots,
         "signals": signals,
         "summary": {
@@ -244,8 +308,12 @@ def scan(root: str, scope: Optional[List[str]] = None, list_depth: int = 2,
             "suppressed": suppressed,
             "partial": partial,
             "skipped_total": len(skipped_all),
+            "default_off_rules": default_off,
+            "scope_report": {"scanned": len(files),
+                             "skipped_by_reason": dict(sorted(skipped_by_reason.items())),
+                             "excluded_by_config": len(excluded)},
         },
-        "notes": notes,
+        "notes": [mask_secrets(n) for n in notes],
         "skipped_files": skipped_all[:MAX_SKIPPED],
         "meta": audit_meta(root, norm_scope, config_hash, use_git),
     }
@@ -271,11 +339,14 @@ def _ignores(comment: str, rule: str) -> bool:
     return False
 
 
-def _file_text(fi: FileInfo, cache: Dict[str, dict]) -> dict:
-    """Per-file cache: the original source split on LF, plus lazily built helpers."""
+def _file_text(fi: FileInfo, cache: Dict[str, dict],
+               files: Optional[FileCache] = None) -> dict:
+    """Per-file cache: the original source split on LF, plus lazily built helpers. Only files
+    with signals are held here; `files` is the scan's file cache."""
     ft = cache.get(fi.rel)
     if ft is None:
-        ft = {"lines": _read(fi).split("\n"), "names": None, "stripped": None}
+        text = files.text(fi) if files is not None else _read(fi)
+        ft = {"lines": text.split("\n"), "names": None, "stripped": None}
         cache[fi.rel] = ft
     return ft
 
@@ -306,13 +377,14 @@ def _comment_text(fi: FileInfo, ft: dict, idx: int) -> str:
     return ""
 
 
-def _is_suppressed(sig: Signal, fi: FileInfo, cache: Dict[str, dict]) -> bool:
+def _is_suppressed(sig: Signal, fi: FileInfo, cache: Dict[str, dict],
+                   files: Optional[FileCache] = None) -> bool:
     """`dfscan:ignore [rule[, rule]]` in a comment on the signal line, or in a comment-only line above it.
 
     Looks in the ORIGINAL source (the rules scan comment-stripped text). Line-0 (folder) signals
     cannot be suppressed.
     """
-    ft = _file_text(fi, cache)
+    ft = _file_text(fi, cache, files)
     lines = ft["lines"]
 
     def marked(idx: int) -> bool:
@@ -329,7 +401,7 @@ GRAPH_RULES = {"import-cycle", "god-module"}
 
 
 def _stamp(sig: Signal, by_rel: Dict[str, FileInfo], cache: Dict[str, dict],
-           seen: Dict[str, int]) -> None:
+           seen: Dict[str, int], files: Optional[FileCache] = None) -> None:
     meta = registry.RULES[sig.rule]
     sig.rule_version = meta.version
     # The registry confidence is the measured ceiling (evals/precision.md): a rule
@@ -338,7 +410,7 @@ def _stamp(sig: Signal, by_rel: Dict[str, FileInfo], cache: Dict[str, dict],
         sig.confidence = meta.confidence
     fi = by_rel.get(sig.file)
     if fi is not None and sig.line > 0 and sig.rule not in GRAPH_RULES:
-        ft = _file_text(fi, cache)
+        ft = _file_text(fi, cache, files)
         if ft["names"] is None:
             ft["names"] = enclosing_names(ft["lines"])
         base = line_fingerprint(sig.rule, sig.file, ft["lines"], ft["names"], sig.line)

@@ -52,12 +52,12 @@ class ManifestTests(unittest.TestCase):
         errs = validate(self.tmp)
         self.assertTrue(any("skills" in e for e in errs), errs)
 
-    def test_versions_are_1_0_2(self):
+    def test_versions_are_1_1_0(self):
         import validate_manifests
-        self.assertEqual(validate_manifests.EXPECTED_VERSION, "1.0.2")
-        self._edit_json(".claude-plugin/plugin.json", lambda d: d.update(version="1.0.1"))
+        self.assertEqual(validate_manifests.EXPECTED_VERSION, "1.1.0")
+        self._edit_json(".claude-plugin/plugin.json", lambda d: d.update(version="1.0.2"))
         errs = validate(self.tmp)
-        self.assertTrue(any("1.0.1" in e and "1.0.2" in e for e in errs), errs)
+        self.assertTrue(any("1.0.2" in e and "1.1.0" in e for e in errs), errs)
 
     def test_validator_catches_version_mismatch(self):
         self._edit_json(".cursor-plugin/plugin.json", lambda d: d.update(version="1.0.0"))

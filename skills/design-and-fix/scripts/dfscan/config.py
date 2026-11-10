@@ -7,14 +7,14 @@ import os
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
-from . import registry
+from . import profiles, registry
 from .ignore import InvalidPattern, compile_glob
-from .json_utils import check_json_nesting
+from .json_utils import check_json_safety
 from .walker import MAX_FILE_BYTES
 
 CONFIG_NAME = ".design-and-fix.json"
 FAIL_LEVELS = ("Critical", "High", "Medium", "Low", "none")
-TOP_KEYS = ("$schema", "exclude", "include", "rules", "limits", "fail_on", "output")
+TOP_KEYS = ("$schema", "profile", "exclude", "include", "rules", "limits", "fail_on", "output")
 LIMIT_KEYS = ("max_file_bytes", "max_files", "timeout_seconds")
 RULE_KEYS = ("enabled", "severity")
 OUTPUT_KEYS = ("verbose",)
@@ -39,6 +39,7 @@ class Config:
     fail_on: str = "none"
     verbose: bool = False
     path: Optional[str] = None  # the file this came from (None: defaults)
+    profile: Optional[str] = None  # built-in profile applied under the file (profiles.PROFILES)
 
 
 def _err(path: str, key: str, problem: str, fix: str) -> ConfigError:
@@ -73,13 +74,50 @@ def _check_keys(path: str, where: str, data: dict, allowed: tuple) -> None:
                        "remove it or use one of: %s" % ", ".join(allowed))
 
 
-def parse_config(data: Any, path: str) -> Config:
+def _merge(base: dict, over: dict) -> dict:
+    """`over` wins on every key it sets; `rules` entries and `limits`/`output` merge key by key."""
+    out = dict(base)
+    for key, value in over.items():
+        prev = out.get(key)
+        if key == "rules" and isinstance(value, dict) and isinstance(prev, dict):
+            rules = dict(prev)
+            for rid, entry in value.items():
+                old = rules.get(rid)
+                if isinstance(entry, dict) and isinstance(old, dict):
+                    merged = dict(old)
+                    merged.update(entry)
+                    rules[rid] = merged
+                else:
+                    rules[rid] = entry
+            out[key] = rules
+        elif key in ("limits", "output") and isinstance(value, dict) and isinstance(prev, dict):
+            merged = dict(prev)
+            merged.update(value)
+            out[key] = merged
+        else:
+            out[key] = value
+    return out
+
+
+def parse_config(data: Any, path: str, profile: Optional[str] = None) -> Config:
+    """Validate `data` (a config file's JSON). `profile` (the --profile flag) or the file's own
+    `"profile"` key names a built-in profile applied under the file: defaults < profile < file."""
     if not isinstance(data, dict):
         raise _err(path, "<root>", "the file must contain a JSON object",
                    'start the file with { and use keys such as "exclude" or "fail_on"')
     _check_keys(path, "", data, TOP_KEYS)
+    if "profile" in data and (not isinstance(data["profile"], str)
+                              or data["profile"] not in profiles.PROFILES):
+        raise _err(path, "profile", "unknown profile %r" % (data["profile"],),
+                   "use one of: %s" % ", ".join(sorted(profiles.PROFILES)))
+    if profile is not None and profile not in profiles.PROFILES:
+        raise ConfigError("unknown profile %r; fix: use one of: %s"
+                          % (profile, ", ".join(sorted(profiles.PROFILES))))
+    name = profile or data.get("profile")
+    if name:
+        data = _merge(profiles.PROFILES[name], data)
     registry.ensure_loaded()  # rule ids are validated against the full registry
-    cfg = Config(path=path)
+    cfg = Config(path=path, profile=name or None)
     if "$schema" in data and not isinstance(data["$schema"], str):
         raise _err(path, "$schema", "must be a string", "use a URL or path string, or remove it")
     if "exclude" in data:
@@ -141,18 +179,24 @@ def parse_config(data: Any, path: str) -> Config:
     return cfg
 
 
-def load_config(root: str, explicit: Optional[str] = None) -> Config:
-    """Load `explicit` (must exist) or `<root>/.design-and-fix.json` (missing means defaults)."""
+def load_config(root: str, explicit: Optional[str] = None,
+                profile: Optional[str] = None) -> Config:
+    """Load `explicit` (must exist) or `<root>/.design-and-fix.json` (missing means defaults),
+    over the built-in `profile` when one is named (here or by the file's `"profile"` key)."""
     path = explicit if explicit else os.path.join(root, CONFIG_NAME)
     if not os.path.isfile(path):
         if explicit:
             raise ConfigError("%s: config file not found; fix: pass an existing file to --config "
                               "or omit the flag" % explicit)
-        return Config()
+        if profile is None:
+            return Config()
+        cfg = parse_config({}, "<profile %s>" % profile, profile)
+        cfg.path = None
+        return cfg
     try:
         with open(path, "r", encoding="utf-8-sig") as fh:
             text = fh.read()
-        check_json_nesting(text)
+        check_json_safety(text)
         data = json.loads(text)
     except json.JSONDecodeError as exc:
         raise ConfigError("%s: invalid JSON at line %d column %d (%s); fix: correct the syntax "
@@ -163,7 +207,7 @@ def load_config(root: str, explicit: Optional[str] = None) -> Config:
     except (ValueError, RecursionError) as exc:  # e.g. nesting too deep, an integer too long
         raise ConfigError("%s: unreadable JSON (%s); fix: simplify the file (shallow nesting, "
                           "ordinary numbers)" % (path, type(exc).__name__))
-    return parse_config(data, path)
+    return parse_config(data, path, profile)
 
 
 def config_hash(cfg: Config) -> str:

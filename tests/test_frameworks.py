@@ -134,7 +134,10 @@ class FixtureRouteTests(unittest.TestCase):
         files = walk(root)
         sigs = [s for s in route_signals(find_routes(files), files) if s.rule == "unauth-write-route"]
         self.assertEqual([s.snippet for s in sigs], ["POST /orders"])
-        self.assertEqual(sigs[0].confidence, "medium")
+        # The fixture has no RouteServiceProvider / bootstrap/app.php: the group middleware
+        # that loads routes/api.php is unknown, so the route is unresolved (low confidence).
+        self.assertEqual(sigs[0].confidence, "low")
+        self.assertIn("RouteServiceProvider", sigs[0].uncertain_reason)
 
 
 # ------------------------------------------------------------------------------- Spring
@@ -188,21 +191,16 @@ class SpringTests(unittest.TestCase):
         self.assertEqual(got, {("POST", "/s/after-record", "spring", True),
                                ("POST", "/open", "spring", False)})
 
-    def test_global_security_chain_lowers_confidence(self):
+    def test_global_security_chain_resolved_by_auth_adapter(self):
         ctrl = ("@RestController\npublic class C {\n    @PostMapping(\"/orders\")\n"
                 "    public void create() {}\n}\n")
         sec = ("public class Sec {\n    SecurityFilterChain chain(HttpSecurity http) {\n"
                "        return http.authorizeHttpRequests(a -> a.anyRequest().authenticated()).build();\n"
                "    }\n}\n")
-        hits = _hits({"src/C.java": ctrl, "src/Sec.java": sec}, "unauth-write-route")
-        self.assertEqual(len(hits), 1)
-        self.assertEqual(hits[0]["confidence"], "low")
-        self.assertIn("global auth policy in src/Sec.java", hits[0]["snippet"])
+        # anyRequest().authenticated() covers the route (dfscan/auth/spring.py): no signal.
+        self.assertEqual(_hits({"src/C.java": ctrl, "src/Sec.java": sec}, "unauth-write-route"), [])
         alone = _hits({"src/C.java": ctrl}, "unauth-write-route")
-        # unauth-write-route is capped at "low" (measured precision), so the global
-        # policy shows in the snippet rather than as a confidence difference.
-        self.assertEqual(alone[0]["confidence"], "low")
-        self.assertNotIn("global auth policy", alone[0]["snippet"])
+        self.assertEqual([h["snippet"] for h in alone], ["POST /orders"])
 
 
 # ------------------------------------------------------------------------------- ASP.NET
@@ -244,17 +242,14 @@ class AspNetTests(unittest.TestCase):
         got = _table(_routes({"Controllers/ShopController.cs": cs}))
         self.assertEqual(got, {("POST", "/api/shop/buy", "aspnetcore", True)})
 
-    def test_fallback_policy_lowers_confidence(self):
+    def test_fallback_policy_resolved_by_auth_adapter(self):
         prog = ("builder.Services.AddAuthorization(o => o.FallbackPolicy = new "
                 "AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build());\n"
                 "app.MapPost(\"/orders\", Create);\n")
-        hits = _hits({"Program.cs": prog}, "unauth-write-route")
-        # The rule is capped at "low" with or without a policy, so check the policy note.
-        self.assertEqual(len(hits), 1)
-        self.assertIn("global auth policy in Program.cs", hits[0]["snippet"])
+        # FallbackPolicy covers every endpoint (dfscan/auth/aspnet.py): no signal.
+        self.assertEqual(_hits({"Program.cs": prog}, "unauth-write-route"), [])
         alone = _hits({"Program.cs": "app.MapPost(\"/orders\", Create);\n"}, "unauth-write-route")
-        self.assertEqual(len(alone), 1)
-        self.assertNotIn("global auth policy", alone[0]["snippet"])
+        self.assertEqual([h["snippet"] for h in alone], ["POST /orders"])
 
 
 # ------------------------------------------------------------------------------- Rails
@@ -418,7 +413,7 @@ class SpringReviewTests(unittest.TestCase):
                 "    @RequestMapping(\"/any\")\n    public void c() {}\n}\n")
         got = {(r["method"], r["path"]) for r in _routes({"src/U.java": java})}
         self.assertEqual(got, {("POST", "/users"), ("GET", "/x"), ("DELETE", "/x"),
-                               ("ANY", "/any")})
+                               ("ANY", "/any"), ("POST", "/any")})  # 1.1.0 review M5
 
     def test_m12_all_class_prefixes_constants_and_permit_all(self):
         java = ("@RestController\n@PreAuthorize(\"hasRole('USER')\")\n"
@@ -704,14 +699,32 @@ class LanguageRuleTests(unittest.TestCase):
         self.assertEqual(hits, set(flagged))
 
     def test_sql_string_concat_per_language(self):
+        # 1.1.0: request input must reach the SQL call; concatenation alone gives no signal.
         flagged = {
-            "src/A.kt": "val q = \"SELECT * FROM users WHERE name = $name\"\n",
-            "src/B.cs": "var q = $\"SELECT * FROM users WHERE name = '{name}'\";\n",
-            "src/c.php": "<?php\n$q = \"SELECT * FROM users WHERE name = '$name'\";\n",
-            "lib/d.rb": "q = \"SELECT * FROM users WHERE name = '#{name}'\"\n",
-            "src/E.java": "String q = String.format(\"SELECT * FROM users WHERE name = '%s'\", name);\n",
+            "src/A.kt": ("fun f(@RequestParam name: String) {\n"
+                         "    val q = \"SELECT * FROM users WHERE name = $name\"\n"
+                         "    jdbc.queryForList(q)\n}\n"),
+            "src/B.cs": ("public void F([FromQuery] string name)\n{\n"
+                         "    _db.Query($\"SELECT * FROM users WHERE name = '{name}'\");\n}\n"),
+            "src/c.php": ("<?php\n$name = $_GET['name'];\n"
+                          "DB::select(\"SELECT * FROM users WHERE name = '$name'\");\n"),
+            "lib/d.rb": ("def f\n  Order.find_by_sql(\"SELECT * FROM users WHERE name = "
+                         "'#{params[:name]}'\")\nend\n"),
+            "src/E.java": ("void f(@RequestParam String name) {\n    jdbc.queryForList(String.format("
+                           "\"SELECT * FROM users WHERE name = '%s'\", name));\n}\n"),
         }
         quiet = {
+            # concatenation without a traced source, one per language
+            "src/L.kt": ("fun f(name: String) {\n"
+                         "    jdbc.queryForList(\"SELECT * FROM users WHERE name = '$name'\")\n}\n"),
+            "src/M.cs": ("public void F(string name)\n{\n"
+                         "    _db.Query($\"SELECT * FROM users WHERE name = '{name}'\");\n}\n"),
+            "src/n.php": ("<?php\nfunction f($name) {\n"
+                          "    DB::select(\"SELECT * FROM users WHERE name = '$name'\");\n}\n"),
+            "lib/o.rb": ("def f(name)\n  Order.find_by_sql(\"SELECT * FROM users WHERE name = "
+                         "'#{name}'\")\nend\n"),
+            "src/P.java": ("void f(String name) {\n    jdbc.queryForList(String.format("
+                           "\"SELECT * FROM users WHERE name = '%s'\", name));\n}\n"),
             "src/F.java": "String q = \"SELECT * FROM users WHERE name = ?\";\n",
             "src/g.php": "<?php\n$q = 'SELECT * FROM users WHERE name = :name';\n",
             "src/k.php": "<?php\n$r = DB::select(\"SELECT * FROM users WHERE id = ?\", [$id]);\n",

@@ -13,7 +13,7 @@ What Design & Fix reads, writes, runs and sends, so you can decide where it is s
 
 It does not read:
 
-- Anything matched by the root `.gitignore` (globs, `/`-anchored patterns, `dir/` suffixes and `!` negation are supported). Nested `.gitignore` files are not applied in 1.0.2. Pass `--no-gitignore` to scan ignored files as well.
+- Anything matched by the root `.gitignore` (globs, `/`-anchored patterns, `dir/` suffixes and `!` negation are supported). Nested `.gitignore` files are not applied in 1.1.0. Pass `--no-gitignore` to scan ignored files as well.
 - Hidden directories and built-in ignores (`node_modules`, `.git`, build output, virtualenvs).
 - Minified or generated files (`*.min.js`, `*.map`, `@generated` / `DO NOT EDIT` headers, very long average line length). They are counted in `skipped_files`.
 - Files outside the root. Symlinks that point outside the root are not followed. Unreadable files are listed in `skipped_files` with a reason.
@@ -22,7 +22,7 @@ Because git-ignored `.env` and key files are skipped by default, a secret that e
 
 ## What it writes
 
-The scanner is read-only. It prints to stdout (JSON, Markdown or SARIF) and progress to stderr, nothing else.
+The scanner never modifies your code. It prints to stdout (JSON, Markdown or SARIF) and progress to stderr and, only with `--output-dir DIR`, writes `DIR/scan.json` (the skill uses `docs/architecture/.scan/`; git-ignore it, because the file holds the absolute scan root and masked snippets).
 
 The skill (the agent following `SKILL.md`) writes only under `docs/architecture/` and `docs/adr/`, and archives previous output to `docs/architecture/history/<date>/`.
 
@@ -35,7 +35,7 @@ Values that match secret patterns are masked in every snippet the scanner emits 
 None. The scanner, linter and diff tool never open a connection. Two development tools in `evals/` use the network; neither ships in the skill's code path:
 
 - `evals/fetch_corpus.py` downloads the precision-study corpus. It uses HTTPS from GitHub hosts only, caps the download and extracted size, checks a pinned SHA-256 and writes into a folder outside the repo.
-- `evals/run.py` runs the skill evals by launching your `claude` CLI, which calls the model API under your account. Every case is a paid run. The agent's file writes are limited to a temp working folder, and the runner fails a case if the grader or plugin files change during the run; it can still read any file your user can read, so run it on a throwaway machine or CI runner for full isolation.
+- `evals/run.py` runs the skill evals by launching an agent CLI (`--client claude`, `codex` or `cursor`), which calls the model API under your account. Every case is a paid run. The runner fails a case if the grader or plugin files change during the run, and the agent can still read any file your user can read, so run it on a throwaway machine or CI runner for full isolation. Only Claude Code runs with confined writes (temp working folder only) and Bash limited to the three bundled scripts. Codex runs in a `workspace-write` sandbox, but `/tmp` and `$TMPDIR` stay writable, Bash is not limited to the scripts and your `~/.codex` config loads. Cursor runs with `--force`: its writes are not confined to the temp folder, Bash is not limited and your Cursor settings, rules and MCP servers load. Details: [evals/README.md](../evals/README.md#clients).
 
 ## Commands executed
 

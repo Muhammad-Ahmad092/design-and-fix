@@ -79,18 +79,21 @@ def render() -> str:
                label, " (the baseline study)" if baseline else ""), "",
            "Note: `no-version-prefix` fires on small unversioned services (internal or "
            "server-rendered apps that do not need versions); it is always low confidence.", "",
+           "Default `off` rules are dropped from the scan unless the config enables them with "
+           "`\"rules\": {\"<id>\": {\"enabled\": true}}`; the scan lists them in "
+           "`summary.default_off_rules` and `notes`.", "",
            "Rules: %d" % len(registry.RULES), "",
-           "| Rule | Category | Default severity | Confidence | Languages | Description | "
-           "Limitations | Remediation | Measured precision%s |" % (
+           "| Rule | Default | Category | Default severity | Confidence | Languages | "
+           "Description | Limitations | Remediation | Measured precision%s |" % (
                " (baseline)" if baseline else ""),
-           "|---|---|---|---|---|---|---|---|---|"]
+           "|---|---|---|---|---|---|---|---|---|---|"]
     for rid in sorted(registry.RULES):
         m = registry.RULES[rid]
         prec = "%s (n=%s)" % measured[rid] if rid in measured else "unmeasured"
-        out.append("| `%s` | %s | %s | %s | %s | %s | %s | %s | %s |" % (
-            rid, _cell(m.category), m.default_severity, m.confidence,
-            _cell(", ".join(sorted(m.languages))), _cell(m.description), _cell(m.limitations),
-            _cell(m.remediation), prec))
+        out.append("| `%s` | %s | %s | %s | %s | %s | %s | %s | %s | %s |" % (
+            rid, "on" if m.default_enabled else "off", _cell(m.category), m.default_severity,
+            m.confidence, _cell(", ".join(sorted(m.languages))), _cell(m.description),
+            _cell(m.limitations), _cell(m.remediation), prec))
     return "\n".join(out) + "\n"
 
 

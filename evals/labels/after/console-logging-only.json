@@ -1,5 +1,86 @@
 [
   {
+    "repo": "awesome-compose",
+    "file": "nginx-golang/backend",
+    "line": 0,
+    "snippet": "only console/print logging in nginx-golang/backend",
+    "fingerprint": "95e3dc7e82d382d3",
+    "label": "fp",
+    "note": "awesome-compose sample server demo with startup/connection prints; example code, not a deployed service"
+  },
+  {
+    "repo": "awesome-compose",
+    "file": "nginx-nodejs-redis/web",
+    "line": 0,
+    "snippet": "only console/print logging in nginx-nodejs-redis/web",
+    "fingerprint": "b2bacd7e686d2a2c",
+    "label": "fp",
+    "note": "awesome-compose sample server demo with startup/connection prints; example code, not a deployed service"
+  },
+  {
+    "repo": "awesome-compose",
+    "file": "react-express-mongodb/backend",
+    "line": 0,
+    "snippet": "only console/print logging in react-express-mongodb/backend",
+    "fingerprint": "9faba61c02606819",
+    "label": "fp",
+    "note": "awesome-compose sample server demo with startup/connection prints; example code, not a deployed service"
+  },
+  {
+    "repo": "awesome-compose",
+    "file": "react-express-mongodb/frontend",
+    "line": 0,
+    "snippet": "only console/print logging in react-express-mongodb/frontend",
+    "fingerprint": "bb51c3e023267610",
+    "label": "fp",
+    "note": "awesome-compose sample browser frontend, console output in the browser"
+  },
+  {
+    "repo": "awesome-compose",
+    "file": "react-express-mysql/backend",
+    "line": 0,
+    "snippet": "only console/print logging in react-express-mysql/backend",
+    "fingerprint": "5e1bfa6b5f627b4e",
+    "label": "fp",
+    "note": "awesome-compose sample server demo with startup/connection prints; example code, not a deployed service"
+  },
+  {
+    "repo": "awesome-compose",
+    "file": "react-express-mysql/frontend",
+    "line": 0,
+    "snippet": "only console/print logging in react-express-mysql/frontend",
+    "fingerprint": "1d82334c2006903d",
+    "label": "fp",
+    "note": "awesome-compose sample browser frontend, console output in the browser"
+  },
+  {
+    "repo": "awesome-compose",
+    "file": "react-java-mysql/frontend",
+    "line": 0,
+    "snippet": "only console/print logging in react-java-mysql/frontend",
+    "fingerprint": "a297644b1db7b220",
+    "label": "fp",
+    "note": "awesome-compose sample browser frontend, console output in the browser"
+  },
+  {
+    "repo": "awesome-compose",
+    "file": "react-rust-postgres/frontend",
+    "line": 0,
+    "snippet": "only console/print logging in react-rust-postgres/frontend",
+    "fingerprint": "f07e4cf953f8d290",
+    "label": "fp",
+    "note": "awesome-compose sample browser frontend, console output in the browser"
+  },
+  {
+    "repo": "awesome-compose",
+    "file": "traefik-golang/backend",
+    "line": 0,
+    "snippet": "only console/print logging in traefik-golang/backend",
+    "fingerprint": "5d815bc0800f203b",
+    "label": "fp",
+    "note": "awesome-compose sample server demo with startup/connection prints; example code, not a deployed service"
+  },
+  {
     "repo": "create-t3-turbo",
     "file": "packages/api",
     "line": 0,
@@ -16,5 +97,14 @@
     "fingerprint": "17c44168f90a60e3",
     "label": "tp",
     "note": "db errors via fmt.Println(\"db err\"), no logging library (same as baseline)"
+  },
+  {
+    "repo": "robot-shop",
+    "file": "web/static",
+    "line": 0,
+    "snippet": "only console/print logging in web/static",
+    "fingerprint": "52c4bd64c075ded4",
+    "label": "fp",
+    "note": "web/static is browser-side AngularJS (controller.js); console.log in the browser is expected"
   }
 ]

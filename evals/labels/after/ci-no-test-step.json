@@ -1,0 +1,20 @@
+[
+  {
+    "repo": "awesome-compose",
+    "file": ".github/workflows/codeql-analysis.yml",
+    "line": 1,
+    "snippet": "no CI step runs tests (github)",
+    "fingerprint": "1a4bd799a1089cbf",
+    "label": "fp",
+    "note": "awesome-compose is a collection of sample compose stacks with no test suite; workflow is CodeQL only"
+  },
+  {
+    "repo": "todo-nodejs-mongo",
+    "file": ".github/workflows/azure-dev.yml",
+    "line": 1,
+    "snippet": "no CI step runs tests (github)",
+    "fingerprint": "f138f7bb6de3a947",
+    "label": "tp",
+    "note": "azure-dev.yml only deploys; src/api has jest tests (\"test\": \"jest --coverage\") and tests/ has playwright, none run in CI"
+  }
+]

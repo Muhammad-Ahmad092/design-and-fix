@@ -1,5 +1,41 @@
 [
   {
+    "repo": "awesome-compose",
+    "file": "flask/app/Dockerfile",
+    "line": 15,
+    "snippet": "final stage has no USER: FROM builder as dev-envs",
+    "fingerprint": "e84f41c57810bc87",
+    "label": "fp",
+    "note": "dev-envs stage of an awesome-compose sample; dev container that creates a vscode user"
+  },
+  {
+    "repo": "awesome-compose",
+    "file": "react-express-mongodb/backend/Dockerfile",
+    "line": 20,
+    "snippet": "final stage has no USER: FROM development as dev-envs",
+    "fingerprint": "c396bd8d77b15b8e",
+    "label": "fp",
+    "note": "dev-envs dev stage of an awesome-compose sample (npm run dev)"
+  },
+  {
+    "repo": "awesome-compose",
+    "file": "sparkjava-mysql/backend/Dockerfile",
+    "line": 27,
+    "snippet": "final stage has no USER: FROM eclipse-temurin:17-jre-focal",
+    "fingerprint": "4bdd1427e8fc894d",
+    "label": "fp",
+    "note": "awesome-compose sample; final JRE stage runs root but repo is a collection of examples"
+  },
+  {
+    "repo": "awesome-compose",
+    "file": "spring-postgres/backend/Dockerfile",
+    "line": 31,
+    "snippet": "final stage has no USER: FROM eclipse-temurin:17-jre-focal",
+    "fingerprint": "c812684d0ae1f6fd",
+    "label": "fp",
+    "note": "awesome-compose sample; final JRE stage runs root but repo is a collection of examples"
+  },
+  {
     "repo": "django-styleguide-example",
     "file": "docker/local.Dockerfile",
     "line": 3,
@@ -16,6 +52,33 @@
     "fingerprint": "52431800d5f734c8",
     "label": "tp",
     "note": "production Dockerfile runs as root"
+  },
+  {
+    "repo": "example-voting-app",
+    "file": "seed-data/Dockerfile",
+    "line": 1,
+    "snippet": "final stage has no USER: FROM python:3.9-slim",
+    "fingerprint": "952d3f51147066ba",
+    "label": "fp",
+    "note": "seed-data is a one-shot load-generator job image (ab), not a service"
+  },
+  {
+    "repo": "example-voting-app",
+    "file": "vote/Dockerfile",
+    "line": 23,
+    "snippet": "final stage has no USER: FROM base AS final",
+    "fingerprint": "ee4c745ec4bdd0a9",
+    "label": "tp",
+    "note": "vote final (production) stage runs gunicorn as root, no USER"
+  },
+  {
+    "repo": "example-voting-app",
+    "file": "worker/Dockerfile",
+    "line": 25,
+    "snippet": "final stage has no USER: FROM mcr.microsoft.com/dotnet/runtime:7.0",
+    "fingerprint": "dc86e91ffdd99d92",
+    "label": "tp",
+    "note": "worker runtime image runs dotnet Worker.dll as root, no USER"
   },
   {
     "repo": "full-stack-fastapi-template",
@@ -70,5 +133,50 @@
     "fingerprint": "8ed748a1f03a7978",
     "label": "tp",
     "note": "alpine production image runs as root"
+  },
+  {
+    "repo": "robot-shop",
+    "file": "cart/Dockerfile",
+    "line": 1,
+    "snippet": "final stage has no USER: FROM node:14",
+    "fingerprint": "a0a3a7bbf83f4fe2",
+    "label": "tp",
+    "note": "cart service image (node:14, EXPOSE 8080) runs as root"
+  },
+  {
+    "repo": "robot-shop",
+    "file": "ratings/Dockerfile",
+    "line": 4,
+    "snippet": "final stage has no USER: FROM php:7.4-apache",
+    "fingerprint": "ae4b48e11b82e9c9",
+    "label": "tp",
+    "note": "ratings apache/php image runs as root plus chmod -R 777 /var/www; comment explains but still weak"
+  },
+  {
+    "repo": "robot-shop",
+    "file": "web/Dockerfile",
+    "line": 24,
+    "snippet": "final stage has no USER: FROM nginx:1.21.6",
+    "fingerprint": "b368460bf1b44d34",
+    "label": "fp",
+    "note": "nginx image: workers drop privileges, serves static files and proxy (same as full-stack-fastapi frontend)"
+  },
+  {
+    "repo": "todo-nodejs-mongo",
+    "file": "src/api/Dockerfile",
+    "line": 1,
+    "snippet": "final stage has no USER: FROM node:20-alpine AS build",
+    "fingerprint": "cac645bf0224c464",
+    "label": "tp",
+    "note": "api image runs npm start as root, no USER in final (only) stage"
+  },
+  {
+    "repo": "todo-nodejs-mongo",
+    "file": "src/web/Dockerfile",
+    "line": 12,
+    "snippet": "final stage has no USER: FROM nginx:alpine",
+    "fingerprint": "2183b9ffe6624e30",
+    "label": "fp",
+    "note": "nginx:alpine serving static build; workers drop privileges"
   }
 ]

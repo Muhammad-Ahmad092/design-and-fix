@@ -1,0 +1,182 @@
+[
+  {
+    "repo": "awesome-compose",
+    "file": "flask/app/Dockerfile",
+    "line": 15,
+    "snippet": "final stage has no USER: FROM builder as dev-envs",
+    "fingerprint": "e84f41c57810bc87",
+    "label": "unsure",
+    "note": "Flagged dev-envs stage is a dev environment; compose builds target builder, a sample image running the Flask dev server as root"
+  },
+  {
+    "repo": "awesome-compose",
+    "file": "react-express-mongodb/backend/Dockerfile",
+    "line": 20,
+    "snippet": "final stage has no USER: FROM development as dev-envs",
+    "fingerprint": "c396bd8d77b15b8e",
+    "label": "fp",
+    "note": "Development-only image: compose target development, runs npm run dev; dev-envs stage is a dev environment"
+  },
+  {
+    "repo": "awesome-compose",
+    "file": "sparkjava-mysql/backend/Dockerfile",
+    "line": 27,
+    "snippet": "final stage has no USER: FROM eclipse-temurin:17-jre-focal",
+    "fingerprint": "4bdd1427e8fc894d",
+    "label": "tp",
+    "note": "Final eclipse-temurin JRE production stage runs app.jar as root"
+  },
+  {
+    "repo": "awesome-compose",
+    "file": "spring-postgres/backend/Dockerfile",
+    "line": 31,
+    "snippet": "final stage has no USER: FROM eclipse-temurin:17-jre-focal",
+    "fingerprint": "c812684d0ae1f6fd",
+    "label": "tp",
+    "note": "Final eclipse-temurin JRE production stage runs app as root"
+  },
+  {
+    "repo": "django-styleguide-example",
+    "file": "docker/local.Dockerfile",
+    "line": 3,
+    "snippet": "final stage has no USER: FROM python:3.12.4",
+    "fingerprint": "0d0824d16271bdf1",
+    "label": "fp",
+    "note": "Header says local development via docker-compose"
+  },
+  {
+    "repo": "django-styleguide-example",
+    "file": "docker/production.Dockerfile",
+    "line": 3,
+    "snippet": "final stage has no USER: FROM python:3.12.4",
+    "fingerprint": "52431800d5f734c8",
+    "label": "tp",
+    "note": "Header says production; no USER, Django runs as root"
+  },
+  {
+    "repo": "example-voting-app",
+    "file": "seed-data/Dockerfile",
+    "line": 1,
+    "snippet": "final stage has no USER: FROM python:3.9-slim",
+    "fingerprint": "952d3f51147066ba",
+    "label": "fp",
+    "note": "Seed/load-generation job image, not a service"
+  },
+  {
+    "repo": "example-voting-app",
+    "file": "vote/Dockerfile",
+    "line": 23,
+    "snippet": "final stage has no USER: FROM base AS final",
+    "fingerprint": "ee4c745ec4bdd0a9",
+    "label": "tp",
+    "note": "Production final stage runs gunicorn as root"
+  },
+  {
+    "repo": "example-voting-app",
+    "file": "worker/Dockerfile",
+    "line": 25,
+    "snippet": "final stage has no USER: FROM mcr.microsoft.com/dotnet/runtime:7.0",
+    "fingerprint": "dc86e91ffdd99d92",
+    "label": "tp",
+    "note": "Production worker runtime stage runs as root"
+  },
+  {
+    "repo": "full-stack-fastapi-template",
+    "file": "backend/Dockerfile",
+    "line": 1,
+    "snippet": "final stage has no USER: FROM python:3.10",
+    "fingerprint": "cddcb6831415a359",
+    "label": "tp",
+    "note": "Production backend image runs fastapi as root"
+  },
+  {
+    "repo": "full-stack-fastapi-template",
+    "file": "frontend/Dockerfile",
+    "line": 21,
+    "snippet": "final stage has no USER: FROM nginx:1",
+    "fingerprint": "3b63509927c85828",
+    "label": "fp",
+    "note": "nginx serving static build; workers drop privileges"
+  },
+  {
+    "repo": "full-stack-fastapi-template",
+    "file": "frontend/Dockerfile.playwright",
+    "line": 1,
+    "snippet": "final stage has no USER: FROM mcr.microsoft.com/playwright:v1.57.0-noble",
+    "fingerprint": "4b121b6861dc5243",
+    "label": "fp",
+    "note": "Playwright test-runner image"
+  },
+  {
+    "repo": "homeland",
+    "file": "Dockerfile",
+    "line": 2,
+    "snippet": "final stage has no USER: FROM homeland/base:3.4-alpine",
+    "fingerprint": "35156ce3306a561f",
+    "label": "tp",
+    "note": "Production Rails image; neither Dockerfile nor Dockerfile-base sets USER"
+  },
+  {
+    "repo": "nestjs-prisma-starter",
+    "file": "Dockerfile",
+    "line": 17,
+    "snippet": "final stage has no USER: FROM node:16",
+    "fingerprint": "32996a2dd2e68f18",
+    "label": "tp",
+    "note": "Production node runtime stage runs npm start:prod as root"
+  },
+  {
+    "repo": "nestjs-prisma-starter",
+    "file": "Dockerfile.alpine",
+    "line": 17,
+    "snippet": "final stage has no USER: FROM node:16-alpine",
+    "fingerprint": "8ed748a1f03a7978",
+    "label": "tp",
+    "note": "Production node-alpine runtime stage runs as root"
+  },
+  {
+    "repo": "robot-shop",
+    "file": "cart/Dockerfile",
+    "line": 1,
+    "snippet": "final stage has no USER: FROM node:14",
+    "fingerprint": "a0a3a7bbf83f4fe2",
+    "label": "tp",
+    "note": "node:14 cart service runs as root"
+  },
+  {
+    "repo": "robot-shop",
+    "file": "ratings/Dockerfile",
+    "line": 4,
+    "snippet": "final stage has no USER: FROM php:7.4-apache",
+    "fingerprint": "ae4b48e11b82e9c9",
+    "label": "fp",
+    "note": "php:7.4-apache; Apache workers run PHP as www-data (chown www-data in Dockerfile)"
+  },
+  {
+    "repo": "robot-shop",
+    "file": "web/Dockerfile",
+    "line": 24,
+    "snippet": "final stage has no USER: FROM nginx:1.21.6",
+    "fingerprint": "b368460bf1b44d34",
+    "label": "fp",
+    "note": "nginx frontend/proxy serving static files; workers drop privileges"
+  },
+  {
+    "repo": "todo-nodejs-mongo",
+    "file": "src/api/Dockerfile",
+    "line": 1,
+    "snippet": "final stage has no USER: FROM node:20-alpine AS build",
+    "fingerprint": "cac645bf0224c464",
+    "label": "tp",
+    "note": "Single-stage node image runs API as root in production"
+  },
+  {
+    "repo": "todo-nodejs-mongo",
+    "file": "src/web/Dockerfile",
+    "line": 12,
+    "snippet": "final stage has no USER: FROM nginx:alpine",
+    "fingerprint": "2183b9ffe6624e30",
+    "label": "fp",
+    "note": "nginx serving static SPA build; workers drop privileges"
+  }
+]

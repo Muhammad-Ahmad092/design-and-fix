@@ -168,7 +168,7 @@
     "snippet": "src/flask/__init__.py -> src/flask/app.py -> src/flask/__init__.py",
     "fingerprint": "dff9912396cd5c06",
     "label": "fp",
-    "note": "The review2 case: flask/__init__ re-exports app.py, app.py imports sibling submodules (cli, typing, ctx) via the package; not a runtime cycle."
+    "note": "The Flask src/ layout case: flask/__init__ re-exports app.py, app.py imports sibling submodules (cli, typing, ctx) via the package; not a runtime cycle."
   },
   {
     "repo": "nestjs-prisma-starter",

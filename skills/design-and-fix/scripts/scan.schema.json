@@ -286,6 +286,10 @@
           },
           "rule_version": {
             "type": "string"
+          },
+          "uncertain_reason": {
+            "description": "Optional; present only when non-empty. Why the rule could not decide. Secrets masked, at most 240 characters.",
+            "type": "string"
           }
         },
         "additionalProperties": true
@@ -344,12 +348,30 @@
         },
         "skipped_total": {
           "type": "integer"
+        },
+        "scope_report": {
+          "description": "Optional (1.1.0+). What the scan looked at: files analysed, files the walk skipped per reason, and paths dropped by config exclude/include globs (an excluded folder counts once). With --scope, only paths inside the scope are counted.",
+          "type": "object",
+          "required": ["scanned", "skipped_by_reason", "excluded_by_config"],
+          "properties": {
+            "scanned": {"type": "integer", "minimum": 0},
+            "skipped_by_reason": {"type": "object", "additionalProperties": {"type": "integer", "minimum": 0}},
+            "excluded_by_config": {"type": "integer", "minimum": 0}
+          },
+          "additionalProperties": false
+        },
+        "default_off_rules": {
+          "description": "Sorted ids of default-off rules this scan skipped. Only rules the config does not mention via 'enabled' are listed: a rule the config enables runs, and one it disables is reported by the 'rules disabled by config or profile' note instead.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         }
       },
       "additionalProperties": true
     },
     "notes": {
-      "description": "Free-text notes: partial results, timing (--verbose), invalid signals, invalid .gitignore patterns, and config settings that hide findings (disabled rules, exclude/include patterns).",
+      "description": "Free-text notes: partial results, timing (--verbose), invalid signals, invalid .gitignore patterns, and config settings that hide findings (disabled rules, exclude/include patterns), and 'rules off by default (enable in config): <ids>' when default-off rules were skipped.",
       "type": "array",
       "items": {
         "type": "string"

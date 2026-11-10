@@ -275,6 +275,172 @@ class ReportMathTests(unittest.TestCase):
         self.assertEqual(r["false_hits"], [])
         self.assertEqual(r["clean_signals"], 0)
 
+class RecallTests(unittest.TestCase):
+    def test_recall_and_f1(self):
+        s = run_precision.recall_stats({"r": [{"label": "tp"}] * 3 + [{"label": "fp"}]},
+                                       {"r": [{"label": "fn"}]})["r"]
+        self.assertEqual((s["tp"], s["fp"], s["fn"]), (3, 1, 1))
+        self.assertEqual(s["n"], 4)
+        self.assertAlmostEqual(s["precision"], 0.75)
+        self.assertAlmostEqual(s["recall"], 0.75)
+        self.assertAlmostEqual(s["f1"], 0.75)
+
+    def test_recall_only_where_misses_were_reviewed(self):
+        stats = run_precision.recall_stats(
+            {"a": [{"label": "tp"}, {"label": "unsure"}], "b": [{"label": "fp"}]},
+            {"a": [], "c": [{"label": "fn"}, {"label": "fn"}]})
+        # a: reviewed for misses, none found -> recall 1.0.
+        self.assertAlmostEqual(stats["a"]["recall"], 1.0)
+        self.assertAlmostEqual(stats["a"]["f1"], 1.0)
+        # b: never reviewed for misses -> no recall and no F1 (not 100%).
+        self.assertIsNone(stats["b"]["recall"])
+        self.assertIsNone(stats["b"]["f1"])
+        self.assertEqual(stats["b"]["precision"], 0.0)
+        # c: only misses -> recall 0, precision unknown.
+        self.assertEqual((stats["c"]["tp"], stats["c"]["fn"], stats["c"]["n"]), (0, 2, 0))
+        self.assertEqual(stats["c"]["recall"], 0.0)
+        self.assertIsNone(stats["c"]["precision"])
+        self.assertIsNone(stats["c"]["f1"])
+        with self.assertRaises(ValueError):
+            run_precision.recall_stats({}, {"a": [{"label": "tp"}]})
+
+    def test_load_fn_groups_by_rule(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            run_precision.write_json(os.path.join(tmp, "repo-a.json"), {
+                "repo": "repo-a", "guide_version": "2",
+                "reviewed_rules": ["k8s-no-probes", "openapi-drift"],
+                "missed": [{"rule": "k8s-no-probes", "file": "k8s/web.yaml", "line": 3,
+                            "label": "fn", "note": "probe-less container"}]})
+            run_precision.write_json(os.path.join(tmp, "_template.json"), {
+                "repo": "x", "reviewed_rules": ["god-module"], "missed": []})
+            fn = run_precision.load_fn(tmp)
+            self.assertEqual(sorted(fn), ["k8s-no-probes", "openapi-drift"])
+            self.assertEqual(fn["openapi-drift"], [])
+            self.assertEqual(fn["k8s-no-probes"][0]["repo"], "repo-a")
+            run_precision.write_json(os.path.join(tmp, "repo-b.json"), {
+                "repo": "repo-b", "reviewed_rules": [],
+                "missed": [{"rule": "god-module", "file": "a.py", "line": 1, "label": "fn",
+                            "note": ""}]})
+            with self.assertRaises(ValueError):  # a miss for a rule the repo was not reviewed for
+                run_precision.load_fn(tmp)
+        self.assertEqual(run_precision.load_fn(os.path.join(EVALS, "no-such-dir")), {})
+        # The shipped folder loads (it may hold no reviews yet).
+        run_precision.load_fn(run_precision.DEFAULT_FN)
+
+    def test_language_of(self):
+        corpus = {"svc": {"languages": ["Ruby", "JavaScript"]}}
+        lang = run_precision.language_of
+        self.assertEqual(lang({"repo": "svc", "file": "app/models/user.rb"}, corpus), "Ruby")
+        self.assertEqual(lang({"repo": "svc", "file": "web/App.tsx"}, corpus), "TypeScript")
+        self.assertEqual(lang({"repo": "svc", "file": "docker/Dockerfile.alpine"}, corpus),
+                         "Dockerfile")
+        self.assertEqual(lang({"repo": "svc", "file": "api.Dockerfile"}, corpus), "Dockerfile")
+        self.assertEqual(lang({"repo": "svc", "file": ".github/workflows/ci.yml"}, corpus),
+                         "CI config")
+        self.assertEqual(lang({"repo": "svc", "file": ".gitlab-ci.yml"}, corpus), "CI config")
+        self.assertEqual(lang({"repo": "svc", "file": "k8s/web.yaml"}, corpus), "YAML")
+        self.assertEqual(lang({"repo": "svc", "file": "requirements.txt"}, corpus),
+                         "Manifest or config")
+        # Folder-level signals (no-tests) take the repo's primary language.
+        self.assertEqual(lang({"repo": "svc", "file": "app/services"}, corpus), "Ruby")
+        self.assertEqual(lang({"repo": "gone", "file": "lib"}, corpus), "Unknown")
+
+
+class ReportSectionTests(unittest.TestCase):
+    def _render(self, fn=None):
+        import argparse
+        args = argparse.Namespace(tag="t", labels_rel="evals/labels/after",
+                                  out_rel="evals/precision.md")
+        pop_doc = {"repos": {"py": {"signals": {"god-module": 2, "k8s-no-probes": 1}},
+                             "go": {"signals": {"god-module": 1}}}, "per_rule": 20, "seed": 1}
+        recall = {"found": 1, "total": 1, "false_hits": [], "clean_signals": 0, "missed": []}
+        labels = {"god-module": [{"repo": "py", "file": "a.py", "label": "tp"},
+                                 {"repo": "py", "file": "b.py", "label": "fp"},
+                                 {"repo": "go", "file": "m.go", "label": "tp"}],
+                  "k8s-no-probes": [{"repo": "py", "file": "k8s/d.yaml", "label": "unsure"}]}
+        corpus = {"repos": [
+            {"name": "py", "url": "u", "sha256": "", "subdir": "", "kind": "service",
+             "languages": ["Python"], "framework": "flask", "note": ""},
+            {"name": "go", "url": "u", "sha256": "", "subdir": "", "kind": "service",
+             "languages": ["Go"], "framework": "gin", "note": ""}]}
+        return run_precision.render_report(labels, pop_doc, recall, None, corpus, args, fn=fn)
+
+    @staticmethod
+    def _section(text, heading):
+        return text.split("## " + heading, 1)[1].split("\n## ", 1)[0]
+
+    def test_report_has_per_language_section(self):
+        text = self._render(fn={"god-module": [{"repo": "go", "file": "x.go", "label": "fn"}]})
+        self.assertIn("## Precision and recall per rule", text)
+        self.assertIn("## Results per language", text)
+        self.assertIn("## Results per framework", text)
+        rows = {ln.split("|")[1].strip(): [c.strip() for c in ln.split("|")[2:-1]]
+                for ln in self._section(text, "Results per language").splitlines()
+                if ln.startswith("| ") and not ln.startswith("| Language")}
+        # Decided (tp+fp) | tp | fp | unsure | known misses | Precision | Recall
+        self.assertEqual(rows["Python"], ["2", "1", "1", "0", "0", "50%", "n/a"])
+        self.assertEqual(rows["Go"], ["1", "1", "0", "0", "1", "100%", "50%"])
+        self.assertEqual(rows["YAML"], ["0", "0", "0", "1", "0", "n/a", "n/a"])
+        fw = self._section(text, "Results per framework")
+        self.assertIn("| gin |", fw)
+        self.assertIn("| flask |", fw)
+        god = [ln for ln in self._section(text, "Precision and recall per rule").splitlines()
+               if ln.startswith("| god-module ")][0]
+        # Precision uses every label (2 tp, 1 fp: 67%); recall only the repos reviewed for
+        # misses (go: 1 tp, 1 fn: 50%); F1 = 2PR / (P + R) = 57%.
+        self.assertTrue(god.rstrip().endswith("| 67% | 21%-94% | 1 | 50% | 57% |"), god)
+        self.assertIn("Guide version", text)
+
+    def test_report_without_fn_has_no_recall(self):
+        text = self._render()
+        god = [ln for ln in self._section(text, "Precision and recall per rule").splitlines()
+               if ln.startswith("| god-module ")][0]
+        self.assertTrue(god.rstrip().endswith("| 0 | n/a | n/a |"), god)
+
+
+class CoverageTests(unittest.TestCase):
+    def test_coverage_problems(self):
+        corpus = {"repos": [{"name": "a"}, {"name": "b"}],
+                  "coverage": {"r1": ["a"], "r2": ["zz"], "r4": ["b"], "r7": []},
+                  "unmeasured": {"r3": "no repo found", "r4": "dup", "r5": " "}}
+        problems = run_precision.coverage_problems(
+            corpus, ["r1", "r2", "r3", "r4", "r5", "r6", "r7"])
+        joined = "\n".join(problems)
+        self.assertNotIn("r1", joined)
+        self.assertNotIn("r3", joined)
+        for rule in ("r2", "r4", "r5", "r6", "r7"):
+            self.assertIn(rule, joined)
+        self.assertEqual(run_precision.coverage_from_population(
+            {"a": {"signals": {"r1": 2, "r2": 0}}, "b": {"signals": {"r1": 1}}}),
+            {"r1": ["a", "b"]})
+
+    def test_every_registered_rule_has_corpus_signal_or_reason(self):
+        from dfscan import registry
+        registry.ensure_loaded()
+        corpus = fetch_corpus.load_corpus()
+        self.assertEqual(run_precision.coverage_problems(corpus, sorted(registry.RULES)), [])
+        # Rules with no corpus signal in 1.0.2 now have corpus repos (or a stated reason).
+        for rule in ("ci-no-test-step", "docker-latest-tag", "k8s-no-limits", "k8s-no-probes",
+                     "list-route-no-pagination", "openapi-drift", "unvalidated-body"):
+            self.assertIn(rule, corpus["coverage"], rule)
+        self.assertIn("monorepo", {r["kind"] for r in corpus["repos"]})
+        self.assertTrue(any(r.get("services", 1) > 1 for r in corpus["repos"]))
+
+
+class LabellingGuideTests(unittest.TestCase):
+    def test_guide_versioned_with_rubric_and_every_rule(self):
+        from dfscan import registry
+        registry.ensure_loaded()
+        with open(os.path.join(EVALS, "LABELLING.md"), encoding="utf-8", newline="") as fh:
+            text = fh.read()
+        self.assertNotIn(chr(13), text)
+        self.assertIn("Guide version: 2", text)
+        self.assertEqual(run_precision.guide_version(), "2")
+        for word in ("`tp`", "`fp`", "`unsure`", "`fn`"):
+            self.assertIn(word, text)
+        for rule in registry.RULES:
+            self.assertIn("### %s" % rule, text, rule)
+
 
 class CorpusJsonTests(unittest.TestCase):
     def test_corpus_json_shape(self):

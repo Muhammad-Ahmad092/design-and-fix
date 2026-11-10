@@ -36,7 +36,7 @@ Only `http-no-timeout` (4/4, n = 4) measured at 80% or above. `retry-no-backoff`
 2. **Commented intentional ignore**: flask@3.1.3 `src/flask/config.py:163`, django@5.1.4 `django/db/backends/mysql/compiler.py:76`, `django/contrib/auth/middleware.py:159`, create-t3-turbo@8f945b7 `packages/ui/src/theme.tsx:36` (empty `catch {}` with a comment).
 3. **Best-effort cleanup of an expected OS error**: django@5.1.4 `django/contrib/sessions/backends/file.py:202` (`OSError` on unlink), `django/core/files/storage/filesystem.py:177` (`PermissionError` on chown).
 4. **Fallback value assigned before the try and checked after**: itsdangerous@2.2.0 `src/itsdangerous/timed.py:114`, django@5.1.4 `django/views/debug.py:103`, `django/contrib/syndication/views.py:170`.
-Suggested direction: lower confidence for narrow, named exceptions (not bare `except:` / `except Exception:`), for `try/except/else`, and when the body holds a comment (fixed in 1.0.2, CHANGELOG R2-fp4).
+Suggested direction: lower confidence for narrow, named exceptions (not bare `except:` / `except Exception:`), for `try/except/else`, and when the body holds a comment (fixed in 1.0.2).
 
 ### unauth-write-route (0 / 19, 1 unsure)
 1. **Auth applied by middleware in another file**: golang-gin-realworld@0.0.6 `articles/routers.go:13`-`:19`, `users/routers.go:17` are mounted after `v1.Use(users.AuthMiddleware(true))` in `hello.go`.
@@ -68,7 +68,7 @@ Suggested direction: lower confidence for narrow, named exceptions (not bare `ex
 2. **Package `__init__` re-export**, where a submodule imports a sibling through the package: flask@3.1.3 `src/flask/__init__.py -> src/flask/app.py`, django@5.1.4 `django/contrib/messages/__init__.py -> api.py`, `django/test/__init__.py -> client.py`.
 3. **TypeScript `import type`** (erased at runtime) in a generated file: create-t3-turbo@8f945b7 `apps/tanstack-start/src/routeTree.gen.ts:97`.
 TPs were real module-level cycles: django@5.1.4 `django/db/backends/oracle/base.py <-> operations.py`, `django/db/backends/sqlite3/base.py <-> features.py`, nestjs-prisma-starter@225e5a9 `src/posts/models/post.model.ts <-> src/users/models/user.model.ts`.
-Suggested direction: ignore imports that are not at module top level (Python indentation > 0, JS `import type`), and skip `__init__`/`index` re-exports (CHANGELOG R2-fp5).
+Suggested direction: ignore imports that are not at module top level (Python indentation > 0, JS `import type`), and skip `__init__`/`index` re-exports (fixed in 1.0.2).
 
 ### no-health-endpoint (3 / 20)
 1. **Library code / framework internals**: chi@v5.5.0 `middleware/profiler.go:26`; django@5.1.4 `django/conf/urls/i18n.py:38`, `django/contrib/admin/options.py:726`.
@@ -78,7 +78,7 @@ Suggested direction: ignore imports that are not at module top level (Python ind
 5. **Example programs**: chi@v5.5.0 `_examples/hello-world/main.go:16`, `_examples/fileserver/main.go:33`.
 
 ### no-tests (3 / 18, 2 unsure)
-1. **Tests in the repo-root `tests/` tree for depth-2 units** (fixed in 1.0.2, CHANGELOG R2-fp1): flask@3.1.3 `src/flask`, itsdangerous@2.2.0 `src/itsdangerous`, django@5.1.4 `django/core`, `django/forms`, `django/views`; node-express-boilerplate@v1.7.0 `src/middlewares` (mirrored in `tests/unit/middlewares/`).
+1. **Tests in the repo-root `tests/` tree for depth-2 units** (fixed in 1.0.2): flask@3.1.3 `src/flask`, itsdangerous@2.2.0 `src/itsdangerous`, django@5.1.4 `django/core`, `django/forms`, `django/views`; node-express-boilerplate@v1.7.0 `src/middlewares` (mirrored in `tests/unit/middlewares/`).
 2. **Tests in a sibling folder**: full-stack-fastapi-template@0.10.0 `backend/app` (tests in `backend/tests/`), `frontend/src` (tests in `frontend/tests/`).
 3. **Config / settings / docs / migrations folders**: django-styleguide-example@a70ef43 `config/settings`; node-express-boilerplate@v1.7.0 `src/config`, `src/docs`; nestjs-prisma-starter@225e5a9 `prisma/migrations`; create-t3-turbo@8f945b7 `tooling/tailwind`.
 4. **Example programs**: chi@v5.5.0 `_examples/hello-world`, `_examples/logging`.

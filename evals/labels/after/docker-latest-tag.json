@@ -1,0 +1,20 @@
+[
+  {
+    "repo": "robot-shop",
+    "file": "fluentd/Dockerfile",
+    "line": 1,
+    "snippet": "FROM fluentd",
+    "fingerprint": "114d239f5537dab0",
+    "label": "tp",
+    "note": "robot-shop fluentd image built FROM fluentd with no tag (implicit latest); deployed log collector"
+  },
+  {
+    "repo": "robot-shop",
+    "file": "web/Dockerfile",
+    "line": 1,
+    "snippet": "FROM alpine AS build",
+    "fingerprint": "29fe2d74a033a1a4",
+    "label": "fp",
+    "note": "FROM alpine AS build is a throwaway build stage that only downloads tracing .so; final image is pinned nginx:1.21.6"
+  }
+]

@@ -1,0 +1,182 @@
+[
+  {
+    "repo": "django",
+    "file": "django/contrib/gis/db/models/fields.py",
+    "line": 181,
+    "snippet": "except GDALException:",
+    "fingerprint": "5346c22b68985de9",
+    "label": "fp",
+    "note": "Fallback: non-raster candidate returns None per docstring (gis fields.py get_raster)"
+  },
+  {
+    "repo": "django",
+    "file": "django/contrib/gis/gdal/layer.py",
+    "line": 86,
+    "snippet": "except GDALException:",
+    "fingerprint": "2abe940acd6705eb",
+    "label": "fp",
+    "note": "Falls through to raise after failed random read; expected-exception control flow (gdal layer.py)"
+  },
+  {
+    "repo": "django",
+    "file": "django/contrib/postgres/aggregates/mixins.py",
+    "line": 39,
+    "snippet": "except FullResultSet:",
+    "fingerprint": "46397581b05f5098",
+    "label": "fp",
+    "note": "FullResultSet means no filter params; expected control flow (postgres aggregates mixins.py)"
+  },
+  {
+    "repo": "django",
+    "file": "django/contrib/sessions/backends/file.py",
+    "line": 183,
+    "snippet": "except (EOFError, OSError):",
+    "fingerprint": "87e90921e9d6a474",
+    "label": "tp",
+    "note": "FileSessionStore.save drops OSError on session write with no log or comment; session loss hidden (low impact, framework code)"
+  },
+  {
+    "repo": "django",
+    "file": "django/core/files/base.py",
+    "line": 38,
+    "snippet": "except (OSError, TypeError):",
+    "fingerprint": "37cbbe6960c938f3",
+    "label": "fp",
+    "note": "Fallback to tell/seek size detection (core/files/base.py size)"
+  },
+  {
+    "repo": "django",
+    "file": "django/core/files/base.py",
+    "line": 56,
+    "snippet": "except (AttributeError, UnsupportedOperation):",
+    "fingerprint": "ad95f68079e5e23f",
+    "label": "fp",
+    "note": "Non-seekable file: best-effort rewind, expected (core/files/base.py chunks)"
+  },
+  {
+    "repo": "django",
+    "file": "django/core/files/move.py",
+    "line": 79,
+    "snippet": "except PermissionError:",
+    "fingerprint": "389a43ceb5f34026",
+    "label": "fp",
+    "note": "Commented best-effort copymode on filesystems without permission support (core/files/move.py)"
+  },
+  {
+    "repo": "django",
+    "file": "django/core/files/uploadhandler.py",
+    "line": 189,
+    "snippet": "except FileNotFoundError:",
+    "fingerprint": "3e4587c2e002cc8b",
+    "label": "fp",
+    "note": "Cleanup of temp file already gone in upload_interrupted (uploadhandler.py)"
+  },
+  {
+    "repo": "django",
+    "file": "django/core/management/commands/compilemessages.py",
+    "line": 160,
+    "snippet": "except FileNotFoundError:",
+    "fingerprint": "9eebf9dd028aff23",
+    "label": "fp",
+    "note": "Missing .mo file just means compile needed; control flow (compilemessages.py)"
+  },
+  {
+    "repo": "django",
+    "file": "django/db/backends/ddl_references.py",
+    "line": 139,
+    "snippet": "except IndexError:",
+    "fingerprint": "b42874e05a6d959a",
+    "label": "fp",
+    "note": "Optional col_suffixes entry; IndexError is the expected default (ddl_references.py)"
+  },
+  {
+    "repo": "django",
+    "file": "django/db/migrations/writer.py",
+    "line": 232,
+    "snippet": "except ValueError:",
+    "fingerprint": "ed6cd6d72239c8a7",
+    "label": "fp",
+    "note": "try/except/else fallback to next resolution strategy (migrations/writer.py basedir)"
+  },
+  {
+    "repo": "django",
+    "file": "django/db/models/options.py",
+    "line": 354,
+    "snippet": "except AttributeError:",
+    "fingerprint": "2664f4b272e5c4c8",
+    "label": "fp",
+    "note": "Commented: related model may still be a string reference (options.py add_field)"
+  },
+  {
+    "repo": "django",
+    "file": "django/forms/formsets.py",
+    "line": 237,
+    "snippet": "except IndexError:",
+    "fingerprint": "444b5695666229a4",
+    "label": "fp",
+    "note": "Fallback when no initial data for extra form (formsets.py _construct_form)"
+  },
+  {
+    "repo": "django",
+    "file": "django/forms/widgets.py",
+    "line": 734,
+    "snippet": "except AttributeError:",
+    "fingerprint": "a880754c69701a6b",
+    "label": "fp",
+    "note": "Fallback to data.get for plain dicts without getlist (widgets.py SelectMultiple)"
+  },
+  {
+    "repo": "django",
+    "file": "django/utils/autoreload.py",
+    "line": 675,
+    "snippet": "except KeyboardInterrupt:",
+    "fingerprint": "66e6191b8d956dde",
+    "label": "fp",
+    "note": "Ctrl-C exits dev autoreloader cleanly (utils/autoreload.py run_with_reloader)"
+  },
+  {
+    "repo": "django",
+    "file": "django/utils/http.py",
+    "line": 143,
+    "snippet": "except Exception:",
+    "fingerprint": "bf287eff7ae04fd1",
+    "label": "fp",
+    "note": "parse_http_date_safe documented to return None on invalid input (utils/http.py)"
+  },
+  {
+    "repo": "django",
+    "file": "django/utils/text.py",
+    "line": 130,
+    "snippet": "except ValueError:",
+    "fingerprint": "a8a5586f6f2daf9b",
+    "label": "fp",
+    "note": "Unmatched end tag ignored while truncating HTML; expected (utils/text.py)"
+  },
+  {
+    "repo": "flask",
+    "file": "src/flask/cli.py",
+    "line": 1106,
+    "snippet": "except ValueError:",
+    "fingerprint": "0364dffb563965ac",
+    "label": "fp",
+    "note": "Unknown sort key falls back to unsorted rows in routes command (flask/cli.py)"
+  },
+  {
+    "repo": "homeland",
+    "file": "lib/homeland.rb",
+    "line": 98,
+    "snippet": "rescue ActiveRecord::NoDatabaseError",
+    "fingerprint": "73b7a1992d00c13e",
+    "label": "fp",
+    "note": "Plugin migrate skipped when database does not exist yet (lib/homeland.rb migrate_plugin); expected during setup"
+  },
+  {
+    "repo": "homeland",
+    "file": "lib/homeland/plugin.rb",
+    "line": 70,
+    "snippet": "rescue LoadError",
+    "fingerprint": "d7b95b0b7483a440",
+    "label": "tp",
+    "note": "Plugin require failing with LoadError silently dropped; plugin vanishes with no log (lib/homeland/plugin.rb boot)"
+  }
+]

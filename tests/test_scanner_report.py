@@ -148,7 +148,7 @@ class StampingReviewTests(unittest.TestCase):  # review I3, M11, rule-runner gua
         self.assertTrue([s for s in r["signals"] if s["rule"] == "http-no-timeout"])
 
     def test_rule_runner_notes_reach_output(self):
-        def fake(files, notes=None):
+        def fake(files, notes=None, cache=None):  # cache: the scan's file cache (Task 16)
             notes.append("skipped package.json: malformed JSON")
             return []
         _put(self.d, "a.py", "x = 1\n")

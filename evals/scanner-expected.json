@@ -33,8 +33,6 @@
       ["unvalidated-body", "src/server.js"],
       ["mixed-error-shapes", "src/server.js"],
       ["no-version-prefix", "src/server.js"],
-      ["openapi-drift", "src/server.js"],
-      ["openapi-drift", "openapi.json"],
       ["docker-no-healthcheck", "Dockerfile"]
     ],
     "must_not_find": [
@@ -42,7 +40,14 @@
       ["unpinned-dependency", "package.json"],
       ["docker-root-user", "Dockerfile"],
       ["docker-latest-tag", "Dockerfile"],
-      ["no-health-endpoint", "src/server.js"]
+      ["no-health-endpoint", "src/server.js"],
+      ["openapi-drift", "src/server.js"],
+      ["openapi-drift", "openapi.json"]
+    ],
+    "enabled_rules": {"openapi-drift": {"enabled": true}},
+    "must_find_when_enabled": [
+      ["openapi-drift", "src/server.js"],
+      ["openapi-drift", "openapi.json"]
     ]
   },
   "infra": {

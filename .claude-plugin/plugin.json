@@ -1,6 +1,6 @@
 {
   "name": "design-and-fix",
-  "version": "1.0.2",
+  "version": "1.1.0",
   "description": "Evidence-based system design and architecture audits: a static-analysis scanner, health scores, API reviews and improvement roadmaps.",
   "author": {
     "name": "Muhammad-Ahmad092",

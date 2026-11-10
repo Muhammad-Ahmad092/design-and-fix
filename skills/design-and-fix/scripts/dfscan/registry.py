@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import json
+import os
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Set
+from typing import Any, Dict, List, Optional, Set
 
 from .model import Signal
 
@@ -22,13 +24,54 @@ class RuleMeta:
     limitations: str
     remediation: str
     languages: List[str] = field(default_factory=list)
+    default_enabled: bool = True  # False: the rule's signals are dropped unless config enables it
 
 
 RULES: Dict[str, RuleMeta] = {}
 
+# rule id -> confidence from measured precision (evals/regression.py --write-measured)
+MEASURED_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "measured.json")
+_measured: Optional[Dict[str, str]] = None
+
+
+def measured_confidence(rule_id: str) -> Optional[str]:
+    """Confidence from measured precision (>= 80% high, 50-79% medium, < 50% low), or None
+    when the rule is not in measured.json (the registry value then applies)."""
+    global _measured
+    if _measured is None:
+        try:
+            with open(MEASURED_PATH, encoding="utf-8") as fh:
+                data = json.load(fh)
+            _measured = {k: v for k, v in data.items() if v in CONFIDENCES}
+        except (OSError, ValueError, AttributeError):
+            _measured = {}
+    return _measured.get(rule_id)
+
 
 def register(meta: RuleMeta) -> None:
+    # Measured precision can only lower the registry confidence, never raise it. report._stamp
+    # caps every signal at meta.confidence, so the measured value feeds that same cap.
+    m = measured_confidence(meta.id)
+    if m is not None and CONFIDENCES.index(m) > CONFIDENCES.index(meta.confidence):
+        meta.confidence = m
     RULES[meta.id] = meta
+
+
+def is_enabled(rule_id: str, rule_cfg: Dict[str, Dict[str, Any]]) -> bool:
+    """Config `"enabled"` wins when set; otherwise the rule's `default_enabled`.
+    An unregistered rule id with no config entry counts as enabled."""
+    enabled = rule_cfg.get(rule_id, {}).get("enabled")
+    if enabled is not None:
+        return bool(enabled)
+    meta = RULES.get(rule_id)
+    return meta.default_enabled if meta is not None else True
+
+
+def default_off_rules(rule_cfg: Dict[str, Dict[str, Any]]) -> List[str]:
+    """Sorted ids of rules that are off by default and that the config does not mention via
+    `"enabled"` (a config that disables one explicitly is disclosed by its own note)."""
+    return sorted(rid for rid, m in RULES.items()
+                  if not m.default_enabled and rule_cfg.get(rid, {}).get("enabled") is None)
 
 
 def ensure_loaded() -> None:

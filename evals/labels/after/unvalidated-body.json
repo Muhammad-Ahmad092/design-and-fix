@@ -1,0 +1,47 @@
+[
+  {
+    "repo": "awesome-compose",
+    "file": "react-express-mongodb/backend/routes/index.js",
+    "line": 9,
+    "snippet": "POST /todos: body used without validation",
+    "fingerprint": "b630fd2074a4942f",
+    "label": "fp",
+    "note": "Mongoose Todo model requires text (trim, required: true) and rejects bad bodies via save().catch."
+  },
+  {
+    "repo": "example-voting-app",
+    "file": "vote/app.py",
+    "line": 24,
+    "snippet": "POST /: body used without validation",
+    "fingerprint": "7d3935ee19a9aa9d",
+    "label": "tp",
+    "note": "request.form['vote'] pushed into Redis unchecked; any string becomes a vote record; low impact (demo app)."
+  },
+  {
+    "repo": "todo-nodejs-mongo",
+    "file": "src/api/src/routes/items.ts",
+    "line": 38,
+    "snippet": "POST /: body used without validation",
+    "fingerprint": "ef1bc4c121bcafd4",
+    "label": "fp",
+    "note": "Repository create() whitelists fields and defaults name/state; only a wrong-typed field could pass, no crash or corruption beyond bad value; errors caught by try/catch."
+  },
+  {
+    "repo": "todo-nodejs-mongo",
+    "file": "src/api/src/routes/items.ts",
+    "line": 137,
+    "snippet": "PUT /state/:state: body used without validation",
+    "fingerprint": "faee1f23d7728c3d",
+    "label": "fp",
+    "note": "req.body.map on non-array throws inside try/catch returning 500; ids checked against the list before update; no corruption."
+  },
+  {
+    "repo": "todo-nodejs-mongo",
+    "file": "src/api/src/routes/lists.ts",
+    "line": 36,
+    "snippet": "POST /: body used without validation",
+    "fingerprint": "3af360ebe46c35fe",
+    "label": "fp",
+    "note": "TodoListRepository.create picks name/description only with defaults; try/catch returns 500."
+  }
+]

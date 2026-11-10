@@ -159,6 +159,14 @@
       "line": 16,
       "framework": "express",
       "auth_detected": true
+    },
+    {
+      "method": "GET",
+      "path": "/",
+      "file": "src/routes/v1/docs.route.js",
+      "line": 14,
+      "framework": "express",
+      "auth_detected": false
     }
   ],
   "hotspots": {
@@ -177,62 +185,7 @@
       "snippet": "no health endpoint in service src",
       "confidence": "medium",
       "fingerprint": "0768a64080bde77a",
-      "rule_version": "4"
-    },
-    {
-      "rule": "hardcoded-secret",
-      "category": "Security",
-      "severity_hint": "Critical",
-      "file": "src/config/tokens.js",
-      "line": 4,
-      "snippet": "RESET_PASSWORD: '<redacted>',",
-      "confidence": "low",
-      "fingerprint": "446d932cc9ef7070",
-      "rule_version": "6"
-    },
-    {
-      "rule": "hardcoded-secret",
-      "category": "Security",
-      "severity_hint": "Critical",
-      "file": "src/docs/components.yml",
-      "line": 31,
-      "snippet": "token: <redacted>",
-      "confidence": "low",
-      "fingerprint": "1daae0722c664748",
-      "rule_version": "6"
-    },
-    {
-      "rule": "no-tests",
-      "category": "Maintainability",
-      "severity_hint": "Medium",
-      "file": "src/controllers",
-      "line": 0,
-      "snippet": "no test files under src/controllers",
-      "confidence": "low",
-      "fingerprint": "c50ce5e0f2f23921",
-      "rule_version": "4"
-    },
-    {
-      "rule": "no-tests",
-      "category": "Maintainability",
-      "severity_hint": "Medium",
-      "file": "src/routes",
-      "line": 0,
-      "snippet": "no test files under src/routes",
-      "confidence": "low",
-      "fingerprint": "c5d12c2d94da3632",
-      "rule_version": "4"
-    },
-    {
-      "rule": "no-tests",
-      "category": "Maintainability",
-      "severity_hint": "Medium",
-      "file": "src/validations",
-      "line": 0,
-      "snippet": "no test files under src/validations",
-      "confidence": "low",
-      "fingerprint": "e49ddf0edb07fdf3",
-      "rule_version": "4"
+      "rule_version": "5"
     },
     {
       "rule": "docker-no-healthcheck",
@@ -243,7 +196,7 @@
       "snippet": "EXPOSE without HEALTHCHECK",
       "confidence": "low",
       "fingerprint": "31c49933381caa20",
-      "rule_version": "1"
+      "rule_version": "2"
     }
   ],
   "summary": {
@@ -252,54 +205,61 @@
     "approx_loc": 3706,
     "test_files": 10,
     "signals_by_category": {
-      "Observability": 2,
-      "Security": 2,
-      "Maintainability": 3
+      "Observability": 2
     },
     "truncated": {},
-    "routes_total": 8,
+    "routes_total": 9,
     "invalid_signals": 0,
     "suppressed": 0,
     "partial": false,
-    "skipped_total": 0
+    "skipped_total": 0,
+    "default_off_rules": [
+      "openapi-drift"
+    ],
+    "scope_report": {
+      "scanned": 63,
+      "skipped_by_reason": {},
+      "excluded_by_config": 0
+    }
   },
   "notes": [
+    "rules off by default (enable in config): openapi-drift",
     "git hotspots disabled (--no-git)"
   ],
   "skipped_files": [],
   "meta": {
-    "plugin_version": "1.0.2",
+    "plugin_version": "1.1.0",
     "schema_version": 3,
     "rule_versions": {
       "ci-no-test-step": "1",
       "console-logging-only": "3",
       "docker-latest-tag": "1",
-      "docker-no-healthcheck": "1",
-      "docker-root-user": "1",
-      "god-module": "4",
-      "hardcoded-secret": "6",
-      "http-no-timeout": "2",
-      "import-cycle": "3",
-      "k8s-no-limits": "1",
-      "k8s-no-probes": "1",
+      "docker-no-healthcheck": "2",
+      "docker-root-user": "2",
+      "god-module": "5",
+      "hardcoded-secret": "9",
+      "http-no-timeout": "3",
+      "import-cycle": "4",
+      "k8s-no-limits": "2",
+      "k8s-no-probes": "2",
       "list-route-no-pagination": "1",
-      "missing-lockfile": "1",
+      "missing-lockfile": "2",
       "mixed-error-shapes": "1",
-      "no-health-endpoint": "4",
-      "no-tests": "4",
-      "no-version-prefix": "1",
-      "openapi-drift": "1",
-      "query-in-loop": "4",
+      "no-health-endpoint": "5",
+      "no-tests": "6",
+      "no-version-prefix": "3",
+      "openapi-drift": "2",
+      "query-in-loop": "5",
       "retry-no-backoff": "1",
-      "sql-string-concat": "4",
-      "swallowed-error": "5",
-      "unauth-write-route": "5",
-      "unbounded-query": "3",
-      "unpinned-dependency": "2",
+      "sql-string-concat": "6",
+      "swallowed-error": "7",
+      "unauth-write-route": "7",
+      "unbounded-query": "4",
+      "unpinned-dependency": "4",
       "unvalidated-body": "1"
     },
     "config_hash": "3d96e5d5ea6d",
-    "timestamp": "2026-11-02T18:25:01Z",
+    "timestamp": "2026-11-05T16:53:20Z",
     "repo_revision": "unknown",
     "scope": []
   }

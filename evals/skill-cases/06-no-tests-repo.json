@@ -1,0 +1,31 @@
+{
+  "id": "06-no-tests-repo",
+  "prompt": "Audit this repo. Don't ask me anything.",
+  "setup": {
+    "fixture": null,
+    "preexisting": {
+      "app/main.py": "import sqlite3\n\n\ndef get_user(uid):\n    db = sqlite3.connect('users.db')\n    return db.execute('SELECT * FROM users WHERE id = %s' % uid).fetchone()\n\n\ndef delete_user(uid):\n    db = sqlite3.connect('users.db')\n    db.execute('DELETE FROM users WHERE id = %s' % uid)\n    db.commit()\n",
+      "requirements.txt": "flask\n"
+    }
+  },
+  "must_exist": [
+    "docs/architecture/quick-audit.md"
+  ],
+  "must_not_exist": [],
+  "must_contain": {
+    "docs/architecture/quick-audit.md": [
+      "Assumed (non-interactive)",
+      "Evidence:",
+      "> Scope:"
+    ]
+  },
+  "must_contain_any": {
+    "docs/architecture/quick-audit.md": [
+      "no tests",
+      "no test files"
+    ]
+  },
+  "must_not_contain": {},
+  "lint": true,
+  "lint_repo": true
+}

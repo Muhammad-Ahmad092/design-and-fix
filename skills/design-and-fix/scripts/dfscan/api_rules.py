@@ -3,10 +3,12 @@ from __future__ import annotations
 import json
 import posixpath
 import re
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Callable, Dict, List, Optional, Set, Tuple
 
+from .auth.core import file_code_text
+from .filecache import FileCache, text_of
 from .imports import _read
-from .json_utils import check_json_nesting
+from .json_utils import check_json_safety
 from .model import FileInfo, Signal
 from .registry import RuleMeta, register
 from .routes import _code_text, _kind, find_services, is_health_path
@@ -66,15 +68,19 @@ def _py_window(lines: List[str], idx: int) -> str:
 class _Source:
     """Comment-stripped text of route files, cached."""
 
-    def __init__(self, files: List[FileInfo]) -> None:
+    def __init__(self, files: List[FileInfo], file_cache: Optional[FileCache] = None) -> None:
         self.by_rel = {f.rel: f for f in files}
         self.cache: Dict[str, List[str]] = {}
+        self.file_cache = file_cache
 
     def lines(self, rel: str) -> List[str]:
         if rel not in self.cache:
             f = self.by_rel.get(rel)
             kind = _kind(f) if f is not None else None
-            self.cache[rel] = _lines(_code_text(_read(f), kind)) if kind else []
+            if kind and self.file_cache is not None:
+                self.cache[rel] = _lines(file_code_text(f, kind, self.file_cache))  # type: ignore
+            else:
+                self.cache[rel] = _lines(_code_text(_read(f), kind)) if kind else []
         return self.cache[rel]
 
     def any_text(self, f: FileInfo) -> str:
@@ -82,6 +88,8 @@ class _Source:
         if _kind(f):
             return "\n".join(self.lines(f.rel))
         if f.lang is not None and f.ext in FRAMEWORK_EXTS:
+            if self.file_cache is not None:
+                return self.file_cache.code(f)
             return strip_comments(_read(f), f.lang)
         return ""
 
@@ -173,8 +181,9 @@ def rule_unvalidated_body(routes: List[dict], src: _Source) -> List[Signal]:
     the raw body and are not flagged.
 
     False-positive risks: validation middleware mounted in another file (app.use(validator)) or
-    done in a called service is not seen; when the file imports a validation library the signal
-    is low confidence. Handlers passed by name are not read (missed).
+    done in a called service is not seen; when the file imports a validation library the code
+    emits low instead of medium, but the measured ceiling (low) caps every signal of this rule
+    at low. Handlers passed by name are not read (missed).
     """
     out = []
     raw_cache: Dict[str, str] = {}
@@ -386,7 +395,7 @@ def _parse_spec(text: str, json_file: bool) -> Tuple[Dict[str, Tuple[int, Set[st
     lines = text.split("\n")
     if json_file:
         try:
-            check_json_nesting(text)
+            check_json_safety(text)
             data = json.loads(text)
         except (ValueError, RecursionError) as exc:
             raise MalformedSpec(type(exc).__name__) from None
@@ -512,7 +521,8 @@ def _spec_owners(routes: List[dict], specs: List[FileInfo],
 
 def rule_openapi_drift(routes: List[dict], files: List[FileInfo],
                        services: Optional[Dict[str, tuple]] = None,
-                       notes: Optional[List[str]] = None) -> List[Signal]:
+                       notes: Optional[List[str]] = None,
+                       cache: Optional[FileCache] = None) -> List[Signal]:
     """When openapi/swagger .json/.yaml exists: code routes missing from the spec, and spec paths
     with no code route. A route is checked against the deepest spec in an ancestor folder, else
     the nearest spec in its service (docs/, api/, spec/ ... next to the code), else the nearest
@@ -537,7 +547,7 @@ def rule_openapi_drift(routes: List[dict], files: List[FileInfo],
         if not rs:
             continue
         try:
-            paths, bases = _parse_spec(_read(f).replace("\r\n", "\n"), f.ext == ".json")
+            paths, bases = _parse_spec(text_of(f, cache).replace("\r\n", "\n"), f.ext == ".json")
         except MalformedSpec as exc:
             if notes is not None:
                 notes.append("openapi-drift skipped %s: malformed spec (%s)" % (f.rel, exc))
@@ -551,7 +561,12 @@ def rule_openapi_drift(routes: List[dict], files: List[FileInfo],
             folded.setdefault(s.lower(), []).append(s)
         matched_specs: Set[str] = set()
         missing: List[dict] = []
+        # A route listed as ANY may have a POST twin at the same line (Spring @RequestMapping
+        # with no method): the ANY entry speaks for both.
+        any_at = {(r["file"], r["line"], r["path"]) for r in rs if r["method"] == "ANY"}
         for r in rs:
+            if r["method"] != "ANY" and (r["file"], r["line"], r["path"]) in any_at:
+                continue
             code = _norm(_strip_base(_norm(r["path"]), bases))
             if r["file"].endswith(".cs"):  # ASP.NET Core routing is case-insensitive
                 hits = folded.get(code.lower()) or [
@@ -581,24 +596,29 @@ def rule_openapi_drift(routes: List[dict], files: List[FileInfo],
 
 # ---------------------------------------------------------------- runner
 def run_api_rules(files: List[FileInfo], routes: List[dict],
-                  notes: Optional[List[str]] = None) -> List[Signal]:
+                  notes: Optional[List[str]] = None,
+                  cache: Optional[FileCache] = None,
+                  enabled: Optional[Callable[[str], bool]] = None) -> List[Signal]:
     """Every API Design rule over the route inventory (test and example routes skipped).
 
     The handler-body rules (list-route-no-pagination, unvalidated-body, mixed-error-shapes) read
     JS/TS/Python/Go route files only; no-version-prefix and openapi-drift also take the Spring,
     ASP.NET Core, Rails and Laravel routes. `notes` (optional) collects skipped-input notes.
+    `enabled` (optional, rule id -> bool): openapi-drift (off by default, and the only rule here
+    that parses extra files and writes notes) does not run at all when it says False.
     """
     rs = _usable(routes, files)
     if not rs:
         return []
-    src = _Source(files)
+    src = _Source(files, cache)
     by_rel = {f.rel: f for f in files}
     inline = [r for r in rs if _kind(by_rel[r["file"]])]
-    services = find_services(files)
+    services = find_services(files, cache)
     return (rule_list_route_no_pagination(inline, src) + rule_unvalidated_body(inline, src)
             + rule_mixed_error_shapes(inline, files, src, services)
             + rule_no_version_prefix(rs, files, src, services)
-            + rule_openapi_drift(rs, files, services, notes))
+            + (rule_openapi_drift(rs, files, services, notes, cache)
+               if enabled is None or enabled("openapi-drift") else []))
 
 
 _LANGS = ["Python", "JavaScript", "TypeScript", "Go"]
@@ -619,7 +639,7 @@ for _m in [
              "from a central error handler are not seen. Objects sharing any of error/errors/"
              "message/detail/msg count as compatible.",
              "Pick one error envelope (e.g. RFC 9457 problem+json) and use it everywhere.", _LANGS),
-    RuleMeta("no-version-prefix", "2", "API Design", "Low", "low",
+    RuleMeta("no-version-prefix", "3", "API Design", "Low", "low",
              "Service with 3+ non-health routes, none under /vN or v{...}, and no versioning in "
              "its code; one signal per service.",
              "Internal services and server-rendered apps do not need versions; gateway or "
@@ -628,15 +648,16 @@ for _m in [
              "namespace/scope/module V1, or a V1 namespace / v1 package in the service's "
              "JS/TS/Python/Go/Java/Kotlin/C#/Ruby/PHP files counts as versioned; versioning "
              "configured only outside those files (custom Spring RequestCondition, YAML, a "
-             "gateway) is not seen and is flagged. Always low confidence.",
+             "gateway) is not seen and is flagged. Always low confidence. Test files do not count;"
+             " RSpec files (*_spec.rb, *.spec.rb) count as test files (1.1.0).",
              "Version the public API (/v1 prefix or a version header) before clients depend on it.",
              _ROUTE_LANGS),
     RuleMeta("unvalidated-body", "1", "API Design", "High", "medium",
              "POST/PUT/PATCH route that reads the raw request body with no schema validation in "
              "the handler.",
              "Only inline handlers are read. Validation middleware mounted elsewhere or done in a "
-             "called function is not seen; a file importing a validation library lowers the "
-             "signal to low confidence. Recognised: zod, joi, yup, celebrate, express-validator, "
+             "called function is not seen; a route in a file importing a validation library is "
+             "still reported. Always low confidence (the rule ceiling), set by measured precision. Recognised: zod, joi, yup, celebrate, express-validator, "
              "class-validator, ajv, pydantic, marshmallow, validate(...) calls, explicit 400/422 "
              "checks, Go binding/validate struct tags. FastAPI/Nest typed bodies are never flagged.",
              "Validate the body against a schema before using it.", _LANGS),
@@ -653,8 +674,10 @@ for _m in [
              "Specs sharing no route with the code are ignored; health routes missing from the "
              "spec are not reported. YAML specs are read by indentation (servers urls and "
              "basePath are the only bases); $ref'd path files are not followed; a malformed JSON "
-             "spec is skipped.",
+             "spec is skipped. Off by default in 1.1.0: measured 0% (0 of 14) on the corpus, all "
+             "from Express routers mounted with app.use('/prefix', router), whose mount prefix "
+             "is not resolved; enable it with \"rules\": {\"openapi-drift\": {\"enabled\": true}}.",
              "Generate the spec from code or check it in CI against the route table.",
-             _ROUTE_LANGS),
+             _ROUTE_LANGS, default_enabled=False),
 ]:
     register(_m)

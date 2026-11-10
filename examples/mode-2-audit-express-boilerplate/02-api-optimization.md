@@ -3,7 +3,7 @@
 > Scope: `hagopj13/node-express-boilerplate` at tag `v1.7.0` (https://github.com/hagopj13/node-express-boilerplate), whole repository; all paths relative to the repo root. Archive checksum in `evals/corpus.json`.
 > Context: Express + MongoDB starter used as the base of a small REST API, about 2k users, team of 2, must keep MongoDB; Assumed (non-interactive)
 > Format: 1.0.2
-> Audit: plugin 1.0.2 · scanner schema 3 · rev unknown · config 3d96e5d5ea6d · 2026-11-02T18:25:01Z
+> Audit: plugin 1.1.0 · scanner schema 3 · rev unknown · config 3d96e5d5ea6d · 2026-11-05T16:53:20Z
 
 ## API Health Snapshot
 
@@ -26,13 +26,14 @@
 | POST | /v1/auth/reset-password | `src/routes/v1/auth.route.js:14` | no |
 | POST | /v1/auth/send-verification-email | `src/routes/v1/auth.route.js:15` | yes |
 | POST | /v1/auth/verify-email | `src/routes/v1/auth.route.js:16` | no |
+| GET | /v1/docs | `src/routes/v1/docs.route.js:14` | no |
 | POST | /v1/users | `src/routes/v1/user.route.js:11` | yes |
 | GET | /v1/users | `src/routes/v1/user.route.js:12` | yes |
 | GET | /v1/users/{userId} | `src/routes/v1/user.route.js:16` | yes |
 | PATCH | /v1/users/{userId} | `src/routes/v1/user.route.js:17` | yes |
 | DELETE | /v1/users/{userId} | `src/routes/v1/user.route.js:18` | yes |
 
-Routes from the scanner in the audited scope (first 8 rows), plus the 5 user routes read from `user.route.js` because the scanner does not follow `router.route().post()` chains. The unauthenticated auth routes are public by design (register, login, token flows).
+Routes from the scanner in the audited scope (first 9 rows), plus the 5 user routes read from `user.route.js` because the scanner does not follow `router.route().post()` chains. The unauthenticated auth routes are public by design (register, login, token flows).
 
 ## Issues Found
 

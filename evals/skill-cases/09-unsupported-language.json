@@ -1,0 +1,29 @@
+{
+  "id": "09-unsupported-language",
+  "prompt": "Audit this repo. Don't ask me anything.",
+  "setup": {
+    "fixture": "tests/fixtures/eval-cases/elixir-only",
+    "preexisting": {}
+  },
+  "must_exist": [
+    "docs/architecture/quick-audit.md"
+  ],
+  "must_not_exist": [],
+  "must_contain": {
+    "docs/architecture/quick-audit.md": [
+      "Assumed (non-interactive)",
+      "Evidence:",
+      "> Scope:"
+    ]
+  },
+  "must_contain_any": {
+    "docs/architecture/quick-audit.md": [
+      "no scanner rules apply",
+      "no rules",
+      "not supported by the scanner"
+    ]
+  },
+  "must_not_contain": {},
+  "lint": true,
+  "lint_repo": true
+}

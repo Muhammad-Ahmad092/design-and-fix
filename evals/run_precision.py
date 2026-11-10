@@ -5,18 +5,23 @@ run_precision.py - precision study over the evaluation corpus (offline; see fetc
 Usage:
     python evals/run_precision.py sample [--corpus DIR] [--per-rule 20] [--seed 1002]
                                          [--out evals/labels/baseline] [--force]
-    python evals/run_precision.py report [--labels evals/labels/baseline]
+    python evals/run_precision.py report [--labels evals/labels/baseline] [--fn evals/labels/fn]
                                          [--out evals/precision-baseline.md] [--corpus DIR]
                                          [--no-measure] [--tag TAG] [--append NOTES.md]
 
 sample  scans every corpus repo, draws up to N signals per rule across the corpus (round-robin
         over repos, fixed seed) and writes one labelling sheet per rule, `<rule>.json`, plus
-        `_population.json` (signal counts per repo and rule, used for extrapolation).
-report  reads the labelled sheets (label: tp | fp | unsure, reason in note) and writes a Markdown
-        report: precision per rule with sample sizes, extrapolated false positives per repo,
-        recall on the fixture monorepo, repeat-run consistency, scan time and peak memory.
-        --append adds a hand-written Markdown file at the end, so analysis that the generator
-        cannot produce survives regeneration.
+        `_population.json` (signal counts per repo and rule, used for extrapolation). It warns
+        when corpus.json `coverage` no longer matches the rules that fired.
+report  reads the labelled sheets (label: tp | fp | unsure, reason in note) and the known-missed
+        findings in evals/labels/fn/ (label: fn) and writes a Markdown report: precision, recall
+        and F1 per rule with sample sizes, results per language and per framework, extrapolated
+        false positives per repo, recall on the fixture monorepo, repeat-run consistency, scan
+        time and peak memory. --append adds a hand-written Markdown file at the end, so analysis
+        that the generator cannot produce survives regeneration.
+
+Labelling rules (tp / fp / unsure / fn) are in evals/LABELLING.md; its `Guide version:` line is
+recorded in the report and in _population.json.
 """
 from __future__ import annotations
 
@@ -27,11 +32,12 @@ import math
 import os
 import platform
 import random
+import re
 import statistics
 import sys
 import time
 import tracemalloc
-from typing import Dict, List, Optional, Tuple
+from typing import Callable, Dict, List, Optional, Tuple
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.dirname(HERE)
@@ -44,13 +50,19 @@ for _p in (HERE, SCRIPTS):
 from dfscan import registry  # noqa: E402
 from dfscan.meta import PLUGIN_VERSION  # noqa: E402
 from dfscan.report import scan  # noqa: E402
+from dfscan.walker import CODE_EXTS  # noqa: E402
 from fetch_corpus import DEFAULT_DEST, load_corpus, repo_root  # noqa: E402
 
 DEFAULT_CORPUS = DEFAULT_DEST
 DEFAULT_LABELS = os.path.join(HERE, "labels", "baseline")
+DEFAULT_FN = os.path.join(HERE, "labels", "fn")
+GUIDE = os.path.join(HERE, "LABELLING.md")
 POPULATION = "_population.json"
 LABELS = ("tp", "fp", "unsure")
 SHEET_KEYS = ("repo", "file", "line", "snippet", "fingerprint", "label", "note")
+CI_FILE_RE = re.compile(r"(?:^|/)(?:\.github/workflows/[^/]+|\.gitlab-ci\.yml|\.circleci/[^/]+)$")
+CONFIG_EXTS = (".json", ".txt", ".toml", ".lock", ".properties", ".pem", ".key", ".xml", ".ini",
+               ".cfg", ".env", ".gradle", ".csproj", ".mod", ".sum")
 
 
 # ---------------------------------------------------------------- scanning
@@ -146,6 +158,147 @@ def fp_estimates(stats: Dict[str, dict], pop: Dict[str, Dict[str, int]]) -> Dict
     return out
 
 
+def _ratio(num: int, den: int) -> Optional[float]:
+    return (num / den) if den else None
+
+
+def _f1(precision: Optional[float], recall: Optional[float]) -> Optional[float]:
+    if precision is None or recall is None:
+        return None
+    return (2 * precision * recall / (precision + recall)) if precision + recall else 0.0
+
+
+def _check_fn(entries: List[dict]) -> int:
+    for e in entries:
+        if e.get("label") != "fn":
+            raise ValueError("known-missed entries must have label 'fn': %r" % (e,))
+    return len(entries)
+
+
+def recall_stats(labels: Dict[str, List[dict]], fn: Dict[str, List[dict]],
+                 reviewed: Optional[Dict[str, List[str]]] = None) -> Dict[str, dict]:
+    """Per rule: tp, fp, fn, n (labelled sample size), precision, recall, f1.
+
+    `fn` maps a rule to its known-missed findings (label `fn`). A rule absent from `fn` was never
+    reviewed for misses, so its recall and F1 are None, never 100%. Precision uses every label;
+    when `reviewed` (rule -> repos reviewed for misses) is given, recall counts only the tp
+    labels from those repos, so tp and fn come from the same repos.
+    """
+    out: Dict[str, dict] = {}
+    for rule in sorted(set(labels) | set(fn)):
+        st = rule_stats(labels.get(rule, []))
+        misses = _check_fn(fn[rule]) if rule in fn else 0
+        recall = None
+        if rule in fn:
+            if reviewed is None:
+                tp_rev = st["tp"]
+            else:
+                repos = set(reviewed.get(rule, []))
+                tp_rev = sum(1 for e in labels.get(rule, [])
+                             if e.get("label") == "tp" and e.get("repo") in repos)
+            recall = _ratio(tp_rev, tp_rev + misses)
+        out[rule] = {"tp": st["tp"], "fp": st["fp"], "fn": misses, "n": st["n"],
+                     "precision": st["precision"], "recall": recall,
+                     "f1": _f1(st["precision"], recall)}
+    return out
+
+
+def language_of(entry: dict, corpus_by_name: Dict[str, dict]) -> str:
+    """Language of a labelled entry, from its file; folder-level entries (no-tests) and unknown
+    file types take the repo's first language in corpus.json."""
+    path = entry.get("file", "").replace("\\", "/")
+    base = path.rsplit("/", 1)[-1]
+    ext = os.path.splitext(base)[1].lower()
+    if CI_FILE_RE.search(path):
+        return "CI config"
+    if base.startswith("Dockerfile") or ext == ".dockerfile":
+        return "Dockerfile"
+    if ext in CODE_EXTS:
+        return CODE_EXTS[ext].split("/")[0].split(" (")[0]
+    if ext in (".yml", ".yaml"):
+        return "YAML"
+    if ext in CONFIG_EXTS:
+        return "Manifest or config"
+    langs = corpus_by_name.get(entry.get("repo", ""), {}).get("languages") or []
+    return langs[0] if langs else "Unknown"
+
+
+def group_rows(labels: Dict[str, List[dict]], fn: Dict[str, List[dict]],
+               reviewed: Dict[str, List[str]], key: Callable[[dict], str]) -> Dict[str, dict]:
+    """tp/fp/unsure/fn per group (key(entry) -> group name). Recall per group counts only tp
+    labels from (rule, repo) pairs reviewed for misses."""
+    out: Dict[str, dict] = {}
+
+    def row(name: str) -> dict:
+        return out.setdefault(name, {"tp": 0, "fp": 0, "unsure": 0, "fn": 0, "tp_reviewed": 0})
+
+    for rule, entries in labels.items():
+        repos = set(reviewed.get(rule, []))
+        for e in entries:
+            label = e.get("label", "")
+            if label in LABELS:
+                r = row(key(e))
+                r[label] += 1
+                if label == "tp" and rule in fn and e.get("repo") in repos:
+                    r["tp_reviewed"] += 1
+    for entries in fn.values():
+        for e in entries:
+            row(key(e))["fn"] += 1
+    for r in out.values():
+        r["precision"] = _ratio(r["tp"], r["tp"] + r["fp"])
+        r["recall"] = _ratio(r["tp_reviewed"], r["tp_reviewed"] + r["fn"])
+    return out
+
+
+# ---------------------------------------------------------------- corpus coverage
+def coverage_from_population(pop_repos: Dict[str, dict]) -> Dict[str, List[str]]:
+    """rule -> sorted repos with at least one signal, from _population.json `repos`."""
+    out: Dict[str, List[str]] = {}
+    for repo, info in pop_repos.items():
+        for rule, n in info.get("signals", {}).items():
+            if n:
+                out.setdefault(rule, []).append(repo)
+    return {rule: sorted(repos) for rule, repos in sorted(out.items())}
+
+
+def coverage_problems(corpus: dict, rules: List[str]) -> List[str]:
+    """Every rule must be in corpus.json `coverage` (repos that produce its signals) or in
+    `unmeasured` (with a reason), not both. Returns human-readable problems; empty is fine."""
+    names = {r["name"] for r in corpus.get("repos", [])}
+    coverage = corpus.get("coverage", {})
+    unmeasured = corpus.get("unmeasured", {})
+    problems = []
+    for rule in sorted(set(rules) | set(coverage) | set(unmeasured)):
+        covered, reason = rule in coverage, rule in unmeasured
+        if rule not in rules:
+            problems.append("%s: listed in corpus.json but not a registered rule" % rule)
+        elif covered and reason:
+            problems.append("%s: in both coverage and unmeasured" % rule)
+        elif covered:
+            repos = coverage[rule]
+            if not repos:
+                problems.append("%s: coverage lists no repo" % rule)
+            unknown = [r for r in repos if r not in names]
+            if unknown:
+                problems.append("%s: coverage names unknown repos %s" % (rule, ", ".join(unknown)))
+        elif reason:
+            if not str(unmeasured[rule]).strip():
+                problems.append("%s: unmeasured without a reason" % rule)
+        else:
+            problems.append("%s: no corpus repo produces it and no unmeasured reason" % rule)
+    return problems
+
+
+def guide_version(path: str = GUIDE) -> Optional[str]:
+    """The `Guide version: N` line of evals/LABELLING.md (None when missing)."""
+    try:
+        with open(path, encoding="utf-8") as fh:
+            m = re.search(r"(?m)^Guide version:\s*(\S+)", fh.read())
+    except OSError:
+        return None
+    return m.group(1) if m else None
+
+
 # ---------------------------------------------------------------- recall, consistency, timing
 def fixture_recall() -> dict:
     with open(os.path.join(HERE, "scanner-expected.json"), encoding="utf-8") as fh:
@@ -204,6 +357,45 @@ def load_labels(labels_dir: str) -> Dict[str, List[dict]]:
     return out
 
 
+def _fn_docs(fn_dir: str) -> List[dict]:
+    """The per-repo known-missed files in fn_dir (`<repo>.json`; `_`-prefixed files skipped)."""
+    if not os.path.isdir(fn_dir):
+        return []
+    docs = []
+    for name in sorted(os.listdir(fn_dir)):
+        if name.endswith(".json") and not name.startswith("_"):
+            with open(os.path.join(fn_dir, name), encoding="utf-8") as fh:
+                doc = json.load(fh)
+            reviewed = set(doc.get("reviewed_rules", []))
+            for e in doc.get("missed", []):
+                if e.get("rule") not in reviewed:
+                    raise ValueError("%s: miss for rule %r, which is not in reviewed_rules"
+                                     % (name, e.get("rule")))
+            docs.append(doc)
+    return docs
+
+
+def load_fn(fn_dir: str) -> Dict[str, List[dict]]:
+    """rule -> known-missed findings (each tagged with its repo). A rule some repo was reviewed
+    for, with no misses found, maps to []; a rule never reviewed is absent."""
+    out: Dict[str, List[dict]] = {}
+    for doc in _fn_docs(fn_dir):
+        for rule in doc.get("reviewed_rules", []):
+            out.setdefault(rule, [])
+        for e in doc.get("missed", []):
+            out[e["rule"]].append(dict(e, repo=doc["repo"]))
+    return out
+
+
+def load_reviewed(fn_dir: str) -> Dict[str, List[str]]:
+    """rule -> repos reviewed for misses of that rule."""
+    out: Dict[str, List[str]] = {}
+    for doc in _fn_docs(fn_dir):
+        for rule in doc.get("reviewed_rules", []):
+            out.setdefault(rule, []).append(doc["repo"])
+    return {rule: sorted(repos) for rule, repos in out.items()}
+
+
 def cmd_sample(args: argparse.Namespace) -> int:
     corpus = load_corpus()
     out = os.path.abspath(args.out)
@@ -231,10 +423,17 @@ def cmd_sample(args: argparse.Namespace) -> int:
         write_json(os.path.join(out, rule + ".json"), entries)
     write_json(os.path.join(out, POPULATION), {
         "scanner_version": PLUGIN_VERSION, "seed": args.seed, "per_rule": args.per_rule,
+        "guide_version": guide_version(),
         "rule_versions": {r: m.version for r, m in sorted(registry.RULES.items())},
         "repos": repos})
     total = sum(len(v) for v in sheets.values())
     print("wrote %d sheets (%d signals to label) to %s" % (len(sheets), total, out))
+    fired = coverage_from_population(repos)
+    recorded = corpus.get("coverage", {})
+    stale = sorted(r for r in set(fired) | set(recorded) if fired.get(r) != recorded.get(r))
+    if stale:
+        print("note: corpus.json coverage differs from this scan for: %s" % ", ".join(stale),
+              file=sys.stderr)
     return 0
 
 
@@ -242,11 +441,34 @@ def _pct(x: Optional[float]) -> str:
     return "n/a" if x is None else "%.0f%%" % (100 * x)
 
 
+def _group_table(title: str, rows: Dict[str, dict], intro: str) -> List[str]:
+    out = ["## " + title, "", intro, "",
+           "| %s | Decided (tp+fp) | tp | fp | unsure | Known misses (fn) | Precision | Recall |"
+           % title.rsplit(" ", 1)[-1].capitalize(),
+           "|---|---|---|---|---|---|---|---|"]
+    for name in sorted(rows):
+        r = rows[name]
+        out.append("| %s | %d | %d | %d | %d | %d | %s | %s |" % (
+            name, r["tp"] + r["fp"], r["tp"], r["fp"], r["unsure"], r["fn"],
+            _pct(r["precision"]), _pct(r["recall"])))
+    if not rows:
+        out.append("| (no labels) | 0 | 0 | 0 | 0 | 0 | n/a | n/a |")
+    return out + [""]
+
+
 def render_report(labels: Dict[str, List[dict]], pop_doc: dict, recall: dict,
-                  rows: Optional[List[dict]], corpus: dict, args: argparse.Namespace) -> str:
+                  rows: Optional[List[dict]], corpus: dict, args: argparse.Namespace,
+                  fn: Optional[Dict[str, List[dict]]] = None,
+                  reviewed: Optional[Dict[str, List[str]]] = None) -> str:
+    """Markdown report. `fn` (rule -> known misses) and `reviewed` (rule -> repos reviewed for
+    misses; default: the repos named in `fn`) add recall and F1 where misses were reviewed."""
+    fn = fn or {}
+    if reviewed is None:
+        reviewed = {rule: sorted({e.get("repo", "") for e in es}) for rule, es in fn.items()}
     pop = {name: r["signals"] for name, r in pop_doc["repos"].items()}
     stats = {rule: rule_stats(entries) for rule, entries in labels.items()}
-    rules = sorted(set(registry.RULES) | set(stats))
+    rstats = recall_stats(labels, fn, reviewed)
+    rules = sorted(set(registry.RULES) | set(stats) | set(fn))
     total_signals = {rule: sum(c.get(rule, 0) for c in pop.values()) for rule in rules}
     out = ["# Precision study (%s)" % args.tag, "",
            "Generated by `evals/run_precision.py report` on %s. Scanner %s, seed %s, up to %s "
@@ -261,23 +483,49 @@ def render_report(labels: Dict[str, List[dict]], pop_doc: dict, recall: dict,
             "- Scanner (plugin) version: %s; rule versions: %s" % (
                 pop_doc.get("scanner_version"),
                 ", ".join("%s=%s" % kv for kv in sorted(pop_doc.get("rule_versions", {}).items()))),
+            "- Labelling guide (`evals/LABELLING.md`): %s; current Guide version %s" % (
+                "sheets sampled under Guide version %s" % pop_doc["guide_version"]
+                if pop_doc.get("guide_version") else "sheets predate the written guide (version 1)",
+                guide_version() or "unknown"),
             ""]
-    out += ["## Precision per rule", "",
+    out += ["## Precision and recall per rule", "",
             "precision = tp / (tp + fp); `unsure` labels are excluded from the ratio. "
             "The 95% interval is the Wilson score interval on the decided labels; with n = 20 "
-            "it is wide, so read precision as a band, not a point.", "",
-            "| Rule | Corpus signals | Sample n | tp | fp | unsure | Precision | 95% CI |",
-            "|---|---|---|---|---|---|---|---|"]
+            "it is wide, so read precision as a band, not a point. fn counts the known-missed "
+            "findings recorded in `evals/labels/fn/`; recall = tp / (tp + fn) over the repos "
+            "reviewed for misses of that rule only, and F1 = 2PR / (P + R). Recall is an upper "
+            "bound (only misses someone found are counted) and is n/a for rules nobody reviewed "
+            "for misses.", "",
+            "| Rule | Corpus signals | Sample n | tp | fp | unsure | Precision | 95% CI | fn | Recall | F1 |",
+            "|---|---|---|---|---|---|---|---|---|---|---|"]
     for rule in rules:
         st = stats.get(rule) or rule_stats([])
+        rs = rstats.get(rule) or {"fn": 0, "recall": None, "f1": None}
         decided = st["tp"] + st["fp"]
         ci = "n/a" if not decided else "%s-%s" % tuple(_pct(v) for v in wilson(st["tp"], decided))
-        out.append("| %s | %d | %d | %d | %d | %d | %s | %s |" % (
+        out.append("| %s | %d | %d | %d | %d | %d | %s | %s | %d | %s | %s |" % (
             rule, total_signals.get(rule, 0), st["n"], st["tp"], st["fp"], st["unsure"],
-            _pct(st["precision"]), ci))
+            _pct(st["precision"]), ci, rs["fn"], _pct(rs["recall"]), _pct(rs["f1"])))
     unl = sum(st["unlabelled"] for st in stats.values())
     out += ["", "Unlabelled entries: %d." % unl if unl else "All sampled entries are labelled.",
             "Rules with 0 corpus signals could not be measured (no evidence either way).", ""]
+    unmeasured = corpus.get("unmeasured", {})
+    if unmeasured:
+        out += ["Rules no corpus repo triggers (from `evals/corpus.json`):", ""]
+        out += ["- %s: %s" % (rule, unmeasured[rule]) for rule in sorted(unmeasured)]
+        out.append("")
+    by_name = {e["name"]: e for e in corpus.get("repos", [])}
+    out += _group_table(
+        "Results per language", group_rows(labels, fn, reviewed, lambda e: language_of(e, by_name)),
+        "Language of each labelled finding, from its file extension (Dockerfiles, CI configs and "
+        "YAML are their own rows; folder-level findings such as no-tests take the repo's first "
+        "language in corpus.json). Counts are labels, not corpus signals; the sample is drawn per "
+        "rule, so a language's row mixes rules in whatever proportion the sample drew them.")
+    out += _group_table(
+        "Results per framework",
+        group_rows(labels, fn, reviewed,
+                   lambda e: by_name.get(e.get("repo", ""), {}).get("framework") or "(none)"),
+        "Framework of the repo each label came from (the corpus.json `framework` field).")
     est = fp_estimates(stats, pop)
     labelled_from = {}
     for entries in labels.values():
@@ -343,7 +591,8 @@ def render_report(labels: Dict[str, List[dict]], pop_doc: dict, recall: dict,
             "python evals/fetch_corpus.py            # downloads into ../design-and-fix-corpus/",
             "python evals/run_precision.py sample --per-rule %s --seed %s --out %s" % (
                 pop_doc.get("per_rule"), pop_doc.get("seed"), args.labels_rel),
-            "# label every entry: tp | fp | unsure, with a one-line note",
+            "# label every entry: tp | fp | unsure, with a one-line note (evals/LABELLING.md)",
+            "# record known misses per repo in evals/labels/fn/<repo>.json (label: fn)",
             "python evals/run_precision.py report --labels %s --out %s" % (args.labels_rel, args.out_rel),
             "```", ""]
     return "\n".join(out)
@@ -383,7 +632,8 @@ def cmd_report(args: argparse.Namespace) -> int:
     args.labels_rel, args.out_rel = _rel(args.labels), _rel(args.out)
     if args.tag is None:
         args.tag = default_tag(args.out, args.labels)
-    text = render_report(labels, pop_doc, fixture_recall(), rows, corpus, args)
+    text = render_report(labels, pop_doc, fixture_recall(), rows, corpus, args,
+                         fn=load_fn(args.fn), reviewed=load_reviewed(args.fn))
     if getattr(args, "append", None):
         text = append_notes(text, args.append)
     with open(args.out, "w", encoding="utf-8", newline="\n") as fh:
@@ -404,6 +654,8 @@ def main(argv: Optional[List[str]] = None) -> int:
     s.add_argument("--force", action="store_true", help="Overwrite sheets that hold labels")
     r = sub.add_parser("report", help="Compute the precision report from labelled sheets")
     r.add_argument("--labels", default=DEFAULT_LABELS)
+    r.add_argument("--fn", default=DEFAULT_FN,
+                   help="Folder of known-missed findings per repo (see evals/LABELLING.md)")
     r.add_argument("--out", default=os.path.join(HERE, "precision-baseline.md"))
     r.add_argument("--corpus", default=DEFAULT_CORPUS)
     r.add_argument("--tag", default=None, help="Report title tag (default: from --out name)")

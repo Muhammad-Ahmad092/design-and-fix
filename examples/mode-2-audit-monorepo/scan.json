@@ -137,7 +137,7 @@
       "snippet": "services/payments/src/lib/db.ts -> services/payments/src/lib/util.ts -> services/payments/src/lib/db.ts",
       "confidence": "low",
       "fingerprint": "40120ca3c96a84c4",
-      "rule_version": "3"
+      "rule_version": "4"
     },
     {
       "rule": "unauth-write-route",
@@ -148,7 +148,7 @@
       "snippet": "POST /items",
       "confidence": "low",
       "fingerprint": "4b9bb06e079417b4",
-      "rule_version": "5"
+      "rule_version": "7"
     },
     {
       "rule": "unauth-write-route",
@@ -159,7 +159,7 @@
       "snippet": "POST /orders",
       "confidence": "low",
       "fingerprint": "244886a50793a8a2",
-      "rule_version": "5"
+      "rule_version": "7"
     },
     {
       "rule": "unauth-write-route",
@@ -170,7 +170,8 @@
       "snippet": "POST /payments/charge",
       "confidence": "low",
       "fingerprint": "11aa898a41ac8572",
-      "rule_version": "5"
+      "rule_version": "7",
+      "uncertain_reason": "router router in services/payments/src/handlers/charge.ts is exported but not mounted in the scanned files"
     },
     {
       "rule": "no-health-endpoint",
@@ -181,7 +182,7 @@
       "snippet": "no health endpoint in service services/catalog",
       "confidence": "medium",
       "fingerprint": "4ea214b61ea7eb47",
-      "rule_version": "4"
+      "rule_version": "5"
     },
     {
       "rule": "http-no-timeout",
@@ -190,9 +191,9 @@
       "file": "services/catalog/app.py",
       "line": 28,
       "snippet": "resp = requests.get(\"https://pricing.example.test/items/%d\" % item_id)",
-      "confidence": "medium",
+      "confidence": "low",
       "fingerprint": "503ea1b75eb6a000",
-      "rule_version": "2"
+      "rule_version": "3"
     },
     {
       "rule": "unbounded-query",
@@ -203,7 +204,7 @@
       "snippet": "cursor.execute(\"SELECT * FROM items WHERE name = '\" + name + \"'\")",
       "confidence": "low",
       "fingerprint": "b6ee12824a28e589",
-      "rule_version": "3"
+      "rule_version": "4"
     },
     {
       "rule": "sql-string-concat",
@@ -211,10 +212,10 @@
       "severity_hint": "Critical",
       "file": "services/catalog/app.py",
       "line": 21,
-      "snippet": "cursor.execute(\"SELECT * FROM items WHERE name = '\" + name + \"'\")",
+      "snippet": "payload from line 18 reaches SQL at line 21",
       "confidence": "low",
       "fingerprint": "e062b28e1826a128",
-      "rule_version": "4"
+      "rule_version": "6"
     },
     {
       "rule": "swallowed-error",
@@ -225,18 +226,18 @@
       "snippet": "except Exception:",
       "confidence": "low",
       "fingerprint": "b1b2596afc0137c5",
-      "rule_version": "5"
+      "rule_version": "7"
     },
     {
       "rule": "hardcoded-secret",
       "category": "Security",
-      "severity_hint": "Critical",
+      "severity_hint": "Medium",
       "file": "services/catalog/app.py",
       "line": 9,
       "snippet": "DB_PASSWORD = \"<redacted>\"",
       "confidence": "low",
       "fingerprint": "e14050564c2674fc",
-      "rule_version": "6"
+      "rule_version": "9"
     },
     {
       "rule": "http-no-timeout",
@@ -245,9 +246,9 @@
       "file": "services/orders/src/orders.go",
       "line": 18,
       "snippet": "return http.Get(url)",
-      "confidence": "medium",
+      "confidence": "low",
       "fingerprint": "da5146059cbfc5ed",
-      "rule_version": "2"
+      "rule_version": "3"
     },
     {
       "rule": "unbounded-query",
@@ -258,7 +259,7 @@
       "snippet": "rows, err := db.Query(\"SELECT id, total FROM orders WHERE user_id = $1\", uid)",
       "confidence": "low",
       "fingerprint": "9f1e897b84b95940",
-      "rule_version": "3"
+      "rule_version": "4"
     },
     {
       "rule": "http-no-timeout",
@@ -267,9 +268,9 @@
       "file": "services/payments/src/handlers/charge.ts",
       "line": 17,
       "snippet": "const providerResponse = await fetch(PROVIDER_URL, { method: \"POST\", body });",
-      "confidence": "medium",
+      "confidence": "low",
       "fingerprint": "1da16fa5dae5bad6",
-      "rule_version": "2"
+      "rule_version": "3"
     },
     {
       "rule": "query-in-loop",
@@ -277,10 +278,10 @@
       "severity_hint": "High",
       "file": "services/payments/src/handlers/charge.ts",
       "line": 21,
-      "snippet": "await db.query(\"INSERT INTO charge_items (sku, qty, unit_cents) VALUES ($1, $2, $3)\", [",
+      "snippet": "db.query inside for loop at line 20",
       "confidence": "low",
       "fingerprint": "ed1d7e07b480f686",
-      "rule_version": "4"
+      "rule_version": "5"
     },
     {
       "rule": "swallowed-error",
@@ -291,7 +292,7 @@
       "snippet": "} catch (e) {}",
       "confidence": "low",
       "fingerprint": "84379308b4a5383f",
-      "rule_version": "5"
+      "rule_version": "7"
     },
     {
       "rule": "console-logging-only",
@@ -313,7 +314,7 @@
       "snippet": "no test files under services/catalog",
       "confidence": "low",
       "fingerprint": "dac4f866ba914cc5",
-      "rule_version": "4"
+      "rule_version": "6"
     },
     {
       "rule": "no-tests",
@@ -324,7 +325,7 @@
       "snippet": "no test files under services/orders",
       "confidence": "low",
       "fingerprint": "304fc3de6253df75",
-      "rule_version": "4"
+      "rule_version": "6"
     },
     {
       "rule": "unvalidated-body",
@@ -333,7 +334,7 @@
       "file": "services/catalog/app.py",
       "line": 16,
       "snippet": "POST /items: body used without validation",
-      "confidence": "medium",
+      "confidence": "low",
       "fingerprint": "0697c4c1b0dfe829",
       "rule_version": "1"
     },
@@ -344,7 +345,7 @@
       "file": "services/payments/src/handlers/charge.ts",
       "line": 14,
       "snippet": "POST /payments/charge: body used without validation",
-      "confidence": "medium",
+      "confidence": "low",
       "fingerprint": "8c73c1a7c6fa8dc5",
       "rule_version": "1"
     },
@@ -355,7 +356,7 @@
       "file": "services/payments/src/handlers/refund.ts",
       "line": 15,
       "snippet": "POST /payments/refund: body used without validation",
-      "confidence": "medium",
+      "confidence": "low",
       "fingerprint": "bdd188953bfe112a",
       "rule_version": "1"
     },
@@ -368,7 +369,7 @@
       "snippet": "go.mod without go.sum",
       "confidence": "medium",
       "fingerprint": "94edbcceaeb35619",
-      "rule_version": "1"
+      "rule_version": "2"
     },
     {
       "rule": "missing-lockfile",
@@ -379,7 +380,7 @@
       "snippet": "package.json without package-lock.json / npm-shrinkwrap.json / yarn.lock",
       "confidence": "medium",
       "fingerprint": "1f34b86d2187077e",
-      "rule_version": "1"
+      "rule_version": "2"
     }
   ],
   "summary": {
@@ -401,45 +402,54 @@
     "invalid_signals": 0,
     "suppressed": 0,
     "partial": false,
-    "skipped_total": 0
+    "skipped_total": 0,
+    "default_off_rules": [
+      "openapi-drift"
+    ],
+    "scope_report": {
+      "scanned": 11,
+      "skipped_by_reason": {},
+      "excluded_by_config": 0
+    }
   },
   "notes": [
+    "rules off by default (enable in config): openapi-drift",
     "git hotspots disabled (--no-git)"
   ],
   "skipped_files": [],
   "meta": {
-    "plugin_version": "1.0.2",
+    "plugin_version": "1.1.0",
     "schema_version": 3,
     "rule_versions": {
       "ci-no-test-step": "1",
       "console-logging-only": "3",
       "docker-latest-tag": "1",
-      "docker-no-healthcheck": "1",
-      "docker-root-user": "1",
-      "god-module": "4",
-      "hardcoded-secret": "6",
-      "http-no-timeout": "2",
-      "import-cycle": "3",
-      "k8s-no-limits": "1",
-      "k8s-no-probes": "1",
+      "docker-no-healthcheck": "2",
+      "docker-root-user": "2",
+      "god-module": "5",
+      "hardcoded-secret": "9",
+      "http-no-timeout": "3",
+      "import-cycle": "4",
+      "k8s-no-limits": "2",
+      "k8s-no-probes": "2",
       "list-route-no-pagination": "1",
-      "missing-lockfile": "1",
+      "missing-lockfile": "2",
       "mixed-error-shapes": "1",
-      "no-health-endpoint": "4",
-      "no-tests": "4",
-      "no-version-prefix": "1",
-      "openapi-drift": "1",
-      "query-in-loop": "4",
+      "no-health-endpoint": "5",
+      "no-tests": "6",
+      "no-version-prefix": "3",
+      "openapi-drift": "2",
+      "query-in-loop": "5",
       "retry-no-backoff": "1",
-      "sql-string-concat": "4",
-      "swallowed-error": "5",
-      "unauth-write-route": "5",
-      "unbounded-query": "3",
-      "unpinned-dependency": "2",
+      "sql-string-concat": "6",
+      "swallowed-error": "7",
+      "unauth-write-route": "7",
+      "unbounded-query": "4",
+      "unpinned-dependency": "4",
       "unvalidated-body": "1"
     },
     "config_hash": "3d96e5d5ea6d",
-    "timestamp": "2026-11-03T11:54:08Z",
+    "timestamp": "2026-11-05T16:53:17Z",
     "repo_revision": "unknown",
     "scope": [
       "services/payments",

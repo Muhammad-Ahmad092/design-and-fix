@@ -1,0 +1,182 @@
+[
+  {
+    "repo": "awesome-compose",
+    "file": "react-express-mongodb/frontend/src/serviceWorker.js",
+    "line": 103,
+    "snippet": "fetch(swUrl)",
+    "fingerprint": "a66df3e7a7d0bd98",
+    "label": "fp",
+    "note": "CRA-generated service worker boilerplate, not registered by default"
+  },
+  {
+    "repo": "awesome-compose",
+    "file": "react-express-mysql/frontend/src/App.js",
+    "line": 8,
+    "snippet": "fetch(\"/api/\")",
+    "fingerprint": "d1c8aa4576205513",
+    "label": "fp",
+    "note": "Browser-side fetch to own API in demo React page, not a server outbound call"
+  },
+  {
+    "repo": "awesome-compose",
+    "file": "react-express-mysql/frontend/src/serviceWorker.js",
+    "line": 103,
+    "snippet": "fetch(swUrl, {",
+    "fingerprint": "eac8c42d9e91ecf1",
+    "label": "fp",
+    "note": "CRA-generated service worker boilerplate"
+  },
+  {
+    "repo": "awesome-compose",
+    "file": "react-java-mysql/frontend/src/App.tsx",
+    "line": 13,
+    "snippet": "fetch(\"/api\")",
+    "fingerprint": "6e488976469237da",
+    "label": "fp",
+    "note": "Browser-side fetch to own API in demo React page"
+  },
+  {
+    "repo": "awesome-compose",
+    "file": "react-java-mysql/frontend/src/serviceWorker.ts",
+    "line": 111,
+    "snippet": "fetch(swUrl, {",
+    "fingerprint": "23bfdc142e087a63",
+    "label": "fp",
+    "note": "CRA-generated service worker boilerplate"
+  },
+  {
+    "repo": "awesome-compose",
+    "file": "react-rust-postgres/frontend/src/App.js",
+    "line": 8,
+    "snippet": "fetch(\"/api/users\")",
+    "fingerprint": "5032846f2affaa71",
+    "label": "fp",
+    "note": "Browser-side fetch to own API in demo React page"
+  },
+  {
+    "repo": "awesome-compose",
+    "file": "react-rust-postgres/frontend/src/serviceWorker.js",
+    "line": 103,
+    "snippet": "fetch(swUrl, {",
+    "fingerprint": "80156c12a8f37f0e",
+    "label": "fp",
+    "note": "CRA-generated service worker boilerplate"
+  },
+  {
+    "repo": "awesome-compose",
+    "file": "wasmedge-mysql-nginx/frontend/js/app.js",
+    "line": 20,
+    "snippet": "fetch(\"http://localhost:8080/orders\")",
+    "fingerprint": "a471f32e96050f81",
+    "label": "fp",
+    "note": "Browser-side fetch in static demo frontend (frontend/js/app.js)"
+  },
+  {
+    "repo": "awesome-compose",
+    "file": "wasmedge-mysql-nginx/frontend/js/app.js",
+    "line": 30,
+    "snippet": "fetch(\"http://localhost:8080/init\")",
+    "fingerprint": "f583a36e88d75882",
+    "label": "fp",
+    "note": "Browser-side fetch in static demo frontend (frontend/js/app.js)"
+  },
+  {
+    "repo": "awesome-compose",
+    "file": "wasmedge-mysql-nginx/frontend/js/app.js",
+    "line": 92,
+    "snippet": "fetch(`http://localhost:8080/delete_order?id=${orderId}`)",
+    "fingerprint": "0f653f1df48c7572",
+    "label": "fp",
+    "note": "Browser-side fetch in static demo frontend (frontend/js/app.js)"
+  },
+  {
+    "repo": "awesome-compose",
+    "file": "wasmedge-mysql-nginx/frontend/js/app.js",
+    "line": 113,
+    "snippet": "fetch(\"http://localhost:8080/create_order\", {",
+    "fingerprint": "458825d70747251e",
+    "label": "fp",
+    "note": "Browser-side fetch in static demo frontend (frontend/js/app.js)"
+  },
+  {
+    "repo": "create-t3-turbo",
+    "file": "turbo/generators/config.ts",
+    "line": 64,
+    "snippet": "const version = await fetch(",
+    "fingerprint": "1d53c90974cda18f",
+    "label": "tp",
+    "note": "turbo generator fetches npm registry with no timeout; dev tooling, low impact"
+  },
+  {
+    "repo": "django-styleguide-example",
+    "file": "styleguide_example/blog_examples/google_login_server_flow/raw/service.py",
+    "line": 96,
+    "snippet": "response = requests.post(self.GOOGLE_ACCESS_TOKEN_OBTAIN_URL, data=data)",
+    "fingerprint": "3eecbf75afc70143",
+    "label": "tp",
+    "note": "Google token exchange without timeout in login flow; mounted via api/urls.py google-oauth2/login/raw"
+  },
+  {
+    "repo": "django-styleguide-example",
+    "file": "styleguide_example/blog_examples/google_login_server_flow/raw/service.py",
+    "line": 109,
+    "snippet": "response = requests.get(self.GOOGLE_USER_INFO_URL, params={\"access_token\": access_token})",
+    "fingerprint": "a2865a435ff97e93",
+    "label": "tp",
+    "note": "Google userinfo call without timeout in login flow (raw/service.py), mounted in api/urls.py"
+  },
+  {
+    "repo": "django-styleguide-example",
+    "file": "styleguide_example/blog_examples/google_login_server_flow/sdk/services.py",
+    "line": 115,
+    "snippet": "response = requests.get(self.GOOGLE_USER_INFO_URL, params={\"access_token\": access_token})",
+    "fingerprint": "7b19cfa89e3e2743",
+    "label": "tp",
+    "note": "Google userinfo call without timeout in login flow (sdk/services.py), mounted in api/urls.py"
+  },
+  {
+    "repo": "robot-shop",
+    "file": "payment/payment.py",
+    "line": 64,
+    "snippet": "req = requests.get('http://{user}:8080/check/{id}'.format(user=USER, id=id))",
+    "fingerprint": "8977623abd3783f3",
+    "label": "tp",
+    "note": "Request-path call to user service with no timeout in pay() (payment/payment.py)"
+  },
+  {
+    "repo": "robot-shop",
+    "file": "payment/payment.py",
+    "line": 84,
+    "snippet": "req = requests.get(PAYMENT_GATEWAY)",
+    "fingerprint": "356b8b01ac123d78",
+    "label": "tp",
+    "note": "Call to payment gateway with no timeout in pay() (payment/payment.py)"
+  },
+  {
+    "repo": "robot-shop",
+    "file": "payment/payment.py",
+    "line": 106,
+    "snippet": "req = requests.post('http://{user}:8080/order/{id}'.format(user=USER, id=id),",
+    "fingerprint": "38494840028ea9e7",
+    "label": "tp",
+    "note": "Request-path POST to user service with no timeout (payment/payment.py)"
+  },
+  {
+    "repo": "robot-shop",
+    "file": "payment/payment.py",
+    "line": 116,
+    "snippet": "req = requests.delete('http://{cart}:8080/cart/{id}'.format(cart=CART, id=id));",
+    "fingerprint": "c3b1a11241124194",
+    "label": "tp",
+    "note": "Request-path DELETE to cart service with no timeout (payment/payment.py)"
+  },
+  {
+    "repo": "robot-shop",
+    "file": "ratings/html/src/Service/CatalogueService.php",
+    "line": 35,
+    "snippet": "$data = curl_exec($curl);",
+    "fingerprint": "4e228b6096f02f38",
+    "label": "tp",
+    "note": "curl to catalogue with no CURLOPT_TIMEOUT in checkSKU on rating request path (CatalogueService.php)"
+  }
+]

@@ -3,7 +3,7 @@
 > Scope: services/payments, services/orders, services/catalog in `tests/fixtures/monorepo` (synthetic fixture; all paths relative to it). App/ (.NET stub) not assessed.
 > Context: payments checkout, about 50 req/s peak, must keep PostgreSQL, pain point: checkout (charge) is slow and sometimes double-charges
 > Format: 1.0.2
-> Audit: plugin 1.0.2 · scanner schema 3 · rev unknown · config 3d96e5d5ea6d · 2026-11-03T11:54:08Z
+> Audit: plugin 1.1.0 · scanner schema 3 · rev unknown · config 3d96e5d5ea6d · 2026-11-05T16:53:17Z
 
 Every issue ID from `01` and `02` appears in exactly one `Action (IDs)` row of the three horizon tables; Suggested Sequence may cite IDs again.
 Placement: S -> Quick Wins, M -> Medium-term, L/XL -> Long-term.
@@ -48,7 +48,7 @@ Placement: S -> Quick Wins, M -> Medium-term, L/XL -> Long-term.
 ## Suggested Sequence
 
 1. REL-001: ship the idempotent charge flow. Why: Critical and the double-charge pain point, so it leads the Critical group.
-2. SEC-003, SEC-002, SEC-001, SEC-004: fix the other Critical issues, all in Security (weakest category, score 1). Why: active breach risk; SEC-003 and SEC-002 take hours.
+2. SEC-003, SEC-002, SEC-004, then SEC-001: fix the other Critical issues, all in Security (weakest category, score 1). Why: active breach risk; SEC-003 and SEC-002 take hours; SEC-001 is `needs-review`, so it follows the confirmed ones.
 3. REL-002: abort the provider call after 5 s. Why: the slow-checkout pain point, and fewer retries feeding REL-001.
 4. REL-003, then SCL-001, MNT-002, API-001: check the provider result, batch the item inserts, test the charge route, validate bodies. Why: High impact; Security has no High issues, so Impact and Effort set the order.
 5. Remaining quick wins (including MNT-004), then API-002, MNT-001, OBS-002. Why: cleanup and visibility once the money path is safe.

@@ -1,38 +1,164 @@
 [
   {
-    "repo": "django",
-    "file": "docs/requirements.txt",
+    "repo": "awesome-compose",
+    "file": "fastapi/requirements.txt",
     "line": 1,
-    "snippet": "pyenchant",
-    "fingerprint": "c3df2da94d09c412",
-    "label": "fp",
-    "note": "docs-build tooling in Django library, not deployed"
+    "snippet": "fastapi",
+    "fingerprint": "6f8eb3f4ae0371f4",
+    "label": "tp",
+    "note": "Deployed sample service image installs unpinned from requirements.txt, no lockfile or constraints; low impact (sample app)."
   },
   {
-    "repo": "django",
-    "file": "docs/requirements.txt",
+    "repo": "awesome-compose",
+    "file": "fastapi/requirements.txt",
     "line": 2,
-    "snippet": "Sphinx>=4.5.0",
-    "fingerprint": "d8175d76b7a21be7",
-    "label": "fp",
-    "note": "docs-build tooling in Django library, not deployed"
+    "snippet": "uvicorn",
+    "fingerprint": "676ebd9fc09469e0",
+    "label": "tp",
+    "note": "Deployed sample service image installs unpinned from requirements.txt, no lockfile or constraints; low impact (sample app)."
   },
   {
-    "repo": "django",
-    "file": "docs/requirements.txt",
+    "repo": "awesome-compose",
+    "file": "flask-redis/requirements.txt",
+    "line": 1,
+    "snippet": "flask",
+    "fingerprint": "2475bc639fede51d",
+    "label": "tp",
+    "note": "Deployed sample service image installs unpinned from requirements.txt, no lockfile or constraints; low impact (sample app)."
+  },
+  {
+    "repo": "awesome-compose",
+    "file": "flask-redis/requirements.txt",
+    "line": 2,
+    "snippet": "redis",
+    "fingerprint": "0d710b75a448eb28",
+    "label": "tp",
+    "note": "Deployed sample service image installs unpinned from requirements.txt, no lockfile or constraints; low impact (sample app)."
+  },
+  {
+    "repo": "awesome-compose",
+    "file": "flask/app/requirements.txt",
+    "line": 1,
+    "snippet": "flask",
+    "fingerprint": "584ffbaa93eae2b5",
+    "label": "tp",
+    "note": "Deployed sample service image installs unpinned from requirements.txt, no lockfile or constraints; low impact (sample app)."
+  },
+  {
+    "repo": "awesome-compose",
+    "file": "nginx-flask-mongo/flask/requirements.txt",
+    "line": 1,
+    "snippet": "pymongo",
+    "fingerprint": "e11a16ece6972456",
+    "label": "tp",
+    "note": "Deployed sample service image installs unpinned from requirements.txt, no lockfile or constraints; low impact (sample app)."
+  },
+  {
+    "repo": "awesome-compose",
+    "file": "nginx-flask-mongo/flask/requirements.txt",
+    "line": 2,
+    "snippet": "flask",
+    "fingerprint": "c966ba51bf9f0abd",
+    "label": "tp",
+    "note": "Deployed sample service image installs unpinned from requirements.txt, no lockfile or constraints; low impact (sample app)."
+  },
+  {
+    "repo": "example-voting-app",
+    "file": "vote/requirements.txt",
+    "line": 1,
+    "snippet": "Flask",
+    "fingerprint": "8bd35cd240bb6b16",
+    "label": "tp",
+    "note": "Flask/Redis/gunicorn unpinned in vote/requirements.txt, no lockfile; image rebuild can pull untested versions."
+  },
+  {
+    "repo": "example-voting-app",
+    "file": "vote/requirements.txt",
+    "line": 2,
+    "snippet": "Redis",
+    "fingerprint": "7cbd82a457ea1e43",
+    "label": "tp",
+    "note": "Flask/Redis/gunicorn unpinned in vote/requirements.txt, no lockfile; image rebuild can pull untested versions."
+  },
+  {
+    "repo": "example-voting-app",
+    "file": "vote/requirements.txt",
     "line": 3,
-    "snippet": "sphinxcontrib-spelling",
-    "fingerprint": "c85017cff55d468d",
-    "label": "fp",
-    "note": "docs-build tooling in Django library, not deployed"
+    "snippet": "gunicorn",
+    "fingerprint": "05decbee1d193f78",
+    "label": "tp",
+    "note": "Flask/Redis/gunicorn unpinned in vote/requirements.txt, no lockfile; image rebuild can pull untested versions."
   },
   {
-    "repo": "django",
-    "file": "docs/requirements.txt",
+    "repo": "robot-shop",
+    "file": "load-gen/requirements.txt",
+    "line": 1,
+    "snippet": "locust",
+    "fingerprint": "99a85f476f44f0ba",
+    "label": "tp",
+    "note": "locust unpinned, no lockfile; low impact (load-generation tool image)."
+  },
+  {
+    "repo": "robot-shop",
+    "file": "payment/requirements.txt",
+    "line": 1,
+    "snippet": "uwsgi",
+    "fingerprint": "6a3e9da4a5250189",
+    "label": "tp",
+    "note": "payment service requirements.txt has no versions, no lockfile/constraints; Dockerfile rebuild pulls latest."
+  },
+  {
+    "repo": "robot-shop",
+    "file": "payment/requirements.txt",
+    "line": 2,
+    "snippet": "Flask",
+    "fingerprint": "f86c4e0a2cf84ec0",
+    "label": "tp",
+    "note": "payment service requirements.txt has no versions, no lockfile/constraints; Dockerfile rebuild pulls latest."
+  },
+  {
+    "repo": "robot-shop",
+    "file": "payment/requirements.txt",
+    "line": 3,
+    "snippet": "requests",
+    "fingerprint": "91ef8d4e6c0bf1b3",
+    "label": "tp",
+    "note": "payment service requirements.txt has no versions, no lockfile/constraints; Dockerfile rebuild pulls latest."
+  },
+  {
+    "repo": "robot-shop",
+    "file": "payment/requirements.txt",
     "line": 4,
-    "snippet": "blacken-docs",
-    "fingerprint": "3d59aadeb1be3632",
-    "label": "fp",
-    "note": "docs-build tooling in Django library, not deployed"
+    "snippet": "pika",
+    "fingerprint": "1d9b9a52d0d6d16b",
+    "label": "tp",
+    "note": "payment service requirements.txt has no versions, no lockfile/constraints; Dockerfile rebuild pulls latest."
+  },
+  {
+    "repo": "robot-shop",
+    "file": "payment/requirements.txt",
+    "line": 5,
+    "snippet": "prometheus_client",
+    "fingerprint": "112af0495b486a80",
+    "label": "tp",
+    "note": "payment service requirements.txt has no versions, no lockfile/constraints; Dockerfile rebuild pulls latest."
+  },
+  {
+    "repo": "robot-shop",
+    "file": "payment/requirements.txt",
+    "line": 6,
+    "snippet": "opentracing",
+    "fingerprint": "47da7d2daf744b0e",
+    "label": "tp",
+    "note": "payment service requirements.txt has no versions, no lockfile/constraints; Dockerfile rebuild pulls latest."
+  },
+  {
+    "repo": "robot-shop",
+    "file": "payment/requirements.txt",
+    "line": 7,
+    "snippet": "instana",
+    "fingerprint": "5e260ede2bfaf47a",
+    "label": "tp",
+    "note": "payment service requirements.txt has no versions, no lockfile/constraints; Dockerfile rebuild pulls latest."
   }
 ]

@@ -96,7 +96,7 @@
     "snippet": "no test files under src/flask",
     "fingerprint": "df3e645ab37a0829",
     "label": "fp",
-    "note": "Flask's tests live in the repo-root tests/ folder (review2 case)."
+    "note": "Flask's tests live in the repo-root tests/ folder (a Flask false positive fixed in 1.0.2)."
   },
   {
     "repo": "full-stack-fastapi-template",

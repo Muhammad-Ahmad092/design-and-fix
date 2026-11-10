@@ -10,7 +10,7 @@
       ],
       "kind": "library",
       "framework": "flask",
-      "note": "The review2 false-positive case: Flask's src/ layout with tests in the repo-root tests/ folder. BSD-3-Clause."
+      "note": "The Flask src/ layout false positive fixed in 1.0.2: Flask's src/ layout with tests in the repo-root tests/ folder. BSD-3-Clause."
     },
     {
       "name": "itsdangerous",
@@ -170,6 +170,228 @@
       "kind": "service",
       "framework": "laravel",
       "note": "RealWorld (Conduit) backend in Laravel (api routes, JWT auth middleware, Eloquent). MIT."
+    },
+    {
+      "name": "example-voting-app",
+      "url": "https://codeload.github.com/dockersamples/example-voting-app/tar.gz/63e9150ca17af4ed05880d4245e486481f73fcb4",
+      "sha256": "f993741770ec58274d9d4d3d81b072887e5bc2af66bcafc474927d42a9dcfad4",
+      "subdir": "",
+      "languages": [
+        "Python",
+        "JavaScript",
+        "C#"
+      ],
+      "kind": "service",
+      "framework": "flask",
+      "note": "Docker's multi-service sample (Flask vote, Express result, .NET worker, Redis, Postgres) with plain Kubernetes manifests in k8s-specifications/ (no probes, no limits) and Compose files; pinned to a commit. Measures k8s-no-probes, k8s-no-limits and unvalidated-body. Apache-2.0.",
+      "services": 3
+    },
+    {
+      "name": "robot-shop",
+      "url": "https://codeload.github.com/instana/robot-shop/tar.gz/55292e2199f2fb00a165b1f7d3045fe7f8922038",
+      "sha256": "0e8238984252e46a024cc067637bbab294489a6ab90e74158ba34c80fde893a6",
+      "subdir": "",
+      "languages": [
+        "JavaScript",
+        "Python",
+        "Go",
+        "Java",
+        "PHP"
+      ],
+      "kind": "service",
+      "framework": "express",
+      "note": "Instana's polyglot multi-service shop (Express cart/catalogue/user, Flask payment, Go dispatch, Java shipping, PHP ratings, nginx web) with Kubernetes, OpenShift and Swarm descriptors; archived upstream, pinned to the last commit. Measures list-route-no-pagination (inline Express handlers returning find({})), docker-latest-tag and k8s-no-probes. Apache-2.0.",
+      "services": 8
+    },
+    {
+      "name": "awesome-compose",
+      "url": "https://codeload.github.com/docker/awesome-compose/tar.gz/30f4b7f6a6c3b0c0ecf4d4efb0de203c48d11562",
+      "sha256": "a6af3a155b771d197481d52f1b372ad3eb30e30a70a56ffc04c55b0f6b750bc4",
+      "subdir": "",
+      "languages": [
+        "Python",
+        "JavaScript",
+        "Go",
+        "Java",
+        "C#",
+        "TypeScript"
+      ],
+      "kind": "monorepo",
+      "framework": "",
+      "note": "Docker's collection of about 40 small Compose stacks (Flask, FastAPI, Express, Go, Spring, ASP.NET, React front ends) in one repository: the monorepo of the growth set, one folder per stack. Measures ci-no-test-step (its only workflow is CodeQL) and unvalidated-body. CC0-1.0 (public-domain dedication).",
+      "services": 40
+    },
+    {
+      "name": "todo-nodejs-mongo",
+      "url": "https://codeload.github.com/Azure-Samples/todo-nodejs-mongo/tar.gz/16695b06631a166eb5dc90ea2f0d52b917578013",
+      "sha256": "81e3edf2f9cf4d2ae27ccd739bdd73b03da65e223f8631256584493f8d3482ef",
+      "subdir": "",
+      "languages": [
+        "TypeScript"
+      ],
+      "kind": "service",
+      "framework": "express",
+      "note": "Azure Developer CLI sample: Express + Mongoose API documented by a committed openapi.yaml, React web app, Bicep infra, deploy-only GitHub workflow; pinned to a commit. Measures openapi-drift (routers mounted under prefixes in another file), unvalidated-body and ci-no-test-step. MIT.",
+      "services": 2
     }
-  ]
+  ],
+  "coverage_note": "coverage: rule -> corpus repos whose scan produces at least one signal of the rule (scanner 1.1.0 development tree, 2026-11-05; `run_precision.py sample` warns when it drifts). unmeasured: rules no corpus repo triggers, with the reason. Every registered rule is in exactly one of the two.",
+  "coverage": {
+    "ci-no-test-step": [
+      "awesome-compose",
+      "todo-nodejs-mongo"
+    ],
+    "console-logging-only": [
+      "awesome-compose",
+      "create-t3-turbo",
+      "golang-gin-realworld",
+      "robot-shop"
+    ],
+    "docker-latest-tag": [
+      "robot-shop"
+    ],
+    "docker-no-healthcheck": [
+      "aspnetcore-realworld",
+      "nestjs-prisma-starter",
+      "node-express-boilerplate",
+      "todo-nodejs-mongo"
+    ],
+    "docker-root-user": [
+      "awesome-compose",
+      "django-styleguide-example",
+      "example-voting-app",
+      "full-stack-fastapi-template",
+      "homeland",
+      "nestjs-prisma-starter",
+      "robot-shop",
+      "todo-nodejs-mongo"
+    ],
+    "god-module": [
+      "django"
+    ],
+    "hardcoded-secret": [
+      "awesome-compose",
+      "chi",
+      "django",
+      "django-styleguide-example",
+      "example-voting-app",
+      "homeland",
+      "laravel-realworld",
+      "node-express-boilerplate",
+      "robot-shop",
+      "spring-boot-realworld"
+    ],
+    "http-no-timeout": [
+      "awesome-compose",
+      "create-t3-turbo",
+      "django-styleguide-example",
+      "robot-shop"
+    ],
+    "import-cycle": [
+      "django",
+      "flask",
+      "nestjs-prisma-starter",
+      "todo-nodejs-mongo"
+    ],
+    "k8s-no-limits": [
+      "example-voting-app"
+    ],
+    "k8s-no-probes": [
+      "example-voting-app",
+      "robot-shop"
+    ],
+    "list-route-no-pagination": [
+      "robot-shop"
+    ],
+    "missing-lockfile": [
+      "django",
+      "laravel-realworld",
+      "robot-shop"
+    ],
+    "no-health-endpoint": [
+      "aspnetcore-realworld",
+      "awesome-compose",
+      "django-styleguide-example",
+      "example-voting-app",
+      "nestjs-prisma-starter",
+      "node-express-boilerplate",
+      "todo-nodejs-mongo"
+    ],
+    "no-tests": [
+      "aspnetcore-realworld",
+      "awesome-compose",
+      "create-t3-turbo",
+      "django-styleguide-example",
+      "golang-gin-realworld",
+      "homeland",
+      "laravel-realworld",
+      "nestjs-prisma-starter",
+      "node-express-boilerplate",
+      "robot-shop",
+      "todo-nodejs-mongo"
+    ],
+    "no-version-prefix": [
+      "awesome-compose",
+      "django-styleguide-example",
+      "golang-gin-realworld",
+      "robot-shop",
+      "todo-nodejs-mongo"
+    ],
+    "openapi-drift": [
+      "todo-nodejs-mongo"
+    ],
+    "query-in-loop": [
+      "awesome-compose",
+      "django",
+      "django-styleguide-example",
+      "todo-nodejs-mongo"
+    ],
+    "sql-string-concat": [
+      "awesome-compose",
+      "django",
+      "homeland"
+    ],
+    "swallowed-error": [
+      "create-t3-turbo",
+      "django",
+      "flask",
+      "homeland",
+      "itsdangerous",
+      "laravel-realworld"
+    ],
+    "unauth-write-route": [
+      "aspnetcore-realworld",
+      "awesome-compose",
+      "example-voting-app",
+      "full-stack-fastapi-template",
+      "golang-gin-realworld",
+      "homeland",
+      "laravel-realworld",
+      "robot-shop",
+      "spring-boot-realworld",
+      "todo-nodejs-mongo"
+    ],
+    "unbounded-query": [
+      "awesome-compose",
+      "django",
+      "django-styleguide-example",
+      "robot-shop",
+      "todo-nodejs-mongo"
+    ],
+    "unpinned-dependency": [
+      "awesome-compose",
+      "django",
+      "example-voting-app",
+      "robot-shop"
+    ],
+    "unvalidated-body": [
+      "awesome-compose",
+      "example-voting-app",
+      "todo-nodejs-mongo"
+    ]
+  },
+  "unmeasured": {
+    "mixed-error-shapes": "No permissive candidate tried so far mixes incompatible 4xx/5xx body shapes inside its route files (checked: the 18 corpus repos, gin-gonic/examples, open-telemetry/opentelemetry-demo, Azure-Samples/todo-python-mongo, ThreeDotsLabs/wild-workouts-go-ddd-example, eddycjy/go-gin-example). Most services centralise errors in one handler, which the rule does not read by design.",
+    "retry-no-backoff": "No corpus repo or tried candidate (same list as mixed-error-shapes) has a retry/attempt loop around a recognised network call without sleep or backoff; retries in these repos use client libraries (async.retry with an interval, urllib3 Retry) or sleep between attempts. Needs a repo found by code search, which the corpus tooling does not do."
+  }
 }
